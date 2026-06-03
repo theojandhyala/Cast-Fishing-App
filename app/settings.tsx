@@ -137,7 +137,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Notifications</Text>
           <View style={styles.card}>
-            <SettingRow icon="bell" label="Notification Settings" onPress={() => router.push('/notifications')} color="#8B5CF6" />
+            <SettingRow icon="bell" label="Notification Settings" onPress={() => router.push('/notifications' as any)} color="#8B5CF6" />
           </View>
         </View>
 
