@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,22 +7,25 @@ import {
   TouchableOpacity,
   Modal,
   Dimensions,
+  TextInput,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ukSpots, FishingSpot } from '../../data/ukSpots';
-import { SpotCard } from '../../components/map/SpotCard';
+import { WORLD_SPOTS, WorldSpot } from '../../data/worldSpots';
 import { colors, radius, spacing } from '../../constants/theme';
 
 const { height } = Dimensions.get('window');
 
-const TYPES = ['All', 'River', 'Lake', 'Sea', 'Reservoir', 'Private'];
+const CONTINENTS = ['All', 'Europe', 'Americas', 'Asia', 'Africa', 'Oceania'];
+const TYPES = ['All', 'River', 'Lake', 'Sea', 'Ocean', 'Reservoir', 'Estuary'];
 
 const typeIcons: Record<string, string> = {
   river: 'waves',
   lake: 'water',
   sea: 'anchor',
   reservoir: 'water-pump',
+  ocean: 'sail-boat',
+  estuary: 'water-outline',
   private: 'lock',
 };
 
@@ -33,62 +36,107 @@ const difficultyColors = {
 };
 
 export default function MapScreen() {
+  const [selectedContinent, setSelectedContinent] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
-  const [selectedSpot, setSelectedSpot] = useState<FishingSpot | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSpot, setSelectedSpot] = useState<WorldSpot | null>(null);
+  const [showAddSpot, setShowAddSpot] = useState(false);
+  const [newSpotName, setNewSpotName] = useState('');
+  const [newSpotCountry, setNewSpotCountry] = useState('');
+  const [newSpotDesc, setNewSpotDesc] = useState('');
+  const [userSpots, setUserSpots] = useState<WorldSpot[]>([]);
 
-  const filtered = ukSpots.filter((s) => {
-    if (selectedType === 'All') return true;
-    return s.type === selectedType.toLowerCase();
-  });
+  const allSpots = useMemo(() => [...WORLD_SPOTS, ...userSpots], [userSpots]);
+
+  const filtered = useMemo(() => allSpots.filter((s) => {
+    const matchContinent = selectedContinent === 'All' || s.continent === selectedContinent;
+    const matchType = selectedType === 'All' || s.type === selectedType.toLowerCase();
+    const matchSearch = !searchQuery ||
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.country.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.region.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchContinent && matchType && matchSearch;
+  }), [allSpots, selectedContinent, selectedType, searchQuery]);
+
+  const handleAddSpot = () => {
+    if (!newSpotName.trim()) return;
+    const newSpot: WorldSpot = {
+      id: `user_${Date.now()}`,
+      name: newSpotName,
+      country: newSpotCountry || 'Unknown',
+      region: 'User Added',
+      continent: 'Europe',
+      type: 'river',
+      latitude: 51.5,
+      longitude: -0.1,
+      species: [],
+      bestBait: [],
+      bestSeason: ['Year-round'],
+      rating: 0,
+      permitRequired: false,
+      difficulty: 'beginner',
+      description: newSpotDesc,
+      tips: '',
+      facilities: [],
+    };
+    setUserSpots(prev => [newSpot, ...prev]);
+    setNewSpotName('');
+    setNewSpotCountry('');
+    setNewSpotDesc('');
+    setShowAddSpot(false);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Fishing Spots</Text>
-        <Text style={styles.subtitle}>{filtered.length} UK spots</Text>
+        <Text style={styles.subtitle}>{allSpots.length} spots worldwide</Text>
       </View>
 
-      {/* Map placeholder with styled grid */}
-      <View style={styles.mapContainer}>
-        <View style={styles.mapPlaceholder}>
-          <Text style={styles.mapTitle}>🗺️ UK Fishing Spots</Text>
-          <Text style={styles.mapSubtitle}>
-            {filtered.length} spots across England, Scotland & Wales
-          </Text>
-          <View style={styles.mapGrid}>
-            {filtered.slice(0, 6).map((spot) => (
-              <TouchableOpacity
-                key={spot.id}
-                style={styles.mapPin}
-                onPress={() => setSelectedSpot(spot)}
-              >
-                <View style={[styles.pinDot, { backgroundColor: spot.permitRequired ? colors.secondary : colors.primary }]} />
-                <Text style={styles.pinLabel} numberOfLines={1}>{spot.name.split(',')[0]}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <Text style={styles.mapNote}>Tap a spot below to view details</Text>
-        </View>
+      {/* Search bar */}
+      <View style={styles.searchContainer}>
+        <MaterialCommunityIcons name="magnify" size={18} color={colors.textSecondary} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search spots, countries, regions..."
+          placeholderTextColor={colors.textSecondary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <MaterialCommunityIcons name="close-circle" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Filter chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterScroll}
-        contentContainerStyle={styles.filters}
-      >
+      {/* Continent filter */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filters}>
+        {CONTINENTS.map((c) => (
+          <TouchableOpacity key={c} style={[styles.chip, selectedContinent === c && styles.chipActive]} onPress={() => setSelectedContinent(c)}>
+            <Text style={[styles.chipText, selectedContinent === c && styles.chipTextActive]}>{c}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Type filter */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filters}>
         {TYPES.map((t) => (
-          <TouchableOpacity
-            key={t}
-            style={[styles.chip, selectedType === t && styles.chipActive]}
-            onPress={() => setSelectedType(t)}
-          >
+          <TouchableOpacity key={t} style={[styles.chip, selectedType === t && styles.chipActive]} onPress={() => setSelectedType(t)}>
             <Text style={[styles.chipText, selectedType === t && styles.chipTextActive]}>{t}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {/* Result count */}
+      <View style={styles.countRow}>
+        <Text style={styles.countText}>Showing {filtered.length} spots worldwide</Text>
+        <TouchableOpacity style={styles.addSpotBtn} onPress={() => setShowAddSpot(true)}>
+          <MaterialCommunityIcons name="plus" size={16} color={colors.background} />
+          <Text style={styles.addSpotText}>Add Spot</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Spot list */}
       <ScrollView style={styles.list} showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContent}>
@@ -108,6 +156,7 @@ export default function MapScreen() {
             </View>
             <View style={styles.spotInfo}>
               <Text style={styles.spotName} numberOfLines={1}>{spot.name}</Text>
+              <Text style={styles.spotCountry} numberOfLines={1}>{spot.country} · {spot.region}</Text>
               <Text style={styles.spotSpecies} numberOfLines={1}>
                 {spot.species.slice(0, 3).join(' · ')}
               </Text>
@@ -144,6 +193,23 @@ export default function MapScreen() {
             onClose={() => setSelectedSpot(null)}
           />
         )}
+      </Modal>
+
+      {/* Add Spot Modal */}
+      <Modal visible={showAddSpot} transparent animationType="slide" onRequestClose={() => setShowAddSpot(false)}>
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowAddSpot(false)} />
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: 40 }}>
+          <Text style={{ fontSize: 20, fontWeight: '800', color: colors.textPrimary, marginBottom: spacing.md }}>Add a Spot</Text>
+          <Text style={styles.inputLabel}>Spot Name *</Text>
+          <TextInput style={styles.textInput} placeholder="e.g. River Thames, London" placeholderTextColor={colors.textSecondary} value={newSpotName} onChangeText={setNewSpotName} />
+          <Text style={styles.inputLabel}>Country</Text>
+          <TextInput style={styles.textInput} placeholder="e.g. United Kingdom" placeholderTextColor={colors.textSecondary} value={newSpotCountry} onChangeText={setNewSpotCountry} />
+          <Text style={styles.inputLabel}>Description</Text>
+          <TextInput style={[styles.textInput, { height: 80, textAlignVertical: 'top' }]} placeholder="Describe this spot..." placeholderTextColor={colors.textSecondary} value={newSpotDesc} onChangeText={setNewSpotDesc} multiline />
+          <TouchableOpacity style={{ backgroundColor: colors.primary, borderRadius: radius.xl, padding: spacing.md, alignItems: 'center', marginTop: spacing.lg }} onPress={handleAddSpot}>
+            <Text style={{ fontSize: 16, fontWeight: '800', color: colors.background }}>Save Spot</Text>
+          </TouchableOpacity>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -287,11 +353,77 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: colors.textPrimary,
-    marginBottom: 3,
+    marginBottom: 2,
+  },
+  spotCountry: {
+    fontSize: 11,
+    color: colors.primary,
+    marginBottom: 2,
+    fontWeight: '600',
   },
   spotSpecies: {
     fontSize: 12,
     color: colors.textSecondary,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.textPrimary,
+    paddingVertical: spacing.sm + 2,
+    fontSize: 14,
+  },
+  countRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  countText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  addSpotBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    gap: 4,
+  },
+  addSpotText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.background,
+  },
+  inputLabel: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 4,
+    marginTop: spacing.sm,
+    fontWeight: '600',
+  },
+  textInput: {
+    backgroundColor: colors.surface2,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    color: colors.textPrimary,
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   spotMeta: {
     alignItems: 'flex-end',

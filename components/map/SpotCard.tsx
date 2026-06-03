@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { FishingSpot } from '../../data/ukSpots';
+import { WorldSpot } from '../../data/worldSpots';
 import { colors, radius, spacing } from '../../constants/theme';
 
 interface SpotCardProps {
-  spot: FishingSpot;
+  spot: WorldSpot;
   onClose: () => void;
   onNavigate?: () => void;
 }
@@ -33,7 +33,7 @@ export function SpotCard({ spot, onClose, onNavigate }: SpotCardProps) {
           <MaterialCommunityIcons name={typeIcons[spot.type] as any} size={20} color={colors.primary} />
           <View style={styles.headerText}>
             <Text style={styles.name}>{spot.name}</Text>
-            <Text style={styles.type}>{spot.type.charAt(0).toUpperCase() + spot.type.slice(1)}</Text>
+            <Text style={styles.type}>{spot.country} · {spot.type.charAt(0).toUpperCase() + spot.type.slice(1)}</Text>
           </View>
         </View>
         <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
