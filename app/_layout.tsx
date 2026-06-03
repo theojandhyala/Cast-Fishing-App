@@ -66,6 +66,7 @@ export default function RootLayout() {
         <Stack.Screen name="species-detail" options={{ title: 'Species Info' }} />
         <Stack.Screen name="conditions" options={{ title: 'Tides & Conditions' }} />
         <Stack.Screen name="pro" options={{ title: 'CAST Pro', presentation: 'modal' }} />
+        <Stack.Screen name="fish-tips" options={{ headerShown: false }} />
       </Stack>
     </>
   );

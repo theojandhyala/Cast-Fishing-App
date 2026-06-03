@@ -207,14 +207,14 @@ export default function HomeScreen() {
 
           {/* Daily Fishing Brief */}
           <View style={styles.section}>
-            <DailyBriefCard onPress={() => router.push('/fish-tips')} />
+            <DailyBriefCard onPress={() => router.push('/fish-tips' as any)} />
           </View>
 
           {/* What's Biting Now */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>What's Biting Now</Text>
-              <TouchableOpacity onPress={() => router.push('/fish-tips')}>
+              <TouchableOpacity onPress={() => router.push('/fish-tips' as any)}>
                 <Text style={styles.seeAll}>See all</Text>
               </TouchableOpacity>
             </View>
@@ -408,5 +408,79 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#0A0E1A',
+  },
+});
+
+const homeStyles = StyleSheet.create({
+  briefCard: {
+    backgroundColor: 'rgba(0,212,170,0.08)',
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,170,0.25)',
+  },
+  briefHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  briefTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  briefMoon: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  briefText: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    lineHeight: 20,
+    marginBottom: spacing.sm,
+  },
+  briefCta: {
+    fontSize: 12,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  bitingSubtitle: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+    marginTop: -spacing.xs,
+  },
+  bitingGrid: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  bitingCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.xs,
+  },
+  bitingEmoji: {
+    fontSize: 28,
+  },
+  bitingName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  bitingBadge: {
+    paddingHorizontal: spacing.xs + 2,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+  },
+  bitingBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
 });
