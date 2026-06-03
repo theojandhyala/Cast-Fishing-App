@@ -23,6 +23,61 @@ import { colors, spacing, radius } from '../../constants/theme';
 import { species } from '../../data/species';
 import { SPECIES_ACTIVITY_BY_HOUR, MONTHLY_ACTIVITY, getMoonPhase, getTimePeriodLabel } from '../../data/fishingTimes';
 
+const FISH_OF_WEEK_DATA = [
+  { id: 'carp', name: 'Carp', emoji: '🐟', bestBait: 'Boilies & Sweetcorn', bestTime: 'Dawn & Dusk', difficulty: 'Intermediate' },
+  { id: 'pike', name: 'Pike', emoji: '🦷', bestBait: 'Deadbait (Mackerel)', bestTime: 'Cold mornings', difficulty: 'Intermediate' },
+  { id: 'perch', name: 'Perch', emoji: '🎣', bestBait: 'Worms & Lures', bestTime: 'Morning', difficulty: 'Beginner' },
+  { id: 'tench', name: 'Tench', emoji: '🌿', bestBait: 'Maggots & Corn', bestTime: 'Early dawn', difficulty: 'Intermediate' },
+  { id: 'bream', name: 'Bream', emoji: '🫧', bestBait: 'Maggots & Groundbait', bestTime: 'Night', difficulty: 'Beginner' },
+  { id: 'barbel', name: 'Barbel', emoji: '💪', bestBait: 'Pellets & Hemp', bestTime: 'Evening', difficulty: 'Expert' },
+  { id: 'trout', name: 'Trout', emoji: '🌈', bestBait: 'Flies & Spinners', bestTime: 'Morning', difficulty: 'Intermediate' },
+  { id: 'salmon', name: 'Salmon', emoji: '🐠', bestBait: 'Spinners & Flies', bestTime: 'Autumn dawn', difficulty: 'Expert' },
+  { id: 'roach', name: 'Roach', emoji: '🔴', bestBait: 'Maggots & Bread', bestTime: 'Afternoon', difficulty: 'Beginner' },
+  { id: 'chub', name: 'Chub', emoji: '🌊', bestBait: 'Bread & Cheese', bestTime: 'Winter days', difficulty: 'Intermediate' },
+  { id: 'zander', name: 'Zander', emoji: '🦈', bestBait: 'Lures & Deadbait', bestTime: 'Dusk', difficulty: 'Expert' },
+  { id: 'seabass', name: 'Sea Bass', emoji: '🐡', bestBait: 'Sandeel & Ragworm', bestTime: 'High tide', difficulty: 'Intermediate' },
+];
+
+function getWeekNumber(date: Date): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+function FishOfTheWeek() {
+  const router = useRouter();
+  const weekNum = getWeekNumber(new Date());
+  const fish = FISH_OF_WEEK_DATA[weekNum % FISH_OF_WEEK_DATA.length];
+
+  return (
+    <TouchableOpacity
+      style={homeStyles.fowCard}
+      onPress={() => router.push({ pathname: '/species-detail', params: { id: fish.id } })}
+      activeOpacity={0.8}
+    >
+      <View style={homeStyles.fowHeader}>
+        <Text style={homeStyles.fowTitle}>🏆 Fish of the Week</Text>
+        <Text style={homeStyles.fowWeek}>Week {weekNum}</Text>
+      </View>
+      <View style={homeStyles.fowBody}>
+        <Text style={homeStyles.fowEmoji}>{fish.emoji}</Text>
+        <View style={homeStyles.fowInfo}>
+          <Text style={homeStyles.fowTarget}>This week's target</Text>
+          <Text style={homeStyles.fowName}>{fish.name}</Text>
+          <View style={homeStyles.fowDetails}>
+            <Text style={homeStyles.fowDetail}>🪱 {fish.bestBait}</Text>
+            <Text style={homeStyles.fowDetail}>⏰ {fish.bestTime}</Text>
+            <Text style={homeStyles.fowDetail}>📊 {fish.difficulty}</Text>
+          </View>
+        </View>
+      </View>
+      <Text style={homeStyles.fowCta}>Tap for full species guide →</Text>
+    </TouchableOpacity>
+  );
+}
+
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return 'Morning';
@@ -185,8 +240,11 @@ export default function HomeScreen() {
                   pressureTrend: 'rising',
                   moonPhase: 'Waxing Crescent',
                   moonEmoji: '🌒',
-                  fishingScore: 7,
+                  fishingScore: 65,
                   city: location?.city || 'UK',
+                  forecast7day: [],
+                  hourlyToday: [],
+                  solunarTimes: [],
                 }}
                 loading={weatherLoading}
               />
@@ -219,6 +277,12 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             <WhatsBitingNow />
+          </View>
+
+          {/* Fish of the Week */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Fish of the Week</Text>
+            <FishOfTheWeek />
           </View>
 
           {/* Tip of the Day */}
@@ -482,5 +546,67 @@ const homeStyles = StyleSheet.create({
   bitingBadgeText: {
     fontSize: 10,
     fontWeight: '700',
+  },
+  // Fish of the Week
+  fowCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 2,
+    borderColor: '#F59E0B44',
+    borderLeftWidth: 4,
+    borderLeftColor: '#F59E0B',
+  },
+  fowHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  fowTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.secondary,
+  },
+  fowWeek: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  fowBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  fowEmoji: {
+    fontSize: 52,
+  },
+  fowInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  fowTarget: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  fowName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  fowDetails: {
+    gap: 2,
+    marginTop: 4,
+  },
+  fowDetail: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  fowCta: {
+    fontSize: 12,
+    color: colors.secondary,
+    fontWeight: '600',
   },
 });

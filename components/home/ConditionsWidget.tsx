@@ -19,7 +19,7 @@ export function ConditionsWidget({ weather, loading }: ConditionsWidgetProps) {
     );
   }
 
-  const scoreColor = weather.fishingScore >= 7 ? colors.success : weather.fishingScore >= 5 ? colors.secondary : colors.danger;
+  const scoreColor = weather.fishingScore >= 70 ? colors.success : weather.fishingScore >= 50 ? colors.secondary : colors.danger;
 
   return (
     <LinearGradient
@@ -33,7 +33,7 @@ export function ConditionsWidget({ weather, loading }: ConditionsWidgetProps) {
         </View>
         <View style={styles.scoreContainer}>
           <Text style={[styles.score, { color: scoreColor }]}>{weather.fishingScore}</Text>
-          <Text style={styles.scoreLabel}>/10</Text>
+          <Text style={styles.scoreLabel}>/100</Text>
         </View>
       </View>
 

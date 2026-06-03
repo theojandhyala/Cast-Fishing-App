@@ -114,6 +114,15 @@ export default function CatchDetailScreen() {
         </View>
       )}
 
+      {/* Share Card */}
+      <TouchableOpacity
+        style={styles.shareBtn}
+        onPress={() => router.push({ pathname: '/catch-card-share' as any, params: { id: catchItem.id } })}
+      >
+        <MaterialCommunityIcons name="share-variant" size={18} color={colors.primary} />
+        <Text style={styles.shareBtnText}>Share Catch Card</Text>
+      </TouchableOpacity>
+
       {/* Delete */}
       <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
         <MaterialCommunityIcons name="trash-can" size={18} color={colors.danger} />
@@ -262,6 +271,24 @@ const styles = StyleSheet.create({
   weatherWind: {
     fontSize: 13,
     color: colors.textSecondary,
+  },
+  shareBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.md,
+    backgroundColor: 'rgba(0,212,170,0.08)',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,170,0.25)',
+  },
+  shareBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary,
   },
   deleteBtn: {
     flexDirection: 'row',

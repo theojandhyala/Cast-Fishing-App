@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { WorldSpot } from '../../data/worldSpots';
 import { colors, radius, spacing } from '../../constants/theme';
@@ -82,6 +82,33 @@ export function SpotCard({ spot, onClose, onNavigate }: SpotCardProps) {
         <MaterialCommunityIcons name="lightbulb" size={14} color={colors.secondary} />
         <Text style={styles.tip}>{spot.tips}</Text>
       </View>
+
+      {/* Reviews */}
+      {spot.reviews && spot.reviews.length > 0 && (() => {
+        const avgRating = spot.reviews.reduce((s, r) => s + r.rating, 0) / spot.reviews.length;
+        const latest = spot.reviews[0];
+        return (
+          <View style={styles.reviewsSection}>
+            <View style={styles.reviewsHeader}>
+              <View style={styles.reviewsRating}>
+                <MaterialCommunityIcons name="star" size={14} color={colors.secondary} />
+                <Text style={styles.reviewsAvg}>{avgRating.toFixed(1)}</Text>
+                <Text style={styles.reviewsCount}>({spot.reviews.length} reviews)</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.writeReviewBtn}
+                onPress={() => Alert.alert('Write a Review', 'Review submission coming soon! Stay tuned for this feature.', [{ text: 'OK' }])}
+              >
+                <Text style={styles.writeReviewText}>Write a Review</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.latestReview}>
+              <Text style={styles.reviewAuthor}>"{latest.comment}"</Text>
+              <Text style={styles.reviewMeta}>— {latest.author} · {'⭐'.repeat(latest.rating)}</Text>
+            </View>
+          </View>
+        );
+      })()}
     </View>
   );
 }
@@ -202,5 +229,60 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.secondary,
     lineHeight: 19,
+  },
+  reviewsSection: {
+    marginTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.md,
+  },
+  reviewsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  reviewsRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  reviewsAvg: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  reviewsCount: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  writeReviewBtn: {
+    backgroundColor: 'rgba(0,212,170,0.12)',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,170,0.3)',
+  },
+  writeReviewText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  latestReview: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    gap: 4,
+  },
+  reviewAuthor: {
+    fontSize: 13,
+    color: colors.textPrimary,
+    fontStyle: 'italic',
+    lineHeight: 19,
+  },
+  reviewMeta: {
+    fontSize: 11,
+    color: colors.textSecondary,
   },
 });

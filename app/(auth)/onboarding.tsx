@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Dimensions,
   TouchableOpacity,
   TextInput,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -48,9 +49,57 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
 
+  // Animations
+  const fishBounce = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const btnPulse = useRef(new Animated.Value(1)).current;
+  const dotScales = useRef(Array.from({ length: TOTAL_STEPS }, () => new Animated.Value(1))).current;
+
+  useEffect(() => {
+    // Fish bounce loop
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(fishBounce, { toValue: -12, duration: 600, useNativeDriver: true }),
+        Animated.timing(fishBounce, { toValue: 0, duration: 600, useNativeDriver: true }),
+      ])
+    ).start();
+
+    // Button pulse loop
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(btnPulse, { toValue: 0.92, duration: 900, useNativeDriver: true }),
+        Animated.timing(btnPulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ])
+    ).start();
+
+    animateIn();
+  }, []);
+
+  const animateIn = () => {
+    slideAnim.setValue(30);
+    fadeAnim.setValue(0);
+    Animated.parallel([
+      Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const animateDots = (newStep: number) => {
+    dotScales.forEach((scale, i) => {
+      Animated.spring(scale, {
+        toValue: i === newStep ? 1.4 : 1,
+        useNativeDriver: true,
+        bounciness: 8,
+      }).start();
+    });
+  };
+
   const goToStep = (s: number) => {
     setStep(s);
     scrollRef.current?.scrollTo({ x: s * width, animated: true });
+    animateIn();
+    animateDots(s);
   };
 
   const toggleSpecies = (id: string) => {
@@ -78,7 +127,7 @@ export default function OnboardingScreen() {
         {/* Slide 1: Welcome */}
         <View style={[styles.slide, { width }]}>
           <LinearGradient colors={['rgba(0,212,170,0.25)', 'transparent']} style={styles.slideGradient} />
-          <Text style={styles.slideEmoji}>🎣</Text>
+          <Animated.Text style={[styles.slideEmoji, { transform: [{ translateY: fishBounce }] }]}>🎣</Animated.Text>
           <Text style={styles.slideTitle}>Welcome to CAST</Text>
           <Text style={styles.slideSubtitle}>
             The UK's most advanced fishing companion. Track catches, plan trips, get AI advice, and become a better angler.
@@ -98,7 +147,9 @@ export default function OnboardingScreen() {
               </View>
             ))}
           </View>
-          <CastButton title="Get Started →" onPress={() => goToStep(1)} fullWidth size="lg" style={styles.slideBtn} />
+          <Animated.View style={[styles.slideBtn, { transform: [{ scale: btnPulse }] }]}>
+            <CastButton title="Get Started →" onPress={() => goToStep(1)} fullWidth size="lg" />
+          </Animated.View>
         </View>
 
         {/* Slide 2: Location */}
@@ -234,7 +285,13 @@ export default function OnboardingScreen() {
       <View style={styles.dots}>
         {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
           <TouchableOpacity key={i} onPress={() => goToStep(i)}>
-            <View style={[styles.dot, step === i && styles.dotActive]} />
+            <Animated.View
+              style={[
+                styles.dot,
+                step === i && styles.dotActive,
+                { transform: [{ scale: dotScales[i] }] },
+              ]}
+            />
           </TouchableOpacity>
         ))}
       </View>
