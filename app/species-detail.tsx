@@ -10,9 +10,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
 import { species } from '../data/species';
+import { MONTHLY_ACTIVITY, MONTH_NAMES, getMoonPhase } from '../data/fishingTimes';
 import { colors, radius, spacing } from '../constants/theme';
 
-const TABS = ['Overview', 'Bait & Rigs', 'Regulations', 'Tips'];
+const TABS = ['Overview', 'Bait & Rigs', 'Regulations', 'Tips', 'Best Times'];
 
 const difficultyColors = {
   beginner: colors.success,
@@ -186,7 +187,46 @@ export default function SpeciesDetailScreen() {
                 <Text style={styles.tipText}>{tip}</Text>
               </View>
             ))}
+
+            {fish.catchingTips && fish.catchingTips.length > 0 && (
+              <Section title="Catching Tips">
+                {fish.catchingTips.map((tip, i) => (
+                  <View key={i} style={styles.tipCard}>
+                    <View style={styles.tipNumber}>
+                      <Text style={styles.tipNumberText}>{i + 1}</Text>
+                    </View>
+                    <Text style={styles.tipText}>{tip}</Text>
+                  </View>
+                ))}
+              </Section>
+            )}
+
+            {fish.proTips && fish.proTips.length > 0 && (
+              <Section title="Pro Tips">
+                {fish.proTips.map((tip, i) => (
+                  <View key={i} style={styles.proTipCard}>
+                    <MaterialCommunityIcons name="star" size={16} color={colors.secondary} style={{ marginTop: 2 }} />
+                    <Text style={styles.proTipText}>{tip}</Text>
+                  </View>
+                ))}
+              </Section>
+            )}
+
+            {fish.commonMistakes && fish.commonMistakes.length > 0 && (
+              <Section title="Common Mistakes">
+                {fish.commonMistakes.map((m, i) => (
+                  <View key={i} style={styles.mistakeCard}>
+                    <MaterialCommunityIcons name="alert-circle" size={16} color={colors.danger} style={{ marginTop: 2 }} />
+                    <Text style={styles.mistakeText}>{m}</Text>
+                  </View>
+                ))}
+              </Section>
+            )}
           </View>
+        )}
+
+        {activeTab === 4 && fish.bestTimes && (
+          <BestTimesTab fish={fish} />
         )}
       </View>
 
@@ -200,6 +240,168 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>{title}</Text>
       {children}
+    </View>
+  );
+}
+
+function BestTimesTab({ fish }: { fish: import('../data/species').Species }) {
+  const bt = fish.bestTimes;
+  const monthData = MONTHLY_ACTIVITY[fish.id] || [];
+  const moon = getMoonPhase(new Date());
+
+  const maxMonthly = Math.max(...monthData, 1);
+
+  const getMonthColor = (val: number) => {
+    const ratio = val / maxMonthly;
+    if (ratio >= 0.8) return colors.primary;
+    if (ratio >= 0.5) return colors.secondary;
+    return colors.surface2;
+  };
+
+  const getMonthTextColor = (val: number) => {
+    const ratio = val / maxMonthly;
+    if (ratio >= 0.8) return '#0A0E1A';
+    if (ratio >= 0.5) return '#0A0E1A';
+    return colors.textSecondary;
+  };
+
+  const currentMonth = new Date().getMonth();
+
+  return (
+    <View>
+      {/* Time of Day */}
+      <Section title="Best Times of Day">
+        <View style={{ gap: spacing.xs }}>
+          {bt.timeOfDay.map((t, i) => (
+            <View key={i} style={styles.timeOfDayRow}>
+              <MaterialCommunityIcons
+                name={i === 0 ? 'weather-sunset-up' : i === 1 ? 'weather-sunset-down' : 'moon-waning-crescent'}
+                size={18}
+                color={colors.primary}
+              />
+              <Text style={styles.timeOfDayText}>{t}</Text>
+            </View>
+          ))}
+        </View>
+      </Section>
+
+      {/* Season Calendar */}
+      {monthData.length === 12 && (
+        <Section title="Monthly Activity">
+          <View style={styles.monthGrid}>
+            {MONTH_NAMES.map((month, i) => (
+              <View
+                key={month}
+                style={[
+                  styles.monthCell,
+                  { backgroundColor: getMonthColor(monthData[i]) },
+                  i === currentMonth && styles.monthCellCurrent,
+                ]}
+              >
+                <Text style={[styles.monthLabel, { color: getMonthTextColor(monthData[i]) }]}>
+                  {month}
+                </Text>
+                <Text style={[styles.monthScore, { color: getMonthTextColor(monthData[i]) }]}>
+                  {monthData[i]}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <View style={styles.monthLegend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
+              <Text style={styles.legendText}>Peak</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: colors.secondary }]} />
+              <Text style={styles.legendText}>Good</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: colors.surface2 }]} />
+              <Text style={styles.legendText}>Slow</Text>
+            </View>
+          </View>
+        </Section>
+      )}
+
+      {/* Conditions Cards */}
+      <Section title="Ideal Conditions">
+        {/* Moon */}
+        <View style={styles.condCard}>
+          <Text style={styles.condEmoji}>{moon.emoji}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.condCardTitle}>Moon Phase</Text>
+            <Text style={styles.condCardBody}>{bt.moonPhase}</Text>
+          </View>
+        </View>
+
+        {/* Barometric */}
+        <View style={styles.condCard}>
+          <Text style={styles.condEmoji}>📊</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.condCardTitle}>Barometric Pressure</Text>
+            <Text style={styles.condCardBody}>{bt.barometric}</Text>
+          </View>
+        </View>
+
+        {/* Water temp */}
+        <View style={styles.condCard}>
+          <Text style={styles.condEmoji}>🌡️</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.condCardTitle}>Water Temperature</Text>
+            <Text style={styles.condCardBody}>{bt.temperature}</Text>
+          </View>
+        </View>
+
+        {/* Weather */}
+        <View style={styles.condCard}>
+          <Text style={styles.condEmoji}>⛅</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.condCardTitle}>Weather</Text>
+            <Text style={styles.condCardBody}>{bt.weather}</Text>
+          </View>
+        </View>
+
+        {/* Tide (if saltwater) */}
+        {bt.tideState && (
+          <View style={styles.condCard}>
+            <Text style={styles.condEmoji}>🌊</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.condCardTitle}>Tide State</Text>
+              <Text style={styles.condCardBody}>{bt.tideState}</Text>
+            </View>
+          </View>
+        )}
+      </Section>
+
+      {/* Season */}
+      <Section title="Season">
+        <Text style={styles.bodyText}>{bt.season}</Text>
+      </Section>
+
+      {/* Pro Tips */}
+      {fish.proTips && fish.proTips.length > 0 && (
+        <Section title="Pro Tips">
+          {fish.proTips.map((tip, i) => (
+            <View key={i} style={styles.proTipCard}>
+              <MaterialCommunityIcons name="star" size={16} color={colors.secondary} style={{ marginTop: 2 }} />
+              <Text style={styles.proTipText}>{tip}</Text>
+            </View>
+          ))}
+        </Section>
+      )}
+
+      {/* Common Mistakes */}
+      {fish.commonMistakes && fish.commonMistakes.length > 0 && (
+        <Section title="Common Mistakes">
+          {fish.commonMistakes.map((m, i) => (
+            <View key={i} style={styles.mistakeCard}>
+              <MaterialCommunityIcons name="alert-circle" size={16} color={colors.danger} style={{ marginTop: 2 }} />
+              <Text style={styles.mistakeText}>{m}</Text>
+            </View>
+          ))}
+        </Section>
+      )}
     </View>
   );
 }
@@ -467,5 +669,123 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: colors.textPrimary,
     lineHeight: 22,
+  },
+  proTipCard: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(245,158,11,0.08)',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.25)',
+  },
+  proTipText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.textPrimary,
+    lineHeight: 20,
+  },
+  mistakeCard: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(239,68,68,0.08)',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.2)',
+  },
+  mistakeText: {
+    flex: 1,
+    fontSize: 14,
+    color: colors.textPrimary,
+    lineHeight: 20,
+  },
+  timeOfDayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    padding: spacing.sm + 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  timeOfDayText: {
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+  monthGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  monthCell: {
+    width: '14.5%',
+    minWidth: 40,
+    alignItems: 'center',
+    borderRadius: radius.sm,
+    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: 2,
+    flexGrow: 1,
+  },
+  monthCellCurrent: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  monthLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  monthScore: {
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  monthLegend: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  condCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  condEmoji: {
+    fontSize: 22,
+    marginTop: 2,
+  },
+  condCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 3,
+  },
+  condCardBody: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
 });

@@ -20,12 +20,90 @@ import { QuickActions } from '../../components/home/QuickActions';
 import { TipOfDay } from '../../components/home/TipOfDay';
 import { CatchCard } from '../../components/catches/CatchCard';
 import { colors, spacing, radius } from '../../constants/theme';
+import { species } from '../../data/species';
+import { SPECIES_ACTIVITY_BY_HOUR, MONTHLY_ACTIVITY, getMoonPhase, getTimePeriodLabel } from '../../data/fishingTimes';
 
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 12) return 'Morning';
   if (hour < 17) return 'Afternoon';
   return 'Evening';
+}
+
+function getTopSpeciesNow(count: number) {
+  const now = new Date();
+  const hour = now.getHours();
+  const month = now.getMonth();
+  return [...species]
+    .map(s => ({
+      ...s,
+      score: (SPECIES_ACTIVITY_BY_HOUR[s.id]?.[hour] ?? 5) + (MONTHLY_ACTIVITY[s.id]?.[month] ?? 5),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, count);
+}
+
+function getDailyBriefText(): string {
+  const now = new Date();
+  const hour = now.getHours();
+  const top = getTopSpeciesNow(2);
+  const timePeriod = getTimePeriodLabel();
+  const names = top.map(s => s.commonName).join(' and ');
+  const tip = top[0]?.catchingTips?.[0] ?? top[0]?.tips?.[0] ?? 'fish with confidence in the right conditions';
+  return `${timePeriod.emoji} ${timePeriod.label}: Target ${names}. ${tip}`;
+}
+
+function DailyBriefCard({ onPress }: { onPress: () => void }) {
+  const brief = getDailyBriefText();
+  const moon = getMoonPhase(new Date());
+  return (
+    <TouchableOpacity style={homeStyles.briefCard} onPress={onPress} activeOpacity={0.8}>
+      <View style={homeStyles.briefHeader}>
+        <Text style={homeStyles.briefTitle}>Daily Fishing Brief</Text>
+        <Text style={homeStyles.briefMoon}>{moon.emoji} {moon.name}</Text>
+      </View>
+      <Text style={homeStyles.briefText}>{brief}</Text>
+      <Text style={homeStyles.briefCta}>Tap for full tips & times →</Text>
+    </TouchableOpacity>
+  );
+}
+
+function WhatsBitingNow() {
+  const router = useRouter();
+  const now = new Date();
+  const timePeriod = getTimePeriodLabel();
+  const top3 = getTopSpeciesNow(3);
+
+  const getActivityLabel = (score: number): { label: string; color: string } => {
+    if (score >= 16) return { label: 'Peak time',  color: colors.primary };
+    if (score >= 12) return { label: 'Good time',  color: colors.success };
+    return { label: 'Fair time', color: colors.secondary };
+  };
+
+  return (
+    <View>
+      <Text style={homeStyles.bitingSubtitle}>Based on {timePeriod.description.toLowerCase()}</Text>
+      <View style={homeStyles.bitingGrid}>
+        {top3.map(fish => {
+          const { label, color } = getActivityLabel(fish.score);
+          return (
+            <TouchableOpacity
+              key={fish.id}
+              style={homeStyles.bitingCard}
+              onPress={() => router.push({ pathname: '/species-detail', params: { id: fish.id } })}
+              activeOpacity={0.75}
+            >
+              <Text style={homeStyles.bitingEmoji}>{fish.emoji}</Text>
+              <Text style={homeStyles.bitingName}>{fish.commonName}</Text>
+              <View style={[homeStyles.bitingBadge, { backgroundColor: color + '22' }]}>
+                <Text style={[homeStyles.bitingBadgeText, { color }]}>{label}</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
 }
 
 export default function HomeScreen() {
@@ -125,6 +203,22 @@ export default function HomeScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Quick Actions</Text>
             <QuickActions />
+          </View>
+
+          {/* Daily Fishing Brief */}
+          <View style={styles.section}>
+            <DailyBriefCard onPress={() => router.push('/fish-tips')} />
+          </View>
+
+          {/* What's Biting Now */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>What's Biting Now</Text>
+              <TouchableOpacity onPress={() => router.push('/fish-tips')}>
+                <Text style={styles.seeAll}>See all</Text>
+              </TouchableOpacity>
+            </View>
+            <WhatsBitingNow />
           </View>
 
           {/* Tip of the Day */}

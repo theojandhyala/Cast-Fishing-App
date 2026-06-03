@@ -8,6 +8,16 @@ export interface Rig {
   description: string;
 }
 
+export interface BestTimes {
+  timeOfDay: string[];
+  tideState?: string;
+  moonPhase: string;
+  season: string;
+  temperature: string;
+  barometric: string;
+  weather: string;
+}
+
 export interface Species {
   id: string;
   name: string;
@@ -29,6 +39,10 @@ export interface Species {
   tips: string[];
   difficulty: 'beginner' | 'intermediate' | 'expert';
   emoji: string;
+  bestTimes: BestTimes;
+  catchingTips: string[];
+  commonMistakes: string[];
+  proTips: string[];
 }
 
 export const species: Species[] = [
@@ -69,6 +83,36 @@ export const species: Species[] = [
     ],
     difficulty: 'intermediate',
     emoji: '🐟',
+    bestTimes: {
+      timeOfDay: ['Dawn (5am-8am)', 'Dusk (7pm-10pm)', 'Night fishing productive in summer'],
+      moonPhase: 'Full moon and new moon periods — fish feed more actively',
+      season: 'Late spring through autumn peak. Summer nights excellent.',
+      temperature: 'Water temp 15-22°C ideal. Slow below 8°C.',
+      barometric: 'Stable or slowly rising pressure. Avoid sudden drops.',
+      weather: 'Warm overcast days. Light SW wind pushing into a bank.',
+    },
+    catchingTips: [
+      'Spod or spomb a bed of bait (boilies, pellets, corn) before fishing to draw fish in',
+      'Fish tight to features — lily pads, overhanging trees, gravel bars hold fish',
+      'Use a marker float to find gravel spots and drop-offs before casting',
+      'Match hook bait to your loose feed — if spodding pellets, fish a pellet on the hair',
+      'Check drag is set correctly — carp will bolt and snap light lines instantly',
+      'Fishing with two or three rods covering different areas increases your chances significantly',
+      'Stalk fish visually on warm days — spotted carp can be targeted precisely',
+      'Use dissolving PVA mesh bags around the lead to present a neat bait package',
+    ],
+    commonMistakes: [
+      'Setting the drag too tight — carp bolt and the line or rod tip breaks',
+      'Fishing in the wrong spot without using a marker float first',
+      'Overfeeding in cold water — less is more when temps drop below 10°C',
+      'Not checking the hook point after each cast — blunt hooks miss takes',
+      'Rushing the fight — carp near the net often have a second run in them',
+    ],
+    proTips: [
+      'In hot summer weather, look for carp basking near the surface at midday — a floating bait (controller float and bread crust) can produce monsters other anglers ignore',
+      'Introduce bait via a rowing boat after dark to reach far-bank snags and islands — these underfished areas hold the biggest fish',
+      'Study the water in winter when levels drop — find gravel bars and depth changes that you can then fish accurately in summer',
+    ],
   },
   {
     id: 'pike',
@@ -107,6 +151,32 @@ export const species: Species[] = [
     ],
     difficulty: 'intermediate',
     emoji: '🦷',
+    bestTimes: {
+      timeOfDay: ['Dusk (4pm-7pm)', 'Dawn (7am-9am) in cold weather', 'Midday productive in deep winter'],
+      moonPhase: 'New moon and full moon periods see increased predator activity',
+      season: 'September through February peak. Cold water triggers feeding sprees.',
+      temperature: 'Water temp 4-12°C ideal. Pike slow down in warm summer water above 18°C.',
+      barometric: 'Steady or falling pressure. Cold fronts often trigger feeding.',
+      weather: 'Cold, overcast days with frost overnight. Avoid sudden warm spells.',
+    },
+    catchingTips: [
+      'Position deadbaits so the scent trail drifts into likely ambush areas like weed margins',
+      'Wobble a deadbait slowly through the swim to imitate an injured fish — very effective in rivers',
+      'Search the water with lures first, then switch to static deadbaits for big females',
+      'In large stillwaters, fan-cast lures to cover water before settling on a deadbait swim',
+      'Use oily sea baits (mackerel, smelt) in coloured water for maximum scent trail',
+      'Set your float so the bait is just off the bottom — pike rarely look up for food',
+    ],
+    commonMistakes: [
+      'Using monofilament instead of wire trace — a pike will bite through mono in seconds',
+      'Striking too early — wait for the pike to have moved off with the bait before setting hooks',
+      'Fishing in the same spot all day — pike are territorial, move if you get no runs after 45 minutes',
+      'Returning pike without fully reviving them — always hold upright in the water until it kicks away',
+    ],
+    proTips: [
+      'The biggest pike in any water are almost always female and solitary — target one specific lie with a large bait and wait rather than roving',
+      'In very cold clear water, scale right down to a small roach fished under a float on 12lb wire — big pike can be finicky when the water is near freezing',
+    ],
   },
   {
     id: 'perch',
@@ -145,6 +215,31 @@ export const species: Species[] = [
     ],
     difficulty: 'beginner',
     emoji: '🎣',
+    bestTimes: {
+      timeOfDay: ['Dawn (6am-9am)', 'Late afternoon (3pm-6pm)', 'Overcast midday sessions'],
+      moonPhase: 'New moon periods — perch are bolder in lower light',
+      season: 'September through January prime. Autumn produces the best specimens.',
+      temperature: 'Water temp 8-14°C optimal. Good throughout autumn and winter.',
+      barometric: 'Stable or rising pressure. High pressure with clear cold days excellent.',
+      weather: 'Overcast days with no wind. Bright sunny days push them deep.',
+    },
+    catchingTips: [
+      'Work a drop shot vertically next to bridge supports, ladders, and moored boats',
+      'Drag a worm slowly along the bottom through dark silty areas — big perch love a natural worm',
+      'When you catch one perch, stay put — they hunt in packs and more will follow',
+      'Scale down your hook and bait in clear cold water to improve shy bite conversion',
+      'Try a small copper spinner retrieved slowly and erratically near submerged structure',
+      'Fish the shaded side of bridges and lock walls — perch always prefer to ambush from shadow',
+    ],
+    commonMistakes: [
+      'Moving too quickly — perch need time to respond, especially in cold water',
+      'Using too heavy a line in clear water — 6lb fluorocarbon is far better than 10lb mono',
+      'Not fishing deep enough — big perch drop to depth in winter, try 10ft+ in lakes',
+    ],
+    proTips: [
+      'After finding fish on drop shot, switch to a small deadbait (roach fry or tiny smelt) for the biggest fish in the shoal — specimen perch prefer something they can really eat',
+      'On canals, walk the entire stretch and drop shot every piece of visible structure rather than sitting in one swim — roving catches far more fish',
+    ],
   },
   {
     id: 'tench',
@@ -183,6 +278,33 @@ export const species: Species[] = [
     ],
     difficulty: 'intermediate',
     emoji: '🌿',
+    bestTimes: {
+      timeOfDay: ['Pre-dawn to 9am (absolute peak)', 'Dusk (7pm-9pm)', 'Night sessions in high summer'],
+      moonPhase: 'New moon and full moon boost dawn feeding activity significantly',
+      season: 'May through August prime. June and July mornings are exceptional.',
+      temperature: 'Water temp 16-22°C ideal. Poor in cold water below 10°C.',
+      barometric: 'High stable pressure with warm overnight temperatures. Classic tench weather.',
+      weather: 'Warm, calm, misty mornings. Still water with wisps of surface mist.',
+    },
+    catchingTips: [
+      'Arrive an hour before dawn to set up quietly — disturbing the swim kills the session',
+      'Watch the water surface for streams of tiny bubbles indicating feeding tench below',
+      'Rake the swim the evening before to disturb the bottom and release natural food items',
+      'Present bait on the drop with a slow-sinking waggler to intercept fish at all depths',
+      'Use a hair-rigged grain of sweetcorn with two maggots on the hair for extra attraction',
+      'Prebait with crushed hemp, corn, and a few worms three evenings before your session',
+      'Fish on clean gravel or clay bottom at the edge of weed — not in the weed itself',
+    ],
+    commonMistakes: [
+      'Arriving too late — the first 90 minutes of light is when 80% of tench are caught',
+      'Overloading the swim with bait — tench spook easily and a small precise bed works better',
+      'Using a float that is too sensitive — tench give classic bold dips then lift bites, not tiny trembles',
+      'Fishing in the wrong depth — find where the weed gives way to clean bottom',
+    ],
+    proTips: [
+      'In very warm summers, tench can be caught all night on boilies fished carp-style over a spodded bed — 2lb+ tench are common catches',
+      'In weedy lakes, use a buoyant hookbait (plastic corn balanced with a real grain) to keep it visible just above bottom silt where tench are rooting',
+    ],
   },
   {
     id: 'bream',
@@ -221,6 +343,33 @@ export const species: Species[] = [
     ],
     difficulty: 'beginner',
     emoji: '🫧',
+    bestTimes: {
+      timeOfDay: ['Night (10pm-3am) in summer', 'Dawn (5am-8am)', 'Dusk (7pm-10pm)'],
+      moonPhase: 'Full moon nights produce extraordinary bream bags — fish all night',
+      season: 'June through September. Warm summer nights are when big catches happen.',
+      temperature: 'Water temp 14-20°C ideal. Night fishing in warm summer conditions.',
+      barometric: 'Stable or slowly rising pressure. Prolonged settled weather is best.',
+      weather: 'Warm still nights with cloud cover. Lightning storms can trigger feeding beforehand.',
+    },
+    catchingTips: [
+      'Watch the water at dusk for bream rolling — they reveal their patrol route this way',
+      'Catapult or spod several kilos of groundbait mixed with maggots, casters, and worms',
+      'Use a baitrunner or open bale arm — bream bite and move off sideways creating slack line',
+      'Cast consistently to the same spot to build a precise bait carpet, not a scatter',
+      'Two rods placed side by side 2 feet apart on the same groundbait patch doubles your options',
+      'In rivers, use a heavy cage feeder and let it swing downstream — bream follow the scent',
+      'On still nights, listen for bream rolling — the splashing sound in the dark tells you they\'ve arrived',
+    ],
+    commonMistakes: [
+      'Not groundbaiting heavily enough — bream need large quantities of feed to commit',
+      'Using too short a hooklink — bream are skittish and a 15-18 inch tail gives them time to turn',
+      'Missing the "lift bite" — bream lift the leger weight as they feed, causing the tip to drop back',
+      'Striking too hard — bream have soft mouths and aggressive strikes tear the hook out',
+    ],
+    proTips: [
+      'The biggest bream in a venue often move into very shallow marginal water (2-3ft) on warm summer nights — try a margin rod at close range after midnight',
+      'Pre-baiting the same spot for 3-4 nights before fishing teaches bream to patrol it confidently — a blank pre-bait session leads to an epic fishing session',
+    ],
   },
   {
     id: 'roach',
@@ -259,6 +408,32 @@ export const species: Species[] = [
     ],
     difficulty: 'beginner',
     emoji: '🔴',
+    bestTimes: {
+      timeOfDay: ['Midmorning (9am-12pm)', 'Early afternoon (12pm-3pm)', 'Mild winter days all day'],
+      moonPhase: 'Waning gibbous and last quarter see good roach feeding in rivers',
+      season: 'October through March. Quality improves as the season progresses.',
+      temperature: 'Water temp 4-12°C fine. Hardy fish that feed throughout UK winter.',
+      barometric: 'Stable high pressure with crisp cold days. Classic roach conditions.',
+      weather: 'Cold, bright winter days with frost overnight. Steady clear conditions.',
+    },
+    catchingTips: [
+      'Trundle a stick float through the swim at the exact pace of the current — not faster or slower',
+      'Feed maggots at the same rate as you are catching — if bites slow, feed more',
+      'Use a size 18 or 20 hook to single maggot in clear cold water for shy winter roach',
+      'In still waters, let the hookbait settle on the bottom rather than fishing "on the drop"',
+      'Switch to casters from maggots to weed out small fish and target quality roach',
+      'Hemp seed fed regularly will hold roach in the swim for hours on rivers',
+    ],
+    commonMistakes: [
+      'Fishing too heavy — 4lb line is the maximum in most situations, 2lb is often better',
+      'Striking too slowly — roach eject baits quickly, a fast flick of the wrist is needed',
+      'Not matching the float to the flow — an over-shotted float drags the bait unnaturally',
+      'Feeding too much at once — little and often is the golden rule for roach fishing',
+    ],
+    proTips: [
+      'The biggest river roach in the UK are caught in the coldest, clearest winter conditions on tiny bread punch and gossamer lines — challenging but very rewarding',
+      'On canals, find the deepest section (usually the centre channel) and fish a tight pole line at 11-13 metres with single maggot — better fish avoid the shallower margins',
+    ],
   },
   {
     id: 'barbel',
@@ -297,6 +472,33 @@ export const species: Species[] = [
     ],
     difficulty: 'intermediate',
     emoji: '💪',
+    bestTimes: {
+      timeOfDay: ['Dusk onwards (7pm-midnight) absolute peak', 'Evening (5pm-8pm)', 'After overnight rain at dawn'],
+      moonPhase: 'Full moon nights on rivers with good colour — superb barbel sessions',
+      season: 'June through October. Coloured autumn rivers after rain are exceptional.',
+      temperature: 'Water temp 12-20°C ideal. Fast rivers stay well-oxygenated in heat.',
+      barometric: 'Falling pressure before rain is excellent. Rising river conditions after rain superb.',
+      weather: 'Overcast evenings after summer rain. Some colour in the water is a bonus.',
+    },
+    catchingTips: [
+      'Introduce a carpet of hemp and pellets upstream of your swim and let it drift down',
+      'Fish the bait tight to the crease where fast white water meets the calmer eddy',
+      'Use a 3oz lead minimum to hold bottom in fast water — barbel feel resistance and drop lighter rigs',
+      'Hair-rig a chunk of Spam or meat — barbel mouth it repeatedly before the hook finds purchase',
+      'Keep your rod tip low and pointed at the bait — barbel bites are savage downstream pulls',
+      'After hooking a barbel, let it run upstream initially before applying side-strain to turn it',
+      'Rest baited spots for 20-30 minutes after disturbance — barbel return once calm is restored',
+    ],
+    commonMistakes: [
+      'Using too light a lead — barbel live in fast water and a 1oz lead simply washes downstream',
+      'Striking barbel bites — the rod will be nearly wrenched from your hands; just lift into the fish',
+      'Not reviving barbel properly — they exhaust completely and must be held upright until fully recovered',
+      'Fishing in daylight only — missing the productive evening and night sessions',
+    ],
+    proTips: [
+      'On heavily fished rivers, switch to an unusual bait like a large lobworm or a 20mm boilie — barbel become educated to common Spam and pellet presentations very quickly',
+      'Wade quietly into the river at dusk and roll meat or paste downstream under overhanging banks you cannot reach from the bank — underfished territory holds the biggest barbel',
+    ],
   },
   {
     id: 'chub',
@@ -335,6 +537,31 @@ export const species: Species[] = [
     ],
     difficulty: 'beginner',
     emoji: '🌊',
+    bestTimes: {
+      timeOfDay: ['Dawn (6am-9am)', 'Dusk (4pm-7pm)', 'Midday in winter when water is clearest'],
+      moonPhase: 'Less dependent on moon phase — chub feed whenever conditions suit',
+      season: 'Year-round but January and February produce the biggest specimens.',
+      temperature: 'Hardy in all temperatures. Winter floods with 6-8°C water can be superb.',
+      barometric: 'Stable or slowly falling pressure. Good in winter lows.',
+      weather: 'Overcast days, ideally with some colour in the water from recent rain.',
+    },
+    catchingTips: [
+      'Crouch low when approaching the river — a standing silhouette at 50 yards will spook every chub',
+      'Freeline a piece of crust under an overhanging tree and let it drift naturally into the shadow',
+      'In coloured water, chub are far less cautious — use this opportunity to fish closer and heavier',
+      'Make a large ball of cheese paste (strong cheddar, flour, and a little turmeric) for a devastating bait',
+      'Trot a waggler through long glides with bread flake at half depth to find fish scattered through the swim',
+      'In winter floods, find slacks and eddies behind bridge piers — chub pack into these refuges',
+    ],
+    commonMistakes: [
+      'Standing up while approaching the swim — chub have a 180-degree field of vision and bolt instantly',
+      'Fishing in the same spot after spooked fish — wait 20 minutes minimum before recasting',
+      'Not varying bait size — a tiny piece of flake on a size 14 often outfishes a large piece on a size 6',
+    ],
+    proTips: [
+      'On clear winter days, polarised glasses let you spot individual chub holding in deep pools — watch their reaction to dropped crusts from a bridge to understand exactly where they are lying',
+      'Luncheon meat cubed to 12mm and trimmed square on all sides sinks slowly and perfectly — the neat presentation is far more effective than torn or rounded pieces',
+    ],
   },
   {
     id: 'salmon',
@@ -373,6 +600,33 @@ export const species: Species[] = [
     ],
     difficulty: 'expert',
     emoji: '🐟',
+    bestTimes: {
+      timeOfDay: ['Morning (7am-11am)', 'Evening (5pm-8pm)', 'Overcast midday sessions in autumn'],
+      tideState: 'Fresh run fish enter on spring tides — fish lower pools when tide pushes in',
+      moonPhase: 'Spring tides (new and full moon) bring fresh fish off the sea into rivers',
+      season: 'River dependent. Scottish rivers: January-October. Southern chalk streams: April-September.',
+      temperature: 'Water temp 7-14°C ideal for fly. Warmer water needs smaller flies and slower presentation.',
+      barometric: 'Falling pressure with rain is perfect — salmon run hard in fresh spate conditions.',
+      weather: 'Overcast day with rain approaching. River fining down 24-48h after spate is classic.',
+    },
+    catchingTips: [
+      'Wade quietly and position so your fly swings across and downstream through the lie naturally',
+      'In high cold water, fish a large bright tube fly (Cascade, Ally\'s Shrimp) deep and slow',
+      'In low clear summer water, switch to a size 10-14 single and fish a floating or intermediate line',
+      'Cover every inch of a productive pool — salmon lie in very specific spots and casting is precise',
+      'After your fly has swung to the dangle, leave it stationary for 10 seconds — takes often come here',
+      'Change flies every 30 minutes if no response — fresh salmon are stimulated by something new',
+    ],
+    commonMistakes: [
+      'Fishing the same fly all day — salmon in a pool have seen it, change pattern, size, and colour',
+      'Wading too deep too quickly — disturbing the tail of the pool sends fish upstream before you reach them',
+      'Not respecting the "taking time" — salmon are more likely to take in the first hour of new water levels',
+      'Missing the take — hold the fly slack not tight; salmon that feel resistance spit the hook immediately',
+    ],
+    proTips: [
+      'A salmon lying in a pool for days is stale and near impossible — target fresh-run fish in the lowest pools immediately after a spate, before they rest and become dour',
+      'On pressured beats, change to an unusual colour combination (orange and black, yellow and red) that the fish have not seen from other anglers that season — often provokes a take from a fish that has ignored everything conventional',
+    ],
   },
   {
     id: 'seabass',
@@ -411,5 +665,33 @@ export const species: Species[] = [
     ],
     difficulty: 'intermediate',
     emoji: '🌊',
+    bestTimes: {
+      timeOfDay: ['Night (10pm-2am) for lure fishing', 'Dawn (5am-8am)', '2 hours either side of high tide'],
+      tideState: 'Incoming tide: 2 hours before to 1 hour after high. Estuaries best on flooding tide.',
+      moonPhase: 'Spring tides (new and full moon) push bass close inshore and into estuaries',
+      season: 'June through October. Peak in August-September as sea temperatures peak.',
+      temperature: 'Sea temp 15-20°C ideal. Below 12°C bass become lethargic and move offshore.',
+      barometric: 'Rough weather followed by calming seas — bass hunt in the disturbed water.',
+      weather: 'Calm nights with sea swell settling. Clear water after storms. First calm night after rough weather.',
+    },
+    catchingTips: [
+      'Fish the very first calm night after a storm — disturbed water and washed-out sandeels bring bass inshore',
+      'Work a surface plug along rock edges at night — bass blow up on them in incredibly shallow water',
+      'In estuaries, position to cast uptide into the current and let the bait swing downstream into the channel',
+      'Use fluorocarbon leader of 20-25lb — bass have excellent vision and mono leader costs takes',
+      'Vary retrieve speed constantly with soft plastics — bass often follow but only commit when speed changes',
+      'Fish the gullies and channels that drain on the ebb tide — bass trap baitfish in these features',
+      'On open surf beaches, look for where waves are breaking unevenly — that\'s where sandeels shelter',
+    ],
+    commonMistakes: [
+      'Fishing at dead low water — bass follow the tide and are often far offshore at low',
+      'Using braided line without a fluorocarbon leader — bass see braid and avoid the bait',
+      'Keeping undersized fish — bass are a recovering species and every legal fish returned matters',
+      'Fishing with too heavy a rod — light spinning gear (10-20g lure weight) gives much more sport and sensitivity',
+    ],
+    proTips: [
+      'The best bass fishing of the year often happens in September and October when the fish are at their heaviest pre-winter — target warm nights on spring tides',
+      'Stand perfectly still while lure fishing at night — bass hunt by vibration and noise, and a stationary angler working lures from the same spot is far less disruptive than someone constantly repositioning',
+    ],
   },
 ];
