@@ -15,21 +15,50 @@ import { useAuthStore } from '../../store/authStore';
 import { useCatchStore } from '../../store/catchStore';
 import { colors, radius, spacing } from '../../constants/theme';
 
-const menuItems = [
+const MENU_SECTIONS = [
   {
-    section: 'Fishing Tools',
+    section: 'MY FISHING',
     items: [
-      { icon: 'rope', label: 'Knot Library', route: '/knots', color: colors.primary },
-      { icon: 'waves', label: 'Tides & Conditions', route: '/conditions', color: '#60A5FA' },
-      { icon: 'camera', label: 'Fish Identifier', route: '/identifier', color: colors.secondary },
+      { icon: 'account-circle', label: 'My Profile', route: null, color: colors.primary, desc: 'XP, level & badges' },
+      { icon: 'trophy', label: 'My Records', route: '/records', color: colors.secondary, desc: 'PBs vs UK records' },
+      { icon: 'toolbox', label: 'My Gear', route: '/gear-tracker', color: '#60A5FA', desc: 'Tackle & kit tracker' },
+      { icon: 'calendar-clock', label: 'Trip Planner', route: '/trip-planner', color: '#10B981', desc: 'Plan your sessions' },
     ],
   },
   {
-    section: 'Account',
+    section: 'TOOLS',
     items: [
-      { icon: 'crown', label: 'Upgrade to Pro', route: '/pro', color: colors.secondary },
-      { icon: 'cog', label: 'Settings', route: null, color: colors.textSecondary },
-      { icon: 'help-circle', label: 'Help & Support', route: null, color: colors.textSecondary },
+      { icon: 'robot', label: 'AI Advisor', route: '/ai-advisor', color: colors.primary, desc: 'Ask anything about fishing' },
+      { icon: 'calendar-month', label: 'Fishing Calendar', route: '/fishing-calendar', color: '#A78BFA', desc: 'Moon, tides & scores' },
+      { icon: 'food-drumstick', label: 'Bait Guide', route: '/bait-guide', color: '#10B981', desc: '30+ baits & bait match' },
+      { icon: 'rope', label: 'Knot Library', route: '/knots', color: colors.primary, desc: '20 essential knots' },
+      { icon: 'weather-partly-cloudy', label: 'Weather & Tides', route: '/weather-detail', color: '#60A5FA', desc: 'Full conditions dashboard' },
+      { icon: 'camera', label: 'Fish Identifier', route: '/identifier', color: colors.secondary, desc: 'Photo ID tool' },
+    ],
+  },
+  {
+    section: 'RULES',
+    items: [
+      { icon: 'file-document', label: 'Licence & Regulations', route: '/licence-checker', color: colors.danger, desc: 'Licence, seasons & sizes' },
+      { icon: 'ruler', label: 'Size Limits', route: '/licence-checker', color: colors.warning, desc: 'Legal size checker' },
+      { icon: 'calendar-remove', label: 'Closed Seasons', route: '/licence-checker', color: '#EF4444', desc: 'When you can fish' },
+    ],
+  },
+  {
+    section: 'COMMUNITY',
+    items: [
+      { icon: 'account-group', label: 'Community Feed', route: '/community', color: '#60A5FA', desc: 'See what others are catching' },
+      { icon: 'podium', label: 'Leaderboards', route: '/community', color: colors.secondary, desc: 'Top anglers this week' },
+      { icon: 'account-multiple', label: 'Fishing Clubs', route: null, color: colors.textSecondary, desc: 'Coming soon' },
+    ],
+  },
+  {
+    section: 'ACCOUNT',
+    items: [
+      { icon: 'crown', label: 'Upgrade to Pro', route: '/pro', color: colors.secondary, desc: 'Unlock all features' },
+      { icon: 'cog', label: 'Settings', route: null, color: colors.textSecondary, desc: '' },
+      { icon: 'help-circle', label: 'Help & Feedback', route: null, color: colors.textSecondary, desc: '' },
+      { icon: 'star', label: 'Rate the App', route: null, color: colors.secondary, desc: '' },
     ],
   },
 ];
@@ -53,6 +82,8 @@ export default function MoreScreen() {
       },
     ]);
   };
+
+  const xpProgress = user ? (user.xp % 1000) / 1000 : 0;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -79,7 +110,13 @@ export default function MoreScreen() {
               <MaterialCommunityIcons name="fish" size={12} color={colors.primary} />
               <Text style={styles.levelText}>Level {user?.level || 1}</Text>
             </View>
-            <Text style={styles.xpText}>{user?.xp || 0} XP</Text>
+            <Text style={styles.xpLabel}>{user?.xp || 0} XP</Text>
+          </View>
+          <View style={styles.xpBarContainer}>
+            <View style={styles.xpBar}>
+              <View style={[styles.xpFill, { width: `${xpProgress * 100}%` }]} />
+            </View>
+            <Text style={styles.xpBarLabel}>{Math.round(xpProgress * 100)}% to Level {(user?.level || 1) + 1}</Text>
           </View>
         </LinearGradient>
 
@@ -88,10 +125,29 @@ export default function MoreScreen() {
           <StatItem label="Catches" value={stats.total.toString()} icon="fish" />
           <StatItem label="Species" value={Object.keys(stats.speciesCounts).length.toString()} icon="book" />
           <StatItem label="Best (kg)" value={stats.heaviest ? stats.heaviest.weight.toString() : '-'} icon="trophy" />
+          <StatItem label="Streak" value={`${user?.streak || 0}d`} icon="fire" />
         </View>
 
-        {/* Menu */}
-        {menuItems.map((section) => (
+        {/* Achievements */}
+        <View style={styles.achievementsCard}>
+          <View style={styles.achievementsRow}>
+            {[
+              { emoji: '🎣', title: 'First Cast', unlocked: stats.total >= 1 },
+              { emoji: '🐟', title: '10 Catches', unlocked: stats.total >= 10 },
+              { emoji: '🏆', title: '5kg Fish', unlocked: (stats.heaviest?.weight || 0) >= 5 },
+              { emoji: '🔥', title: '7 Day Streak', unlocked: (user?.streak || 0) >= 7 },
+              { emoji: '🌟', title: '5 Species', unlocked: Object.keys(stats.speciesCounts).length >= 5 },
+            ].map((a) => (
+              <View key={a.title} style={[styles.achievement, !a.unlocked && styles.achievementLocked]}>
+                <Text style={styles.achievementEmoji}>{a.emoji}</Text>
+                <Text style={styles.achievementTitle}>{a.title}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Menu sections */}
+        {MENU_SECTIONS.map((section) => (
           <View key={section.section} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.section}</Text>
             <View style={styles.menuCard}>
@@ -105,41 +161,28 @@ export default function MoreScreen() {
                   onPress={() => {
                     if (item.route) {
                       router.push(item.route as any);
-                    } else {
+                    } else if (item.label === 'Rate the App') {
+                      Alert.alert('Rate CAST', 'Thank you for using CAST! A rating on the App Store means the world to us. ⭐⭐⭐⭐⭐');
+                    } else if (item.label === 'Settings' || item.label === 'Help & Feedback' || item.label === 'Fishing Clubs') {
                       Alert.alert('Coming Soon', 'This feature is coming in a future update!');
+                    } else if (item.label === 'My Profile') {
+                      Alert.alert('Your Profile', `Level ${user?.level || 1} Angler\n${user?.xp || 0} XP\n${stats.total} catches logged\n${Object.keys(stats.speciesCounts).length} species caught`);
                     }
                   }}
                 >
                   <View style={[styles.menuIcon, { backgroundColor: item.color + '22' }]}>
                     <MaterialCommunityIcons name={item.icon as any} size={20} color={item.color} />
                   </View>
-                  <Text style={styles.menuLabel}>{item.label}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.menuLabel}>{item.label}</Text>
+                    {item.desc ? <Text style={styles.menuDesc}>{item.desc}</Text> : null}
+                  </View>
                   <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
                 </TouchableOpacity>
               ))}
             </View>
           </View>
         ))}
-
-        {/* Achievements */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Achievements</Text>
-          <View style={styles.achievementsCard}>
-            <View style={styles.achievementsRow}>
-              {[
-                { emoji: '🎣', title: 'First Cast', unlocked: stats.total >= 1 },
-                { emoji: '🐟', title: '10 Catches', unlocked: stats.total >= 10 },
-                { emoji: '🏆', title: '5kg Fish', unlocked: (stats.heaviest?.weight || 0) >= 5 },
-                { emoji: '🔥', title: '7 Day Streak', unlocked: (user?.streak || 0) >= 7 },
-              ].map((a) => (
-                <View key={a.title} style={[styles.achievement, !a.unlocked && styles.achievementLocked]}>
-                  <Text style={styles.achievementEmoji}>{a.emoji}</Text>
-                  <Text style={styles.achievementTitle}>{a.title}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        </View>
 
         {/* Sign out */}
         <TouchableOpacity style={styles.signOut} onPress={handleLogout}>
@@ -221,6 +264,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   levelBadge: {
     flexDirection: 'row',
@@ -236,14 +280,35 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primary,
   },
-  xpText: {
+  xpLabel: {
     fontSize: 12,
+    color: colors.textSecondary,
+  },
+  xpBarContainer: {
+    width: '80%',
+    alignItems: 'center',
+    gap: 4,
+  },
+  xpBar: {
+    width: '100%',
+    height: 6,
+    backgroundColor: colors.surface2,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  xpFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 3,
+  },
+  xpBarLabel: {
+    fontSize: 11,
     color: colors.textSecondary,
   },
   statsRow: {
     flexDirection: 'row',
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
@@ -257,25 +322,53 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: colors.textPrimary,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 10,
     color: colors.textSecondary,
+  },
+  achievementsCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  achievementsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  achievement: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  achievementLocked: {
+    opacity: 0.3,
+  },
+  achievementEmoji: {
+    fontSize: 28,
+  },
+  achievementTitle: {
+    fontSize: 9,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   section: {
     paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
     color: colors.textSecondary,
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.sm,
+    letterSpacing: 1.5,
+    marginBottom: spacing.xs,
   },
   menuCard: {
     backgroundColor: colors.surface,
@@ -302,36 +395,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   menuLabel: {
-    flex: 1,
     fontSize: 15,
     color: colors.textPrimary,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  achievementsCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  achievementsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  achievement: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  achievementLocked: {
-    opacity: 0.4,
-  },
-  achievementEmoji: {
-    fontSize: 32,
-  },
-  achievementTitle: {
-    fontSize: 10,
+  menuDesc: {
+    fontSize: 12,
     color: colors.textSecondary,
-    textAlign: 'center',
+    marginTop: 1,
   },
   signOut: {
     flexDirection: 'row',
