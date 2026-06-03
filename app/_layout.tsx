@@ -67,6 +67,16 @@ export default function RootLayout() {
         <Stack.Screen name="conditions" options={{ title: 'Tides & Conditions' }} />
         <Stack.Screen name="pro" options={{ title: 'CAST Pro', presentation: 'modal' }} />
         <Stack.Screen name="fish-tips" options={{ headerShown: false }} />
+        <Stack.Screen name="profile" options={{ title: 'My Profile' }} />
+        <Stack.Screen name="leaderboards" options={{ title: 'Leaderboards' }} />
+        <Stack.Screen name="clubs" options={{ title: 'Fishing Clubs' }} />
+        <Stack.Screen name="challenges" options={{ title: 'Challenges' }} />
+        <Stack.Screen name="tackle-shops" options={{ title: 'Tackle Shops' }} />
+        <Stack.Screen name="competitions" options={{ title: 'Competitions' }} />
+        <Stack.Screen name="rig-builder" options={{ title: 'Rig Builder' }} />
+        <Stack.Screen name="water-conditions" options={{ title: 'Water Conditions' }} />
+        <Stack.Screen name="notifications" options={{ title: 'Notification Settings' }} />
+        <Stack.Screen name="settings" options={{ title: 'Settings' }} />
       </Stack>
     </>
   );

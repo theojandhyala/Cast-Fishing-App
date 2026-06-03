@@ -34,6 +34,9 @@ const MENU_SECTIONS = [
       { icon: 'rope', label: 'Knot Library', route: '/knots', color: colors.primary, desc: '20 essential knots' },
       { icon: 'weather-partly-cloudy', label: 'Weather & Tides', route: '/weather-detail', color: '#60A5FA', desc: 'Full conditions dashboard' },
       { icon: 'camera', label: 'Fish Identifier', route: '/identifier', color: colors.secondary, desc: 'Photo ID tool' },
+      { icon: 'hook', label: 'Rig Builder', route: '/rig-builder', color: '#10B981', desc: '15 rig tutorials' },
+      { icon: 'water', label: 'Water Conditions', route: '/water-conditions', color: '#3B82F6', desc: 'Temp, clarity & levels' },
+      { icon: 'store', label: 'Tackle Shops', route: '/tackle-shops', color: '#F59E0B', desc: 'Find local tackle shops' },
     ],
   },
   {

@@ -10,8 +10,18 @@ export interface User {
   level: number;
   streak: number;
   avatar?: string;
+  avatarColor?: string;
   favouriteSpecies: string[];
   joinedAt: string;
+  fishingExperience?: 'beginner' | 'intermediate' | 'expert';
+  hasLicence?: boolean;
+  preferredFishing?: 'freshwater' | 'saltwater' | 'both';
+  isPublicProfile?: boolean;
+  sharesCatchesPublicly?: boolean;
+  distanceUnit?: 'km' | 'miles';
+  weightUnit?: 'kg' | 'lbs';
+  tempUnit?: 'celsius' | 'fahrenheit';
+  defaultLocation?: string;
 }
 
 interface AuthState {
@@ -111,10 +121,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: updated });
   },
 
-  completeOnboarding: (name: string, favouriteSpecies: string[]) => {
+  completeOnboarding: (name: string, favouriteSpecies: string[], extras?: { fishingExperience?: User['fishingExperience']; hasLicence?: boolean; preferredFishing?: User['preferredFishing'] }) => {
     const current = get().user;
     if (!current) return;
-    const updated = { ...current, name, favouriteSpecies, xp: 100 };
+    const updated = { ...current, name, favouriteSpecies, xp: 100, ...extras };
     AsyncStorage.setItem('cast_user', JSON.stringify(updated));
     set({ user: updated });
   },
