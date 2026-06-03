@@ -19,7 +19,7 @@ const MENU_SECTIONS = [
   {
     section: 'MY FISHING',
     items: [
-      { icon: 'account-circle', label: 'My Profile', route: null, color: colors.primary, desc: 'XP, level & badges' },
+      { icon: 'account-circle', label: 'My Profile', route: '/profile', color: colors.primary, desc: 'XP, level & badges' },
       { icon: 'trophy', label: 'My Records', route: '/records', color: colors.secondary, desc: 'PBs vs UK records' },
       { icon: 'toolbox', label: 'My Gear', route: '/gear-tracker', color: '#60A5FA', desc: 'Tackle & kit tracker' },
       { icon: 'calendar-clock', label: 'Trip Planner', route: '/trip-planner', color: '#10B981', desc: 'Plan your sessions' },
@@ -48,15 +48,18 @@ const MENU_SECTIONS = [
     section: 'COMMUNITY',
     items: [
       { icon: 'account-group', label: 'Community Feed', route: '/community', color: '#60A5FA', desc: 'See what others are catching' },
-      { icon: 'podium', label: 'Leaderboards', route: '/community', color: colors.secondary, desc: 'Top anglers this week' },
-      { icon: 'account-multiple', label: 'Fishing Clubs', route: null, color: colors.textSecondary, desc: 'Coming soon' },
+      { icon: 'podium', label: 'Leaderboards', route: '/leaderboards', color: colors.secondary, desc: 'Top anglers this week' },
+      { icon: 'account-multiple', label: 'Fishing Clubs', route: '/clubs', color: '#8B5CF6', desc: 'Join and create clubs' },
+      { icon: 'medal', label: 'Challenges', route: '/challenges', color: '#F97316', desc: 'Weekly & monthly goals' },
+      { icon: 'trophy-outline', label: 'Competitions', route: '/competitions', color: '#EC4899', desc: 'Local & virtual competitions' },
     ],
   },
   {
     section: 'ACCOUNT',
     items: [
       { icon: 'crown', label: 'Upgrade to Pro', route: '/pro', color: colors.secondary, desc: 'Unlock all features' },
-      { icon: 'cog', label: 'Settings', route: null, color: colors.textSecondary, desc: '' },
+      { icon: 'cog', label: 'Settings', route: '/settings', color: colors.textSecondary, desc: 'Preferences & account' },
+      { icon: 'bell', label: 'Notifications', route: '/notifications', color: '#8B5CF6', desc: 'Alert preferences' },
       { icon: 'help-circle', label: 'Help & Feedback', route: null, color: colors.textSecondary, desc: '' },
       { icon: 'star', label: 'Rate the App', route: null, color: colors.secondary, desc: '' },
     ],
