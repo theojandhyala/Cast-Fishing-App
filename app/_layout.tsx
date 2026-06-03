@@ -77,6 +77,23 @@ export default function RootLayout() {
         <Stack.Screen name="water-conditions" options={{ title: 'Water Conditions' }} />
         <Stack.Screen name="notifications" options={{ title: 'Notification Settings' }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+        <Stack.Screen name="my-stats" options={{ title: 'My Fishing Story' }} />
+        <Stack.Screen name="catch-card-share" options={{ title: 'Share Catch' }} />
+        <Stack.Screen name="search" options={{ title: 'Search', headerShown: false }} />
+        <Stack.Screen name="ai-advisor" options={{ title: 'AI Advisor' }} />
+        <Stack.Screen name="weather-detail" options={{ title: 'Weather & Conditions' }} />
+        <Stack.Screen name="trip-planner" options={{ title: 'Trip Planner' }} />
+        <Stack.Screen name="gear-tracker" options={{ title: 'Gear Tracker' }} />
+        <Stack.Screen name="records" options={{ title: 'Records' }} />
+        <Stack.Screen name="bait-guide" options={{ title: 'Bait Guide' }} />
+        <Stack.Screen name="fishing-calendar" options={{ title: 'Fishing Calendar' }} />
+        <Stack.Screen name="community" options={{ title: 'Community' }} />
+        <Stack.Screen name="marketplace" options={{ title: 'Tackle Marketplace' }} />
+        <Stack.Screen name="fishing-guides" options={{ title: 'Fishing Guides' }} />
+        <Stack.Screen name="casting-calculator" options={{ title: 'Casting Calculator' }} />
+        <Stack.Screen name="moon-calendar" options={{ title: 'Moon Calendar' }} />
+        <Stack.Screen name="fishing-journal" options={{ title: 'Fishing Journal' }} />
+        <Stack.Screen name="safety" options={{ title: 'Safety & Emergency' }} />
       </Stack>
     </>
   );

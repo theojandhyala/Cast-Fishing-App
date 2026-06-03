@@ -11,6 +11,78 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { WATER_CONDITIONS, SPECIES_IDEAL_CONDITIONS } from '../data/waterConditionsData';
 import { colors, radius, spacing } from '../constants/theme';
 
+// Temperature gauge: simple arc rendered with View+borderRadius trick
+function TempGauge({ temp }: { temp: number }) {
+  const min = 0; const max = 30;
+  const pct = Math.min(Math.max((temp - min) / (max - min), 0), 1);
+  const color = temp < 8 ? '#60A5FA' : temp < 14 ? colors.primary : temp < 22 ? '#10B981' : '#F97316';
+  const label = temp < 8 ? 'Very Cold' : temp < 14 ? 'Cool' : temp < 22 ? 'Optimal' : 'Warm';
+  return (
+    <View style={gaugeStyles.wrap}>
+      <View style={gaugeStyles.arcBg}>
+        <View style={[gaugeStyles.arcFill, { width: `${pct * 100}%`, backgroundColor: color }]} />
+      </View>
+      <Text style={[gaugeStyles.tempValue, { color }]}>{temp}°C</Text>
+      <Text style={[gaugeStyles.tempLabel, { color }]}>{label}</Text>
+    </View>
+  );
+}
+
+const gaugeStyles = StyleSheet.create({
+  wrap: { alignItems: 'center', gap: 4 },
+  arcBg: { width: 120, height: 10, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 5, overflow: 'hidden' },
+  arcFill: { height: '100%', borderRadius: 5 },
+  tempValue: { fontSize: 28, fontWeight: '900' },
+  tempLabel: { fontSize: 12, fontWeight: '700' },
+});
+
+// Mini temperature history chart (7 days) rendered as bars
+function TempHistoryChart({ history }: { history: { date: string; temp: number; clarity: string }[] }) {
+  const maxTemp = Math.max(...history.map(h => h.temp));
+  const minTemp = Math.min(...history.map(h => h.temp));
+  const range = maxTemp - minTemp || 1;
+  return (
+    <View style={chartStyles.wrap}>
+      <Text style={chartStyles.title}>7-Day Temperature Trend</Text>
+      <View style={chartStyles.bars}>
+        {history.map((h, i) => {
+          const heightPct = ((h.temp - minTemp) / range) * 60 + 20;
+          const color = h.temp < 10 ? '#60A5FA' : h.temp < 18 ? colors.primary : '#F97316';
+          return (
+            <View key={i} style={chartStyles.barWrap}>
+              <Text style={chartStyles.barTemp}>{h.temp}°</Text>
+              <View style={chartStyles.barTrack}>
+                <View style={[chartStyles.bar, { height: heightPct, backgroundColor: color }]} />
+              </View>
+              <Text style={chartStyles.barDate}>{h.date.slice(5)}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const chartStyles = StyleSheet.create({
+  wrap: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
+  title: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: spacing.md },
+  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 4, height: 100 },
+  barWrap: { flex: 1, alignItems: 'center', gap: 3 },
+  barTemp: { fontSize: 9, color: colors.textSecondary },
+  barTrack: { flex: 1, width: '70%', justifyContent: 'flex-end', alignItems: 'center' },
+  bar: { width: '100%', borderRadius: 3, minHeight: 8 },
+  barDate: { fontSize: 8, color: colors.textSecondary },
+});
+
+const SPECIES_TEMP_ADVICE = [
+  { name: 'Carp', emoji: '🐟', advice: 'Active above 12°C, peak 18–22°C', min: 12, peak1: 18, peak2: 22 },
+  { name: 'Pike', emoji: '🐠', advice: 'Active 4–16°C, prefer colder water', min: 4, peak1: 4, peak2: 12 },
+  { name: 'Trout', emoji: '🎣', advice: 'Peak 8–16°C', min: 8, peak1: 8, peak2: 16 },
+  { name: 'Tench', emoji: '🐡', advice: 'Active 15–22°C, summer species', min: 15, peak1: 18, peak2: 22 },
+  { name: 'Bream', emoji: '🐟', advice: 'Active 10–20°C', min: 10, peak1: 14, peak2: 20 },
+  { name: 'Perch', emoji: '🐠', advice: 'Active year-round, prefer 8–18°C', min: 8, peak1: 10, peak2: 18 },
+];
+
 const CLARITY_COLORS: Record<string, string> = { clear: colors.primary, coloured: colors.secondary, murky: '#8B5CF6' };
 const CLARITY_ICONS: Record<string, string> = { clear: 'water', coloured: 'water-opacity', murky: 'weather-fog' };
 const LEVEL_COLORS: Record<string, string> = { low: '#60A5FA', normal: colors.primary, rising: colors.secondary, high: '#F97316', flood: colors.danger };
@@ -39,6 +111,11 @@ export default function WaterConditionsScreen() {
             <Text style={styles.alertText}>{region.algaeNote}</Text>
           </View>
         )}
+
+        {/* Temperature Gauge */}
+        <View style={styles.section}>
+          <TempGauge temp={region.waterTemp} />
+        </View>
 
         {/* Main stats */}
         <View style={styles.statsRow}>
@@ -96,9 +173,39 @@ export default function WaterConditionsScreen() {
           </View>
         </View>
 
+        {/* Temp history chart */}
+        <View style={styles.section}>
+          <TempHistoryChart history={region.history} />
+        </View>
+
+        {/* Species temperature advice */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Temperature by Species</Text>
+          <View style={styles.card}>
+            {SPECIES_TEMP_ADVICE.map((s, i) => {
+              const isActive = region.waterTemp >= s.min;
+              const isPeak = region.waterTemp >= s.peak1 && region.waterTemp <= s.peak2;
+              return (
+                <View key={s.name} style={[styles.riverRow, i < SPECIES_TEMP_ADVICE.length - 1 && styles.riverBorder]}>
+                  <Text style={{ fontSize: 18 }}>{s.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.riverName}>{s.name}</Text>
+                    <Text style={[styles.riverChange, { fontSize: 12 }]}>{s.advice}</Text>
+                  </View>
+                  <View style={[styles.levelBadge, { backgroundColor: isPeak ? 'rgba(0,212,170,0.15)' : isActive ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.1)' }]}>
+                    <Text style={[styles.levelText, { color: isPeak ? colors.primary : isActive ? colors.secondary : colors.danger }]}>
+                      {isPeak ? 'Peak' : isActive ? 'Active' : 'Slow'}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
         {/* History */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Last 7 Days</Text>
+          <Text style={styles.sectionTitle}>Last 7 Days (Table)</Text>
           <View style={styles.historyCard}>
             <View style={styles.historyHeader}>
               <Text style={styles.historyCol}>Date</Text>

@@ -20,15 +20,20 @@ const MENU_SECTIONS = [
     section: 'MY FISHING',
     items: [
       { icon: 'account-circle', label: 'My Profile', route: '/profile', color: colors.primary, desc: 'XP, level & badges' },
+      { icon: 'chart-bar', label: 'My Stats', route: '/my-stats', color: '#60A5FA', desc: 'Full fishing analytics' },
       { icon: 'trophy', label: 'My Records', route: '/records', color: colors.secondary, desc: 'PBs vs UK records' },
       { icon: 'toolbox', label: 'My Gear', route: '/gear-tracker', color: '#60A5FA', desc: 'Tackle & kit tracker' },
       { icon: 'calendar-clock', label: 'Trip Planner', route: '/trip-planner', color: '#10B981', desc: 'Plan your sessions' },
+      { icon: 'share-variant', label: 'Share a Catch', route: '/catch-card-share', color: colors.primary, desc: 'Create shareable catch cards' },
+      { icon: 'magnify', label: 'Search', route: '/search', color: '#A78BFA', desc: 'Search spots, species, knots' },
+      { icon: 'book-open', label: 'Fishing Journal', route: '/fishing-journal', color: '#10B981', desc: 'Session notes & memories' },
     ],
   },
   {
     section: 'TOOLS',
     items: [
       { icon: 'robot', label: 'AI Advisor', route: '/ai-advisor', color: colors.primary, desc: 'Ask anything about fishing' },
+      { icon: 'lightbulb', label: 'Fish Tips', route: '/fish-tips', color: colors.secondary, desc: 'Species tips & bite times' },
       { icon: 'calendar-month', label: 'Fishing Calendar', route: '/fishing-calendar', color: '#A78BFA', desc: 'Moon, tides & scores' },
       { icon: 'food-drumstick', label: 'Bait Guide', route: '/bait-guide', color: '#10B981', desc: '30+ baits & bait match' },
       { icon: 'rope', label: 'Knot Library', route: '/knots', color: colors.primary, desc: '20 essential knots' },
@@ -37,6 +42,10 @@ const MENU_SECTIONS = [
       { icon: 'hook', label: 'Rig Builder', route: '/rig-builder', color: '#10B981', desc: '15 rig tutorials' },
       { icon: 'water', label: 'Water Conditions', route: '/water-conditions', color: '#3B82F6', desc: 'Temp, clarity & levels' },
       { icon: 'store', label: 'Tackle Shops', route: '/tackle-shops', color: '#F59E0B', desc: 'Find local tackle shops' },
+      { icon: 'shopping', label: 'Marketplace', route: '/marketplace', color: '#00D4AA', desc: 'Gear deals & fishing kit' },
+      { icon: 'account-tie', label: 'Fishing Guides', route: '/fishing-guides', color: '#F59E0B', desc: 'Hire a professional guide' },
+      { icon: 'target', label: 'Casting Calculator', route: '/casting-calculator', color: '#60A5FA', desc: 'Estimate casting distance' },
+      { icon: 'moon-waxing-crescent', label: 'Moon Calendar', route: '/moon-calendar', color: '#A78BFA', desc: 'Lunar fishing guide' },
     ],
   },
   {
@@ -45,6 +54,7 @@ const MENU_SECTIONS = [
       { icon: 'file-document', label: 'Licence & Regulations', route: '/licence-checker', color: colors.danger, desc: 'Licence, seasons & sizes' },
       { icon: 'ruler', label: 'Size Limits', route: '/licence-checker', color: colors.warning, desc: 'Legal size checker' },
       { icon: 'calendar-remove', label: 'Closed Seasons', route: '/licence-checker', color: '#EF4444', desc: 'When you can fish' },
+      { icon: 'shield-check', label: 'Safety & Emergency', route: '/safety', color: '#EF4444', desc: 'First aid, contacts & water safety' },
     ],
   },
   {
@@ -55,6 +65,8 @@ const MENU_SECTIONS = [
       { icon: 'account-multiple', label: 'Fishing Clubs', route: '/clubs', color: '#8B5CF6', desc: 'Join and create clubs' },
       { icon: 'medal', label: 'Challenges', route: '/challenges', color: '#F97316', desc: 'Weekly & monthly goals' },
       { icon: 'trophy-outline', label: 'Competitions', route: '/competitions', color: '#EC4899', desc: 'Local & virtual competitions' },
+      { icon: 'shopping', label: 'Gear Marketplace', route: '/marketplace', color: '#00D4AA', desc: 'Shop deals with the community' },
+      { icon: 'account-tie', label: 'Find a Guide', route: '/fishing-guides', color: '#F59E0B', desc: 'Connect with professional guides' },
     ],
   },
   {

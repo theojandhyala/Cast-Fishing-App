@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,14 +12,73 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFishIdentifier } from '../hooks/useFishIdentifier';
 import { CastButton } from '../components/ui/CastButton';
 import { colors, radius, spacing } from '../constants/theme';
 
+const HISTORY_KEY = '@cast_fish_id_history';
+
+interface HistoryItem {
+  id: string;
+  species: string;
+  confidence: number;
+  date: string;
+  emoji: string;
+}
+
+const FISH_EMOJIS: Record<string, string> = {
+  'Carp': '🐟', 'Pike': '🐠', 'Trout': '🎣', 'Perch': '🐡', 'Bream': '🐟',
+  'Tench': '🐟', 'Roach': '🐡', 'Barbel': '🐠', 'Bass': '🐠', 'default': '🐟',
+};
+
 export default function IdentifierScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
   const { identify, loading, result, error, reset } = useFishIdentifier();
+
+  useEffect(() => { loadHistory(); }, []);
+  useEffect(() => {
+    if (result) saveToHistory(result);
+  }, [result]);
+
+  const loadHistory = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(HISTORY_KEY);
+      if (stored) setHistory(JSON.parse(stored));
+    } catch {}
+  };
+
+  const saveToHistory = async (r: any) => {
+    const item: HistoryItem = {
+      id: Date.now().toString(),
+      species: r.species,
+      confidence: r.confidence,
+      date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      emoji: FISH_EMOJIS[r.species] || FISH_EMOJIS.default,
+    };
+    const updated = [item, ...(await getHistory())].slice(0, 5);
+    setHistory(updated);
+    try { await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(updated)); } catch {}
+  };
+
+  const getHistory = async (): Promise<HistoryItem[]> => {
+    try {
+      const stored = await AsyncStorage.getItem(HISTORY_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  };
+
+  const clearHistory = async () => {
+    Alert.alert('Clear History', 'Remove all recent identifications?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Clear', style: 'destructive', onPress: async () => {
+        setHistory([]);
+        try { await AsyncStorage.removeItem(HISTORY_KEY); } catch {}
+      }},
+    ]);
+  };
 
   const pickImage = async (fromCamera: boolean) => {
     const permission = fromCamera
@@ -203,6 +262,34 @@ export default function IdentifierScreen() {
             fullWidth
             style={{ marginTop: spacing.md }}
           />
+        </View>
+      )}
+
+      {/* Recent identifications history */}
+      {history.length > 0 && (
+        <View style={styles.historySection}>
+          <View style={styles.historyHeader}>
+            <Text style={styles.historySectionTitle}>Recent Identifications</Text>
+            <TouchableOpacity onPress={clearHistory}>
+              <Text style={styles.clearHistoryText}>Clear</Text>
+            </TouchableOpacity>
+          </View>
+          {history.map(item => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.historyItem}
+              onPress={() => Alert.alert(item.species, `Identified as ${item.species}\nConfidence: ${item.confidence}%\nDate: ${item.date}`)}
+            >
+              <Text style={styles.historyEmoji}>{item.emoji}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.historySpecies}>{item.species}</Text>
+                <Text style={styles.historyDate}>{item.date}</Text>
+              </View>
+              <View style={styles.historyConfidence}>
+                <Text style={styles.historyConfidenceText}>{item.confidence}%</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
 
@@ -422,4 +509,51 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
   },
+  historySection: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  historySectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  clearHistoryText: {
+    fontSize: 13,
+    color: colors.danger,
+    fontWeight: '600',
+  },
+  historyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    gap: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  historyEmoji: { fontSize: 26 },
+  historySpecies: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+  historyDate: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  historyConfidence: {
+    backgroundColor: 'rgba(0,212,170,0.12)',
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  historyConfidenceText: { fontSize: 13, fontWeight: '800', color: colors.primary },
 });
