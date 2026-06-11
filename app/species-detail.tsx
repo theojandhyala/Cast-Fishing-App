@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
 import { species } from '../data/species';
 import { MONTHLY_ACTIVITY, MONTH_NAMES, getMoonPhase } from '../data/fishingTimes';
+import { RarityBadge } from '../components/catches/RarityBadge';
 import { colors, radius, spacing } from '../constants/theme';
 
 const TABS = ['Overview', 'Bait & Rigs', 'Regulations', 'Tips', 'Best Times'];
@@ -46,6 +47,13 @@ export default function SpeciesDetailScreen() {
         <Text style={styles.heroName}>{fish.name}</Text>
         <Text style={styles.heroLatin}>{fish.latinName}</Text>
         <View style={styles.heroBadges}>
+          {(fish as any).rarity && (
+            <RarityBadge
+              rarity={(fish as any).rarity}
+              rarityColor={(fish as any).rarityColor || '#9CA3AF'}
+              size="lg"
+            />
+          )}
           <View style={[styles.badge, { backgroundColor: difficultyColors[fish.difficulty] + '22' }]}>
             <Text style={[styles.badgeText, { color: difficultyColors[fish.difficulty] }]}>
               {fish.difficulty}

@@ -3,6 +3,7 @@ import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Species } from '../../data/species';
 import { colors, radius, spacing } from '../../constants/theme';
+import { RarityBadge } from '../catches/RarityBadge';
 
 interface FishTipCardProps {
   species: Species;
@@ -41,6 +42,13 @@ export function FishTipCard({ species, onPress }: FishTipCardProps) {
           <View style={styles.tag}>
             <Text style={styles.tagText}>{typeLabels[species.type]}</Text>
           </View>
+          {(species as any).rarity && (
+            <RarityBadge
+              rarity={(species as any).rarity}
+              rarityColor={(species as any).rarityColor || '#9CA3AF'}
+              size="sm"
+            />
+          )}
         </View>
       </View>
       <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />

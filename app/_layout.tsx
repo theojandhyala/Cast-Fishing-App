@@ -94,6 +94,10 @@ export default function RootLayout() {
         <Stack.Screen name="moon-calendar" options={{ title: 'Moon Calendar' }} />
         <Stack.Screen name="fishing-journal" options={{ title: 'Fishing Journal' }} />
         <Stack.Screen name="safety" options={{ title: 'Safety & Emergency' }} />
+        <Stack.Screen name="fish-encyclopedia" options={{ title: 'Fish Encyclopedia' }} />
+        <Stack.Screen name="fish-radar" options={{ title: 'Fish Radar' }} />
+        <Stack.Screen name="species-compare" options={{ title: 'Species Compare' }} />
+        <Stack.Screen name="quests" options={{ title: 'Quest Log' }} />
       </Stack>
     </>
   );

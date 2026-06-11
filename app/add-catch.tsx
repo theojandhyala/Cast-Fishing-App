@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  Modal,
+  Animated,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -17,6 +19,17 @@ import { useLocation } from '../hooks/useLocation';
 import { species } from '../data/species';
 import { CastButton } from '../components/ui/CastButton';
 import { colors, radius, spacing } from '../constants/theme';
+
+type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
+
+const RARITY_CELEBRATION: Record<Rarity, { title: string; subtitle: string; color: string; xp: number; emoji: string } | null> = {
+  common: null,
+  uncommon: null,
+  rare: { title: 'Rare Catch!', subtitle: 'Nice one! A rare fish on the line.', color: '#3B82F6', xp: 50, emoji: '🔵' },
+  epic: { title: 'Epic Catch!', subtitle: 'Incredible fish! Outstanding catch.', color: '#8B5CF6', xp: 150, emoji: '🟣' },
+  legendary: { title: 'LEGENDARY!', subtitle: 'An extraordinary catch. You\'ll be telling this story forever.', color: '#F59E0B', xp: 500, emoji: '🏆' },
+  mythic: { title: '🌟 MYTHIC CATCH! 🌟', subtitle: 'You\'ve caught something extraordinary. A fish most anglers will never see in their lifetime.', color: '#EC4899', xp: 1000, emoji: '✦' },
+};
 
 const SPECIES_OPTIONS = species.map((s) => ({ id: s.id, name: s.name, emoji: s.emoji }));
 
@@ -30,6 +43,8 @@ export default function AddCatchScreen() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [showSpeciesPicker, setShowSpeciesPicker] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [celebrationData, setCelebrationData] = useState<typeof RARITY_CELEBRATION['rare'] | null>(null);
+  const flashAnim = useRef(new Animated.Value(0)).current;
 
   const { addCatch } = useCatchStore();
   const { location: gpsLocation } = useLocation();
@@ -88,10 +103,52 @@ export default function AddCatchScreen() {
       emoji: selectedSpeciesData?.emoji || '🐟',
     });
     setSaving(false);
-    router.back();
+
+    // Check rarity and show celebration
+    const fullSpeciesData = species.find((s) => s.id === selectedSpecies) as any;
+    const rarity: Rarity = fullSpeciesData?.rarity || 'common';
+    const celebration = RARITY_CELEBRATION[rarity];
+    if (celebration) {
+      setCelebrationData(celebration);
+      Animated.sequence([
+        Animated.timing(flashAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(flashAnim, { toValue: 0.6, duration: 200, useNativeDriver: true }),
+        Animated.timing(flashAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+    } else {
+      router.back();
+    }
   };
 
   return (
+    <>
+    {/* Rarity Celebration Modal */}
+    <Modal visible={!!celebrationData} transparent animationType="fade">
+      <Animated.View style={[styles.celebrationOverlay, {
+        opacity: flashAnim,
+        backgroundColor: celebrationData ? celebrationData.color + '33' : 'transparent',
+      }]}>
+        <View style={[styles.celebrationCard, { borderColor: celebrationData?.color || colors.primary }]}>
+          <Text style={styles.celebrationEmoji}>{celebrationData?.emoji}</Text>
+          <Text style={[styles.celebrationTitle, { color: celebrationData?.color || colors.primary }]}>
+            {celebrationData?.title}
+          </Text>
+          <Text style={styles.celebrationSubtitle}>{celebrationData?.subtitle}</Text>
+          <View style={[styles.xpBadge, { borderColor: celebrationData?.color || colors.primary }]}>
+            <Text style={[styles.xpText, { color: celebrationData?.color || colors.primary }]}>
+              +{celebrationData?.xp} XP
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.celebrationBtn, { backgroundColor: celebrationData?.color || colors.primary }]}
+            onPress={() => { setCelebrationData(null); router.back(); }}
+          >
+            <Text style={styles.celebrationBtnText}>Continue</Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+    </Modal>
+
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
       {/* Photo */}
       <View style={styles.section}>
@@ -243,6 +300,7 @@ export default function AddCatchScreen() {
 
       <View style={{ height: spacing.xxl }} />
     </ScrollView>
+    </>
   );
 }
 
@@ -391,4 +449,27 @@ const styles = StyleSheet.create({
   saveBtn: {
     marginTop: spacing.md,
   },
+  celebrationOverlay: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  celebrationCard: {
+    backgroundColor: colors.surface, borderRadius: radius.xl,
+    padding: spacing.xl, alignItems: 'center',
+    borderWidth: 2, width: '100%',
+  },
+  celebrationEmoji: { fontSize: 64, marginBottom: spacing.md },
+  celebrationTitle: { fontSize: 28, fontWeight: '900', textAlign: 'center', marginBottom: spacing.sm },
+  celebrationSubtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: spacing.lg },
+  xpBadge: {
+    borderWidth: 2, borderRadius: radius.full,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  xpText: { fontSize: 24, fontWeight: '900' },
+  celebrationBtn: {
+    borderRadius: radius.xl, paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md, minWidth: 150, alignItems: 'center',
+  },
+  celebrationBtnText: { fontSize: 16, fontWeight: '800', color: '#fff' },
 });

@@ -32,6 +32,10 @@ const MENU_SECTIONS = [
   {
     section: 'TOOLS',
     items: [
+      { icon: 'book-open-page-variant', label: 'Fish Encyclopedia', route: '/fish-encyclopedia', color: '#EC4899', desc: '25+ species with rarity system' },
+      { icon: 'radar', label: 'Fish Radar', route: '/fish-radar', color: '#22C55E', desc: 'What\'s active near you' },
+      { icon: 'format-list-bulleted', label: 'Quest Log', route: '/quests', color: '#F59E0B', desc: 'Daily, weekly & story quests' },
+      { icon: 'compare', label: 'Species Compare', route: '/species-compare', color: '#8B5CF6', desc: 'Compare any two fish' },
       { icon: 'robot', label: 'AI Advisor', route: '/ai-advisor', color: colors.primary, desc: 'Ask anything about fishing' },
       { icon: 'lightbulb', label: 'Fish Tips', route: '/fish-tips', color: colors.secondary, desc: 'Species tips & bite times' },
       { icon: 'calendar-month', label: 'Fishing Calendar', route: '/fishing-calendar', color: '#A78BFA', desc: 'Moon, tides & scores' },
