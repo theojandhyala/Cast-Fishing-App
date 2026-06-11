@@ -98,6 +98,7 @@ export default function RootLayout() {
         <Stack.Screen name="fish-radar" options={{ title: 'Fish Radar' }} />
         <Stack.Screen name="species-compare" options={{ title: 'Species Compare' }} />
         <Stack.Screen name="quests" options={{ title: 'Quest Log' }} />
+        <Stack.Screen name="fish-database" options={{ title: 'Fish Database' }} />
       </Stack>
     </>
   );

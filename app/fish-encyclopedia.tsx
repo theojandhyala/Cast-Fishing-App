@@ -41,6 +41,9 @@ export default function FishEncyclopediaScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Fish Encyclopedia</Text>
           <Text style={styles.subtitle}>{allSpecies.length} species catalogued</Text>
+          <TouchableOpacity onPress={() => router.push('/fish-database')} style={{ marginTop: 8 }}>
+            <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '700' }}>Browse All Fish (300+) →</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Mythic Featured */}

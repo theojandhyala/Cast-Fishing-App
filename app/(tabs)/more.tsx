@@ -33,6 +33,7 @@ const MENU_SECTIONS = [
     section: 'TOOLS',
     items: [
       { icon: 'book-open-page-variant', label: 'Fish Encyclopedia', route: '/fish-encyclopedia', color: '#EC4899', desc: '25+ species with rarity system' },
+      { icon: 'database', label: 'Fish Database (300+ Species)', route: '/fish-database', color: '#3B82F6', desc: 'Global fish database with rarities' },
       { icon: 'radar', label: 'Fish Radar', route: '/fish-radar', color: '#22C55E', desc: 'What\'s active near you' },
       { icon: 'format-list-bulleted', label: 'Quest Log', route: '/quests', color: '#F59E0B', desc: 'Daily, weekly & story quests' },
       { icon: 'compare', label: 'Species Compare', route: '/species-compare', color: '#8B5CF6', desc: 'Compare any two fish' },
