@@ -33,9 +33,7 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "theojandhyala@icloud.com",
-        "ascAppId": "",
-        "appleTeamId": ""
+        "appleId": "theojandhyala@icloud.com"
       }
     }
   }
