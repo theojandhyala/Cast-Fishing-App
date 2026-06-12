@@ -78,10 +78,6 @@
     "experiments": {
       "typedRoutes": true
     },
-    "extra": {
-      "eas": {
-        "projectId": "cast-fishing-app"
-      }
-    }
+    "extra": {}
   }
 }
