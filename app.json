@@ -1,23 +1,53 @@
 {
   "expo": {
-    "name": "CAST",
+    "name": "CAST — Fishing Companion",
     "slug": "cast-fishing-app",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "sdkVersion": "52.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "scheme": "cast",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0E1A"
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.cast.fishingapp"
+      "bundleIdentifier": "com.cast.fishingapp",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "CAST uses your camera to identify fish species using AI.",
+        "NSPhotoLibraryUsageDescription": "CAST accesses your photos so you can log your catches.",
+        "NSLocationWhenInUseUsageDescription": "CAST uses your location to show nearby fishing spots and local weather conditions.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "CAST uses your location to show nearby fishing spots and local weather conditions.",
+        "NSMicrophoneUsageDescription": "CAST may use the microphone when recording catch videos.",
+        "UIBackgroundModes": ["location", "fetch"],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0A0E1A",
         "foregroundImage": "./assets/adaptive-icon.png"
       },
-      "package": "com.cast.fishingapp"
+      "package": "com.cast.fishingapp",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -47,6 +77,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "cast-fishing-app"
+      }
     }
   }
 }
