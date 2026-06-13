@@ -67,8 +67,8 @@ export function useFishIdentifier() {
     setError(null);
     setResult(null);
 
-    if (!CONFIG.ANTHROPIC_API_KEY) {
-      // Demo mode
+    if (!CONFIG.AI_WORKER_URL) {
+      // Demo mode — no AI proxy configured
       await new Promise((r) => setTimeout(r, 2000));
       const demo = DEMO_RESULTS[Math.floor(Math.random() * DEMO_RESULTS.length)];
       setResult(demo);
@@ -77,49 +77,18 @@ export function useFishIdentifier() {
     }
 
     try {
-      const Anthropic = (await import('@anthropic-ai/sdk')).default;
-      const client = new Anthropic({ apiKey: CONFIG.ANTHROPIC_API_KEY });
-
-      const message = await client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: 'image/jpeg',
-                  data: base64Image,
-                },
-              },
-              {
-                type: 'text',
-                text: `Identify the fish species in this image. Provide your response as a JSON object with these exact fields:
-{
-  "species": "Common name of species",
-  "confidence": 85,
-  "commonName": "Full common name",
-  "latinName": "Scientific name",
-  "legalSize": 30,
-  "estimatedWeight": "2-4kg",
-  "estimatedLength": "40-55cm",
-  "isLegal": true,
-  "notes": "Brief description of identifying features visible",
-  "tips": "One fishing tip for this species",
-  "alternatives": ["Alternative species 1", "Alternative species 2"]
-}
-Only return the JSON, no other text. The legalSize is the UK minimum size in cm. If no fish is visible, set species to "No fish detected".`,
-              },
-            ],
-          },
-        ],
+      const res = await fetch(`${CONFIG.AI_WORKER_URL}/identify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image }),
       });
 
-      const text = message.content[0].type === 'text' ? message.content[0].text : '';
-      const parsed = JSON.parse(text) as FishIdentificationResult;
+      const text = await res.text();
+      if (!res.ok) throw new Error(text || 'Identification failed');
+
+      // Worker returns the model's raw JSON; strip any stray markdown fences.
+      const clean = text.replace(/```json\s*|\s*```/g, '').trim();
+      const parsed = JSON.parse(clean) as FishIdentificationResult;
       setResult(parsed);
       setLoading(false);
       return parsed;

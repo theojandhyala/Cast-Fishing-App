@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCatchStore } from '../store/catchStore';
+import { CONFIG } from '../constants/config';
 import { colors, spacing, radius } from '../constants/theme';
 
 interface Message {
@@ -93,20 +94,44 @@ export default function AIAdvisorScreen() {
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
     const userMsg: Message = { id: generateId(), role: 'user', content: text, timestamp: new Date() };
-    setMessages(prev => [...prev, userMsg]);
+    const history = [...messages, userMsg];
+    setMessages(history);
     setInput('');
     setLoading(true);
 
-    // Simulate API delay
-    await new Promise(r => setTimeout(r, 1200));
+    // Try the real AI via the secure Worker proxy; fall back to canned advice.
+    let content: string | null = null;
+    if (CONFIG.AI_WORKER_URL) {
+      try {
+        const res = await fetch(`${CONFIG.AI_WORKER_URL}/advisor`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: history
+              .filter(m => m.id !== 'welcome')
+              .map(m => ({ role: m.role, content: m.content })),
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.reply) content = data.reply;
+        }
+      } catch {
+        // network error — fall through to canned response
+      }
+    }
 
-    const response = getCannedResponse(text);
+    if (!content) {
+      await new Promise(r => setTimeout(r, 600));
+      content = getCannedResponse(text).content;
+    }
+
     const aiMsg: Message = {
       id: generateId(),
       role: 'assistant',
-      content: response.content,
+      content,
       timestamp: new Date(),
-      suggestions: response.suggestions,
+      suggestions: getCannedResponse(text).suggestions,
     };
     setMessages(prev => [...prev, aiMsg]);
     setLoading(false);
