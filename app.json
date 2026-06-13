@@ -51,8 +51,13 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/favicon.png"
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "CAST — Fishing Companion",
+      "shortName": "CAST",
+      "description": "The ultimate fishing companion. AI fish ID, worldwide spots, catch log and more.",
+      "themeColor": "#0A0E1A",
+      "backgroundColor": "#0A0E1A"
     },
     "plugins": [
       "expo-router",
