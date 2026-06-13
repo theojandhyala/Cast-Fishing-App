@@ -1,0 +1,7 @@
+[build]
+command = "npm install --legacy-peer-deps && npx expo export --platform web"
+destination = "dist"
+
+[build.environment]
+NODE_VERSION = "20"
+NPM_FLAGS = "--legacy-peer-deps"
