@@ -18,48 +18,58 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    header
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 22) {
+                    topStatus
                     spotPicker
-                    conditionsGrid
-                    castCard
-                    prepChecklist
-                    catchLog
+                    recommendationPanel
+                    conditionStrip
+                    setupPanel
+                    checklistPanel
+                    catchLogPanel
                 }
-                .padding(20)
+                .padding(.horizontal, 18)
+                .padding(.top, 12)
+                .padding(.bottom, 28)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(appBackground)
             .navigationTitle("Cast Fishing")
+            .navigationBarTitleDisplayMode(.large)
         }
     }
 
-    private var header: some View {
-        ZStack(alignment: .bottomLeading) {
-            LinearGradient(
-                colors: [Color(red: 0.02, green: 0.22, blue: 0.28), Color(red: 0.08, green: 0.46, blue: 0.52)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+    private var appBackground: some View {
+        LinearGradient(
+            colors: [Color(red: 0.94, green: 0.97, blue: 0.96), Color(red: 0.88, green: 0.93, blue: 0.92)],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .ignoresSafeArea()
+    }
 
-            VStack(alignment: .leading, spacing: 10) {
+    private var topStatus: some View {
+        HStack(alignment: .center, spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color.teal.opacity(0.14))
                 Image(systemName: "water.waves")
-                    .font(.system(size: 34, weight: .semibold))
-                    .foregroundStyle(.white)
-
-                Text("Ready for the next cast")
-                    .font(.largeTitle.bold())
-                    .foregroundStyle(.white)
-
-                Text("Track the spot, check the wind, tune your tackle, and log the catch before you head back in.")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.84))
-                    .fixedSize(horizontal: false, vertical: true)
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.teal)
             }
-            .padding(24)
+            .frame(width: 54, height: 54)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Evening bite window")
+                    .font(.headline)
+                Text("6:40 PM · light wind · clear water")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+            }
+
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, minHeight: 220, alignment: .bottomLeading)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var spotPicker: some View {
@@ -71,78 +81,120 @@ struct ContentView: View {
         .pickerStyle(.segmented)
     }
 
-    private var conditionsGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            MetricTile(title: "Wind", value: "9 mph", symbol: "wind", tint: .cyan)
-            MetricTile(title: "Water", value: "61°F", symbol: "thermometer.medium", tint: .orange)
-            MetricTile(title: "Pressure", value: "1017 mb", symbol: "gauge.with.dots.needle.50percent", tint: .indigo)
-            MetricTile(title: "Bite Window", value: "6:40 PM", symbol: "clock", tint: .green)
+    private var recommendationPanel: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(selectedSpot)
+                        .font(.title2.bold())
+                    Text("Cast toward the shaded edge and retrieve steadily.")
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.78))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                Image(systemName: "scope")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 38, height: 38)
+                    .background(.white.opacity(0.16), in: Circle())
+            }
+
+            HStack(spacing: 10) {
+                StatPill(title: "Distance", value: castDistance)
+                StatPill(title: "Retrieve", value: retrieveSpeed)
+                StatPill(title: "Depth", value: "4 ft")
+            }
+        }
+        .foregroundStyle(.white)
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [Color(red: 0.02, green: 0.29, blue: 0.33), Color(red: 0.08, green: 0.48, blue: 0.48)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            ),
+            in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+        )
+    }
+
+    private var conditionStrip: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "Conditions", symbol: "cloud.sun")
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ConditionChip(title: "Wind", value: "9 mph", symbol: "wind", tint: .cyan)
+                    ConditionChip(title: "Water", value: "61°F", symbol: "thermometer.medium", tint: .orange)
+                    ConditionChip(title: "Pressure", value: "1017 mb", symbol: "gauge.with.dots.needle.50percent", tint: .indigo)
+                    ConditionChip(title: "Moon", value: "Waxing", symbol: "moon", tint: .purple)
+                }
+                .padding(.vertical, 2)
+            }
         }
     }
 
-    private var castCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Label("Cast Setup", systemImage: "scope")
-                .font(.headline)
+    private var setupPanel: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionHeader(title: "Cast Setup", symbol: "slider.horizontal.3")
 
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text("Lure Weight")
+                    Text("Lure weight")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                     Spacer()
                     Text("\(Int(lureWeight)) g")
-                        .fontWeight(.semibold)
+                        .font(.headline)
                 }
 
                 Slider(value: $lureWeight, in: 5...40, step: 1)
-            }
-
-            HStack(spacing: 12) {
-                RecommendationBadge(title: "Distance", value: castDistance)
-                RecommendationBadge(title: "Retrieve", value: retrieveSpeed)
+                    .tint(.teal)
             }
         }
-        .cardStyle()
+        .panelStyle()
     }
 
-    private var prepChecklist: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Label("Pre-Cast Check", systemImage: "checklist")
-                .font(.headline)
-
-            Toggle("Wind at your back", isOn: $isWindChecked)
-            Toggle("Line free of nicks", isOn: $isLineChecked)
-            Toggle("Drag set", isOn: $isDragChecked)
+    private var checklistPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "Pre-Cast Check", symbol: "checklist")
+            CheckRow(title: "Wind at your back", isOn: $isWindChecked)
+            CheckRow(title: "Line free of nicks", isOn: $isLineChecked)
+            CheckRow(title: "Drag set", isOn: $isDragChecked)
         }
-        .toggleStyle(.switch)
-        .cardStyle()
+        .panelStyle()
     }
 
-    private var catchLog: some View {
-        VStack(alignment: .leading, spacing: 14) {
+    private var catchLogPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("Catch Log", systemImage: "fish")
-                    .font(.headline)
+                SectionHeader(title: "Catch Log", symbol: "fish")
                 Spacer()
                 Button {
                 } label: {
                     Image(systemName: "plus")
-                        .font(.headline)
+                        .font(.subheadline.weight(.bold))
+                        .frame(width: 32, height: 32)
                 }
                 .buttonStyle(.borderedProminent)
-                .clipShape(Circle())
+                .buttonBorderShape(.circle)
+                .tint(.teal)
             }
 
             HStack(spacing: 12) {
                 Image(systemName: "mappin.and.ellipse")
-                    .font(.title2)
+                    .font(.headline)
                     .foregroundStyle(.teal)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 38, height: 38)
                     .background(Color.teal.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(selectedSpot)
                         .font(.subheadline.bold())
-                    Text("No catch logged yet today")
+                    Text("No catch logged today")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -150,7 +202,7 @@ struct ContentView: View {
                 Spacer()
             }
         }
-        .cardStyle()
+        .panelStyle()
     }
 
     private var castDistance: String {
@@ -162,55 +214,86 @@ struct ContentView: View {
     }
 }
 
-private struct MetricTile: View {
+private struct SectionHeader: View {
+    let title: String
+    let symbol: String
+
+    var body: some View {
+        Label(title, systemImage: symbol)
+            .font(.headline)
+            .foregroundStyle(.primary)
+    }
+}
+
+private struct StatPill: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.7))
+            Text(value)
+                .font(.subheadline.bold())
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct ConditionChip: View {
     let title: String
     let value: String
     let symbol: String
     let tint: Color
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        HStack(spacing: 10) {
             Image(systemName: symbol)
-                .font(.title3)
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(tint)
-                .frame(width: 36, height: 36)
-                .background(tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 8))
+                .frame(width: 30, height: 30)
+                .background(tint.opacity(0.14), in: Circle())
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(value)
-                    .font(.title3.bold())
+                    .font(.subheadline.bold())
+                    .lineLimit(1)
                 Text(title)
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cardStyle()
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(minWidth: 122, alignment: .leading)
+        .background(Color(.systemBackground).opacity(0.92), in: RoundedRectangle(cornerRadius: 8))
     }
 }
 
-private struct RecommendationBadge: View {
+private struct CheckRow: View {
     let title: String
-    let value: String
+    @Binding var isOn: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        Toggle(isOn: $isOn) {
             Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.headline)
+                .font(.subheadline)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 8))
+        .toggleStyle(.switch)
+        .tint(.teal)
     }
 }
 
 private extension View {
-    func cardStyle() -> some View {
+    func panelStyle() -> some View {
         padding(16)
-            .background(Color(.systemBackground), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .background(Color(.systemBackground).opacity(0.96), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
