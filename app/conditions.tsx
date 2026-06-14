@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocation } from '../hooks/useLocation';
+import { useLocationStore } from '../store/locationStore';
 import { useWeather } from '../hooks/useWeather';
 import { colors, radius, spacing } from '../constants/theme';
 
@@ -35,8 +35,8 @@ function degreesToDirection(deg: number) {
 }
 
 export default function ConditionsScreen() {
-  const { location } = useLocation();
-  const { weather } = useWeather(location?.latitude, location?.longitude);
+  const { location } = useLocationStore();
+  const { weather } = useWeather(location?.query);
 
   const displayWeather = weather || {
     temp: 14,
@@ -63,7 +63,7 @@ export default function ConditionsScreen() {
       >
         <View style={styles.locationRow}>
           <MaterialCommunityIcons name="map-marker" size={18} color={colors.primary} />
-          <Text style={styles.location}>{displayWeather.city}</Text>
+          <Text style={styles.location}>{location?.name || displayWeather.city}</Text>
         </View>
         <Text style={styles.headerTitle}>Tides & Conditions</Text>
         <Text style={styles.headerDate}>{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>

@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCatchStore } from '../store/catchStore';
+import { useLocationStore } from '../store/locationStore';
 import { CONFIG } from '../constants/config';
 import { colors, spacing, radius } from '../constants/theme';
 
@@ -74,6 +75,7 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 export default function AIAdvisorScreen() {
   const router = useRouter();
   const { catches } = useCatchStore();
+  const { location } = useLocationStore();
   const scrollRef = useRef<ScrollView>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -107,6 +109,7 @@ export default function AIAdvisorScreen() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            system: `You are CAST's expert fishing advisor. ${location ? `The angler is currently fishing at: ${location.name}.` : ''} Give concise, practical advice. Use markdown bold (**text**) for emphasis. Keep responses focused and actionable.`,
             messages: history
               .filter(m => m.id !== 'welcome')
               .map(m => ({ role: m.role, content: m.content })),

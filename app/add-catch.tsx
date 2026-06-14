@@ -15,7 +15,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useCatchStore } from '../store/catchStore';
-import { useLocation } from '../hooks/useLocation';
+import { useLocationStore } from '../store/locationStore';
 import { species } from '../data/species';
 import { CastButton } from '../components/ui/CastButton';
 import { colors, radius, spacing } from '../constants/theme';
@@ -39,7 +39,8 @@ export default function AddCatchScreen() {
   const [length, setLength] = useState('');
   const [bait, setBait] = useState('');
   const [notes, setNotes] = useState('');
-  const [location, setLocation] = useState('');
+  const { location: manualLocation } = useLocationStore();
+  const [location, setLocation] = useState(manualLocation?.name || '');
   const [photo, setPhoto] = useState<string | null>(null);
   const [showSpeciesPicker, setShowSpeciesPicker] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -47,7 +48,6 @@ export default function AddCatchScreen() {
   const flashAnim = useRef(new Animated.Value(0)).current;
 
   const { addCatch } = useCatchStore();
-  const { location: gpsLocation } = useLocation();
   const router = useRouter();
 
   const selectedSpeciesData = SPECIES_OPTIONS.find((s) => s.id === selectedSpecies);
@@ -72,10 +72,10 @@ export default function AddCatchScreen() {
   };
 
   const handleAutoLocation = () => {
-    if (gpsLocation) {
-      setLocation(gpsLocation.city || 'Current Location');
+    if (manualLocation) {
+      setLocation(manualLocation.name);
     } else {
-      Alert.alert('Location', 'Could not get location. Please enter manually.');
+      Alert.alert('Location', 'No fishing location set. Please enter manually.');
     }
   };
 
@@ -95,8 +95,6 @@ export default function AddCatchScreen() {
       weight: parseFloat(weight),
       length: length ? parseFloat(length) : undefined,
       location: location || undefined,
-      latitude: gpsLocation?.latitude,
-      longitude: gpsLocation?.longitude,
       bait: bait || undefined,
       notes: notes || undefined,
       photo: photo || undefined,
