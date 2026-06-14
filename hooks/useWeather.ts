@@ -359,7 +359,7 @@ export function useWeather(latOrCity?: number | string, lon?: number) {
     }
 
     fetchWeather();
-  }, [lat, lon]);
+  }, [latOrCity, lon]);
 
   return { weather, loading, error };
 }
