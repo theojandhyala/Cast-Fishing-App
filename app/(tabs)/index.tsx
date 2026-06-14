@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,10 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -13,7 +17,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/authStore';
 import { useCatchStore } from '../../store/catchStore';
-import { useLocation } from '../../hooks/useLocation';
+import { useLocationStore } from '../../store/locationStore';
 import { useWeather } from '../../hooks/useWeather';
 import { colors, spacing, radius } from '../../constants/theme';
 import { species } from '../../data/species';
@@ -64,9 +68,11 @@ function getTopSpeciesNow(count: number) {
 export default function HomeScreen() {
   const { user } = useAuthStore();
   const { catches, getStats } = useCatchStore();
-  const { location } = useLocation();
-  const { weather } = useWeather(location?.latitude, location?.longitude);
+  const { location, setLocation } = useLocationStore();
+  const { weather } = useWeather(location?.query);
   const router = useRouter();
+  const [locationModal, setLocationModal] = useState(false);
+  const [locationInput, setLocationInput] = useState('');
   const stats = getStats();
 
   const moon = getMoonPhase(new Date());
@@ -79,15 +85,54 @@ export default function HomeScreen() {
 
   const w = weather ?? {
     temp: 14, wind: 12, pressure: 1016, humidity: 72,
-    fishingScore: 65, city: 'Your Location', description: 'Partly Cloudy',
+    fishingScore: 65, city: location?.name ?? 'Set Location', description: 'Partly Cloudy',
     pressureTrend: 'rising',
   };
 
+  const displayCity = location?.name ?? w.city ?? 'Set Location';
   const scoreColor = w.fishingScore >= 70 ? colors.primary : w.fishingScore >= 50 ? colors.secondary : '#EF4444';
   const scoreWord = w.fishingScore >= 70 ? 'PRIME' : w.fishingScore >= 50 ? 'GOOD' : 'SLOW';
 
+  const saveLocation = () => {
+    const trimmed = locationInput.trim();
+    if (!trimmed) return;
+    setLocation({ name: trimmed, query: trimmed });
+    setLocationModal(false);
+    setLocationInput('');
+  };
+
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
+      {/* Location picker modal */}
+      <Modal visible={locationModal} transparent animationType="fade" onRequestClose={() => setLocationModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+          <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setLocationModal(false)}>
+            <TouchableOpacity activeOpacity={1} style={s.modalBox}>
+              <Text style={s.modalTitle}>Where are you fishing?</Text>
+              <Text style={s.modalSub}>Enter a lake, river, town or coastline</Text>
+              <TextInput
+                style={s.modalInput}
+                placeholder="e.g. Port de Sóller, Mallorca"
+                placeholderTextColor={colors.textSecondary}
+                value={locationInput}
+                onChangeText={setLocationInput}
+                autoFocus
+                onSubmitEditing={saveLocation}
+                returnKeyType="done"
+              />
+              <View style={s.modalButtons}>
+                <TouchableOpacity style={s.modalCancel} onPress={() => setLocationModal(false)}>
+                  <Text style={s.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[s.modalSave, !locationInput.trim() && { opacity: 0.4 }]} onPress={saveLocation}>
+                  <Text style={s.modalSaveText}>Set Location</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
+
       <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* ── HEADER ── */}
@@ -111,7 +156,11 @@ export default function HomeScreen() {
         <View style={s.scoreBlock}>
           <View style={s.scoreBlockInner}>
             <View style={s.scoreLeft}>
-              <Text style={s.scoreCity}>{w.city.toUpperCase()}</Text>
+              <TouchableOpacity style={s.locationRow} onPress={() => setLocationModal(true)} activeOpacity={0.7}>
+                <MaterialCommunityIcons name="map-marker" size={13} color={colors.primary} />
+                <Text style={s.scoreCity}>{displayCity.toUpperCase()}</Text>
+                <MaterialCommunityIcons name="pencil-outline" size={12} color={colors.textSecondary} />
+              </TouchableOpacity>
               <Text style={s.scoreDesc}>{w.description}</Text>
               <View style={s.condRow}>
                 <Text style={s.condPill}>🌡 {w.temp}°C</Text>
@@ -325,6 +374,53 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)',
   },
   proChipText: { fontSize: 10, fontWeight: '800', color: colors.secondary, letterSpacing: 0.5 },
+
+  // Location modal
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center', alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalBox: {
+    backgroundColor: '#111827',
+    borderRadius: 20,
+    padding: spacing.xl,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: colors.textPrimary, marginBottom: 4 },
+  modalSub: { fontSize: 13, color: colors.textSecondary, marginBottom: spacing.lg },
+  modalInput: {
+    backgroundColor: colors.surface2,
+    borderRadius: 12,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.lg,
+  },
+  modalButtons: { flexDirection: 'row', gap: spacing.sm },
+  modalCancel: {
+    flex: 1, paddingVertical: 13, borderRadius: 12,
+    backgroundColor: colors.surface2,
+    alignItems: 'center',
+  },
+  modalCancelText: { fontSize: 14, fontWeight: '700', color: colors.textSecondary },
+  modalSave: {
+    flex: 2, paddingVertical: 13, borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+  },
+  modalSaveText: { fontSize: 14, fontWeight: '800', color: '#0A0E1A' },
+
+  locationRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    alignSelf: 'flex-start',
+    marginBottom: 2,
+  },
 
   // Score block
   scoreBlock: {

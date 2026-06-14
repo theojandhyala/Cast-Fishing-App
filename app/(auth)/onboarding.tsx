@@ -8,10 +8,13 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
+import { useLocationStore } from '../../store/locationStore';
 import { CastButton } from '../../components/ui/CastButton';
 import { colors, radius, spacing } from '../../constants/theme';
 
@@ -45,7 +48,9 @@ export default function OnboardingScreen() {
   const [selectedSpecies, setSelectedSpecies] = useState<string[]>([]);
   const [selectedLevel, setSelectedLevel] = useState('');
   const [hasLicence, setHasLicence] = useState('');
+  const [fishingSpot, setFishingSpot] = useState('');
   const { completeOnboarding, user } = useAuthStore();
+  const { setLocation } = useLocationStore();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
 
@@ -110,6 +115,9 @@ export default function OnboardingScreen() {
 
   const handleComplete = () => {
     const finalName = name.trim() || user?.name || 'Angler';
+    if (fishingSpot.trim()) {
+      setLocation({ name: fishingSpot.trim(), query: fishingSpot.trim() });
+    }
     completeOnboarding(finalName, selectedSpecies);
     router.replace('/(tabs)');
   };
@@ -160,30 +168,24 @@ export default function OnboardingScreen() {
           </Animated.View>
         </View>
 
-        {/* Slide 2: Location */}
+        {/* Slide 2: Where do you fish? */}
         <View style={[styles.slide, { width }]}>
           <Text style={styles.slideEmoji}>📍</Text>
-          <Text style={styles.slideTitle}>Your Location</Text>
+          <Text style={styles.slideTitle}>Where do you fish?</Text>
           <Text style={styles.slideSubtitle}>
-            CAST uses your location to find local fishing spots, give you relevant weather, and show tide times for your area.
+            Tell us your usual fishing spot — a lake, river, coast or town. We'll show local weather, conditions and what's biting.
           </Text>
           <View style={styles.locationCard}>
-            <MaterialIcon name="map-marker-radius" />
-            <Text style={styles.locationTitle}>Location Benefits</Text>
-            {[
-              '🗺 Find spots within 10 miles of you',
-              '🌤 Local weather & conditions',
-              '🌊 Tide times for your coast',
-              '🎣 "What\'s biting near me" AI answers',
-            ].map(t => (
-              <Text key={t} style={styles.locationBenefit}>{t}</Text>
-            ))}
-          </View>
-          <View style={styles.locationButtons}>
-            <TouchableOpacity style={styles.enableBtn}>
-              <Text style={styles.enableBtnText}>📍 Enable Location</Text>
-            </TouchableOpacity>
-            <Text style={styles.locationSkip}>You can enable this later in Settings</Text>
+            <Text style={styles.locationTitle}>Your fishing location</Text>
+            <TextInput
+              style={styles.locationInput}
+              placeholder="e.g. Port de Sóller, River Wye, Chesil Beach..."
+              placeholderTextColor="#4B5563"
+              value={fishingSpot}
+              onChangeText={setFishingSpot}
+              returnKeyType="done"
+            />
+            <Text style={styles.locationSkip}>You can change this anytime from the home screen</Text>
           </View>
           <View style={styles.slideActions}>
             <CastButton title="Back" onPress={() => goToStep(0)} variant="ghost" style={{ flex: 1 }} />
@@ -421,6 +423,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#0A0E1A',
+  },
+  locationInput: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: colors.textPrimary,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    marginBottom: 10,
   },
   locationSkip: {
     fontSize: 12,

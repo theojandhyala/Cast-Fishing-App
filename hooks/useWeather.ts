@@ -246,17 +246,19 @@ function generateSolunarTimes(date: Date): SolunarTime[] {
   ];
 }
 
-export function useWeather(lat?: number, lon?: number) {
+export function useWeather(latOrCity?: number | string, lon?: number) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const cacheKey = typeof latOrCity === 'string' ? `cast_weather_${latOrCity}` : 'cast_weather';
 
   useEffect(() => {
     async function fetchWeather() {
       setLoading(true);
 
       try {
-        const cached = await AsyncStorage.getItem('cast_weather');
+        const cached = await AsyncStorage.getItem(cacheKey);
         if (cached) {
           const { data, timestamp } = JSON.parse(cached);
           if (Date.now() - timestamp < 30 * 60 * 1000) {
@@ -270,7 +272,10 @@ export function useWeather(lat?: number, lon?: number) {
       const now = new Date();
       const moon = getMoonPhase(now);
 
-      if (!CONFIG.OPENWEATHER_API_KEY || !lat || !lon) {
+      const hasCity = typeof latOrCity === 'string' && latOrCity.length > 0;
+      const hasCoords = typeof latOrCity === 'number' && lon !== undefined;
+
+      if (!CONFIG.OPENWEATHER_API_KEY || (!hasCity && !hasCoords)) {
         const fishingScore = calculateFishingScore({
           pressure: MOCK_WEATHER.pressure,
           pressureTrend: MOCK_WEATHER.pressureTrend,
@@ -294,9 +299,10 @@ export function useWeather(lat?: number, lon?: number) {
       }
 
       try {
-        const res = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${CONFIG.OPENWEATHER_API_KEY}&units=metric`
-        );
+        const url = hasCity
+          ? `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(latOrCity as string)}&appid=${CONFIG.OPENWEATHER_API_KEY}&units=metric`
+          : `https://api.openweathermap.org/data/2.5/weather?lat=${latOrCity}&lon=${lon}&appid=${CONFIG.OPENWEATHER_API_KEY}&units=metric`;
+        const res = await fetch(url);
         const data = await res.json();
 
         const weatherData: WeatherData = {
@@ -326,7 +332,7 @@ export function useWeather(lat?: number, lon?: number) {
         });
 
         const cacheData = { data: weatherData, timestamp: Date.now() };
-        await AsyncStorage.setItem('cast_weather', JSON.stringify(cacheData));
+        await AsyncStorage.setItem(cacheKey, JSON.stringify(cacheData));
         setWeather(weatherData);
       } catch (e) {
         const fishingScore = calculateFishingScore({
