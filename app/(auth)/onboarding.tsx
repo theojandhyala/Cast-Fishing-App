@@ -121,8 +121,16 @@ export default function OnboardingScreen() {
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        scrollEnabled={false}
+        scrollEnabled={true}
         style={styles.slides}
+        onMomentumScrollEnd={(e) => {
+          const newStep = Math.round(e.nativeEvent.contentOffset.x / width);
+          if (newStep !== step) {
+            setStep(newStep);
+            animateIn();
+            animateDots(newStep);
+          }
+        }}
       >
         {/* Slide 1: Welcome */}
         <View style={[styles.slide, { width }]}>
