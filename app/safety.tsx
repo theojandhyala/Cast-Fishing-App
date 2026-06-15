@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 import { colors, radius, spacing } from '../constants/theme';
 
 const EMERGENCY_CONTACTS = [
@@ -93,17 +93,26 @@ export default function SafetyScreen() {
   const [checkedIn, setCheckedIn] = useState(false);
 
   const shareLocation = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission denied', 'Location access is needed to share your position.');
+    if (Platform.OS === 'web') {
+      Alert.alert('Share Location', 'Use your phone\'s native app for this feature. Open maps.google.com to find your coordinates.');
       return;
     }
-    const loc = await Location.getCurrentPositionAsync({});
-    Alert.alert(
-      'Your Location',
-      `Latitude: ${loc.coords.latitude.toFixed(5)}\nLongitude: ${loc.coords.longitude.toFixed(5)}\n\nShare this with your emergency contact.`,
-      [{ text: 'OK' }]
-    );
+    try {
+      const Location = await import('expo-location');
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Location access is needed to share your position.');
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({});
+      Alert.alert(
+        'Your Location',
+        `Latitude: ${loc.coords.latitude.toFixed(5)}\nLongitude: ${loc.coords.longitude.toFixed(5)}\n\nShare this with your emergency contact.`,
+        [{ text: 'OK' }]
+      );
+    } catch {
+      Alert.alert('Error', 'Could not get location. Please check your device settings.');
+    }
   };
 
   const checkIn = () => {
