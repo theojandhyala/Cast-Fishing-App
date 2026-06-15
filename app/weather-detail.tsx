@@ -5,7 +5,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useLocation } from '../hooks/useLocation';
+import { useLocationStore } from '../store/locationStore';
 import { useWeather } from '../hooks/useWeather';
 import { colors, spacing, radius } from '../constants/theme';
 
@@ -41,8 +41,8 @@ const currentHour = now.getHours();
 
 export default function WeatherDetailScreen() {
   const router = useRouter();
-  const { location } = useLocation();
-  const { weather } = useWeather(location?.latitude, location?.longitude);
+  const { location } = useLocationStore();
+  const { weather } = useWeather(location?.query);
   const [selectedDay, setSelectedDay] = useState(0);
 
   const bestDayIndex = FORECAST_7DAY.reduce((bestIdx, d, i) => d.fishScore > FORECAST_7DAY[bestIdx].fishScore ? i : bestIdx, 0);
