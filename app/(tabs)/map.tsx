@@ -12,6 +12,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WORLD_SPOTS, WorldSpot } from '../../data/worldSpots';
+import { SpotCard } from '../../components/map/SpotCard';
 import { colors, radius, spacing } from '../../constants/theme';
 
 const { height } = Dimensions.get('window');
