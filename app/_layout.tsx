@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -15,6 +15,7 @@ export default function RootLayout() {
   const { loadUser } = useAuthStore();
   const { loadCatches } = useCatchStore();
   const { load: loadUserPrefs } = useUserStore();
+  const [ready, setReady] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -25,16 +26,25 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    async function init() {
-      await Promise.all([loadUser(), loadCatches(), loadUserPrefs()]);
-      if (fontsLoaded) {
-        await SplashScreen.hideAsync();
-      }
+    // Fallback: if fonts don't load within 4s, continue anyway
+    const timeout = setTimeout(() => setReady(true), 4000);
+    if (fontsLoaded) {
+      clearTimeout(timeout);
+      setReady(true);
     }
-    init();
+    return () => clearTimeout(timeout);
   }, [fontsLoaded]);
 
-  if (!fontsLoaded) return null;
+  useEffect(() => {
+    if (!ready) return;
+    async function init() {
+      await Promise.all([loadUser(), loadCatches(), loadUserPrefs()]);
+      await SplashScreen.hideAsync().catch(() => {});
+    }
+    init();
+  }, [ready]);
+
+  if (!ready) return null;
 
   return (
     <>
