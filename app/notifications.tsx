@@ -11,18 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
 import { colors, radius, spacing } from '../constants/theme';
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
 
 const SPECIES_SEASONS = [
   { name: 'Carp Season', date: 'Jun 16 – Mar 14', icon: '🐟' },
@@ -34,7 +23,14 @@ const SPECIES_SEASONS = [
 
 const LEAD_TIMES = ['30 min', '1 hour', '2 hours'];
 
+async function getNotifications() {
+  if (Platform.OS === 'web') return null;
+  return import('expo-notifications');
+}
+
 async function requestPermissions(): Promise<boolean> {
+  const Notifications = await getNotifications();
+  if (!Notifications) return false;
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'CAST Notifications',
@@ -47,9 +43,11 @@ async function requestPermissions(): Promise<boolean> {
 
 async function scheduleMorningBriefing(): Promise<string | null> {
   try {
+    const Notifications = await getNotifications();
+    if (!Notifications) return null;
     const granted = await requestPermissions();
     if (!granted) {
-      Alert.alert('Permission Required', 'Please enable notifications in your device settings to receive fishing briefings.');
+      Alert.alert('Permission Required', 'Please enable notifications in your device settings.');
       return null;
     }
     await Notifications.cancelAllScheduledNotificationsAsync();
@@ -66,12 +64,14 @@ async function scheduleMorningBriefing(): Promise<string | null> {
       },
     });
     return id;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
 
 async function cancelAllNotifications() {
+  const Notifications = await getNotifications();
+  if (!Notifications) return;
   await Notifications.cancelAllScheduledNotificationsAsync();
 }
 
@@ -91,13 +91,17 @@ export default function NotificationsScreen() {
   }, []);
 
   const loadScheduled = async () => {
+    const Notifications = await getNotifications();
+    if (!Notifications) return;
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    if (scheduled.length > 0) {
-      setNextScheduled('6:00 AM daily');
-    }
+    if (scheduled.length > 0) setNextScheduled('6:00 AM daily');
   };
 
   const toggleMorningBriefing = async (value: boolean) => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Notifications', 'Push notifications are only available on the mobile app.');
+      return;
+    }
     setMorningBriefing(value);
     if (value) {
       const id = await scheduleMorningBriefing();
@@ -118,9 +122,15 @@ export default function NotificationsScreen() {
   const toggleSeason = (name: string) => setSeasonOpeners((s) => ({ ...s, [name]: !s[name] }));
 
   const testNotification = async () => {
+    if (Platform.OS === 'web') {
+      Alert.alert('Notifications', 'Push notifications are only available on the mobile app.');
+      return;
+    }
+    const Notifications = await getNotifications();
+    if (!Notifications) return;
     const granted = await requestPermissions();
     if (!granted) {
-      Alert.alert('Permission Required', 'Please enable notifications in Settings to test this feature.');
+      Alert.alert('Permission Required', 'Please enable notifications in Settings.');
       return;
     }
     await Notifications.scheduleNotificationAsync({
