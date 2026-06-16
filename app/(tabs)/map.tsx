@@ -209,7 +209,7 @@ export default function MapScreen() {
           <TouchableOpacity
             key={spot.id}
             style={styles.spotRow}
-            onPress={() => setSelectedSpot(spot)}
+            onPress={() => router.push({ pathname: '/spot-details', params: { id: spot.id } } as any)}
             activeOpacity={0.85}
           >
             <View style={[styles.spotTypeIcon, { borderColor: difficultyColors[spot.difficulty] + '44' }]}>
