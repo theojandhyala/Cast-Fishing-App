@@ -13,14 +13,14 @@ import { useRouter } from 'expo-router';
 import { useCatchStore, Catch } from '../../store/catchStore';
 import { CatchCard } from '../../components/catches/CatchCard';
 import { CatchStats } from '../../components/catches/CatchStats';
-import { colors, radius, spacing } from '../../constants/theme';
+import { colors, radius, spacing, typography, fonts } from '../../constants/theme';
 
 const FILTERS = ['All', 'Today', 'This Week', 'This Month'];
 
 export default function CatchesScreen() {
   const { catches, getStats } = useCatchStore();
   const [filter, setFilter] = useState('All');
-  const [mode, setMode] = useState<'grid' | 'list'>('list');
+  const [mode, setMode] = useState<'grid' | 'list'>('grid');
   const router = useRouter();
   const stats = getStats();
 
@@ -87,7 +87,7 @@ export default function CatchesScreen() {
         {/* Catches */}
         {filteredCatches.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>🎣</Text>
+            <MaterialCommunityIcons name="fish" size={56} color={colors.textTertiary} style={{ marginBottom: spacing.md }} />
             <Text style={styles.emptyText}>No catches yet</Text>
             <Text style={styles.emptySubtext}>Go fish and log your first catch!</Text>
           </View>
@@ -137,19 +137,16 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.textPrimary,
+    ...typography.h1,
   },
   subtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    ...typography.caption,
     marginTop: 2,
   },
   viewToggle: {
     padding: spacing.sm,
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -168,7 +165,7 @@ const styles = StyleSheet.create({
   filterChip: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs + 2,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -198,19 +195,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingBottom: 100,
   },
-  emptyEmoji: {
-    fontSize: 56,
-    marginBottom: spacing.md,
-  },
   emptyText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    ...typography.h3,
     marginBottom: spacing.xs,
   },
   emptySubtext: {
-    fontSize: 14,
-    color: colors.textSecondary,
+    ...typography.caption,
   },
   fab: {
     position: 'absolute',
@@ -218,7 +208,7 @@ const styles = StyleSheet.create({
     right: spacing.lg,
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: radius.full,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',

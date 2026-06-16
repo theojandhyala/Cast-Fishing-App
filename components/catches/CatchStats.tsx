@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { CatchStats as Stats } from '../../store/catchStore';
-import { colors, radius, spacing } from '../../constants/theme';
+import { colors, radius, spacing, fonts } from '../../constants/theme';
 
 interface CatchStatsProps {
   stats: Stats;
@@ -66,8 +66,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245,158,11,0.08)',
   },
   value: {
+    fontFamily: fonts.monoBold,
     fontSize: 16,
-    fontWeight: '700',
     color: colors.primary,
     marginTop: 2,
   },

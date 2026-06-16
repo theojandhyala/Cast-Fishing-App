@@ -9,7 +9,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Catch } from '../../store/catchStore';
-import { colors, radius, spacing } from '../../constants/theme';
+import { colors, radius, spacing, fonts } from '../../constants/theme';
 
 interface CatchCardProps {
   item: Catch;
@@ -32,7 +32,7 @@ export function CatchCard({ item, mode = 'grid' }: CatchCardProps) {
     return (
       <TouchableOpacity style={styles.listCard} onPress={handlePress} activeOpacity={0.85}>
         <View style={styles.listEmoji}>
-          <Text style={styles.emoji}>{item.emoji || '🐟'}</Text>
+          <MaterialCommunityIcons name="fish" size={22} color={colors.primary} />
         </View>
         <View style={styles.listInfo}>
           <Text style={styles.species}>{item.species}</Text>
@@ -64,7 +64,7 @@ export function CatchCard({ item, mode = 'grid' }: CatchCardProps) {
         <Image source={{ uri: item.photo }} style={styles.photo} />
       ) : (
         <View style={styles.photoPlaceholder}>
-          <Text style={styles.emojiLarge}>{item.emoji || '🐟'}</Text>
+          <MaterialCommunityIcons name="fish" size={36} color={colors.primary} />
         </View>
       )}
       <View style={styles.gridInfo}>
@@ -97,9 +97,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emojiLarge: {
-    fontSize: 40,
-  },
   gridInfo: {
     padding: spacing.sm,
   },
@@ -110,8 +107,8 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   weight: {
+    fontFamily: fonts.monoBold,
     fontSize: 16,
-    fontWeight: '700',
     color: colors.primary,
   },
   date: {
@@ -138,9 +135,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
-  },
-  emoji: {
-    fontSize: 24,
   },
   listInfo: {
     flex: 1,
