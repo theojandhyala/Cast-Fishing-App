@@ -85,7 +85,7 @@ const s = StyleSheet.create({
   },
 
   section: { paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
-  sectionLabel: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5, marginBottom: spacing.sm },
+  sectionLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: spacing.sm },
 
   card: {
     backgroundColor: colors.surface, borderRadius: radius.md,
@@ -94,7 +94,7 @@ const s = StyleSheet.create({
   },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: spacing.md, paddingVertical: 14,
+    paddingHorizontal: spacing.md, minHeight: 56, paddingVertical: 12,
   },
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   iconBox: {

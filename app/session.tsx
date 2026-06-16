@@ -172,9 +172,14 @@ export default function SessionScreen() {
           <Text style={s.activityTitle}>Session Activity</Text>
           {activity.map((item, i) => (
             <View key={i} style={s.activityRow}>
-              <View style={[s.activityDot, { backgroundColor: DOT_COLORS[item.type] }]} />
-              <Text style={s.activityTime}>{item.time}</Text>
-              <Text style={s.activityText}>{item.text}</Text>
+              <View style={s.timelineSide}>
+                <View style={[s.activityDot, { backgroundColor: DOT_COLORS[item.type] }]} />
+                {i < activity.length - 1 && <View style={s.timelineLine} />}
+              </View>
+              <View style={s.activityContent}>
+                <Text style={s.activityTime}>{item.time}</Text>
+                <Text style={s.activityText}>{item.text}</Text>
+              </View>
             </View>
           ))}
         </View>
@@ -259,15 +264,14 @@ const s = StyleSheet.create({
   actionLabel: { fontSize: 11, fontWeight: '700', color: colors.primary, letterSpacing: 0.5 },
 
   activitySection: { paddingHorizontal: spacing.lg },
-  activityTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 12 },
-  activityRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  activityDot: { width: 8, height: 8, borderRadius: 4 },
-  activityTime: { fontSize: 12, color: colors.textSecondary, width: 36 },
-  activityText: { flex: 1, fontSize: 13, color: colors.textPrimary },
+  activityTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 16 },
+  activityRow: { flexDirection: 'row', gap: 12, paddingBottom: 16 },
+  timelineSide: { alignItems: 'center', width: 16 },
+  activityDot: { width: 10, height: 10, borderRadius: 5, marginTop: 3 },
+  timelineLine: { flex: 1, width: 1, backgroundColor: colors.border, marginTop: 4 },
+  activityContent: { flex: 1, paddingBottom: 4 },
+  activityTime: { fontSize: 11, color: colors.textSecondary, fontWeight: '600', marginBottom: 2 },
+  activityText: { fontSize: 14, color: colors.textPrimary },
 
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {

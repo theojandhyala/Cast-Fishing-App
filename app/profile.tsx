@@ -182,13 +182,13 @@ const s = StyleSheet.create({
   statsRow: {
     flexDirection: 'row', alignItems: 'center',
     marginHorizontal: spacing.lg, marginBottom: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.md + 4,
     borderBottomWidth: 1, borderTopWidth: 1, borderColor: colors.border,
   },
-  statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 22, fontWeight: '700', color: colors.textPrimary },
-  statLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
-  statDivider: { width: 1, height: 28, backgroundColor: colors.border },
+  statItem: { flex: 1, alignItems: 'center', gap: 4 },
+  statValue: { fontSize: 28, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.5 },
+  statLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  statDivider: { width: 1, height: 36, backgroundColor: colors.border },
 
   section: { paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 12 },

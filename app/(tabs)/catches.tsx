@@ -44,10 +44,13 @@ function timeAgo(dateStr: string) {
 }
 
 export default function CatchesScreen() {
-  const { catches } = useCatchStore();
+  const { catches, getStats } = useCatchStore();
   const router = useRouter();
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
+  const stats = getStats();
+  // Map species → personal best weight for PB badge
+  const pbMap = stats.personalBests || {};
 
   const filtered = useMemo(() => catches.filter((c) => {
     if (search) {
@@ -128,6 +131,9 @@ export default function CatchesScreen() {
               >
                 <LinearGradient colors={grad} style={s.cardPhoto}>
                   <MaterialCommunityIcons name="fish" size={28} color="rgba(0,212,170,0.35)" />
+                  {item.weight && pbMap[item.species] && item.weight >= pbMap[item.species] && (
+                    <View style={s.pbBadge}><Text style={s.pbBadgeText}>PB</Text></View>
+                  )}
                 </LinearGradient>
                 <View style={s.cardInfo}>
                   <Text style={s.cardSpecies} numberOfLines={1}>{item.species}</Text>
@@ -165,8 +171,9 @@ const s = StyleSheet.create({
 
   pillsRow: { paddingHorizontal: spacing.lg, gap: 8, paddingBottom: spacing.sm },
   pill: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.full,
+    paddingHorizontal: 16, paddingVertical: 11, minHeight: 44, borderRadius: radius.full,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
   },
   pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   pillText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
@@ -178,7 +185,14 @@ const s = StyleSheet.create({
     borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
     overflow: 'hidden', ...elevation.raised,
   },
-  cardPhoto: { height: 120, alignItems: 'center', justifyContent: 'center' },
+  cardPhoto: { height: 120, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  pbBadge: {
+    position: 'absolute', top: 8, right: 8,
+    backgroundColor: colors.secondary,
+    borderRadius: radius.full,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  pbBadgeText: { fontSize: 9, fontWeight: '800', color: '#0A0E1A', letterSpacing: 0.5 },
   cardInfo: { padding: 10 },
   cardSpecies: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
   cardWeight: { fontSize: 13, color: colors.primary, fontWeight: '700', marginBottom: 2 },

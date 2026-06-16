@@ -17,6 +17,12 @@ import { SpotCard } from '../../components/map/SpotCard';
 import { colors, radius, spacing, elevation } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
 
+const DIFFICULTY_COLORS: Record<string, string> = {
+  beginner:     colors.success,
+  intermediate: colors.secondary,
+  expert:       colors.danger,
+};
+
 const TYPE_FILTERS = ['All', 'Sea', 'Lake', 'River', 'Ocean', 'Reservoir'];
 const TAG_FILTERS = ['Carp', 'Predator', 'Beginner Friendly'];
 
@@ -150,18 +156,23 @@ export default function SpotsScreen() {
                   {spot.type.charAt(0).toUpperCase() + spot.type.slice(1)} · {spot.country}
                 </Text>
                 <View style={s.speciesRow}>
-                  {spot.species.slice(0, 3).map((sp) => (
-                    <MaterialCommunityIcons key={sp} name="fish" size={13} color={colors.textTertiary} />
+                  {spot.species.slice(0, 2).map((sp) => (
+                    <Text key={sp} style={s.speciesChip} numberOfLines={1}>{sp}</Text>
                   ))}
-                  {spot.species.length > 3 && (
-                    <Text style={s.moreText}>+{spot.species.length - 3}</Text>
+                  {spot.species.length > 2 && (
+                    <Text style={s.moreText}>+{spot.species.length - 2}</Text>
                   )}
                 </View>
               </View>
 
-              {/* Right: bookmark + rating */}
+              {/* Right: bookmark + rating + difficulty */}
               <View style={s.spotRight}>
-                <TouchableOpacity onPress={() => toggleSaved(spot.id)} style={s.bookmarkBtn}>
+                <TouchableOpacity
+                  onPress={() => toggleSaved(spot.id)}
+                  style={s.bookmarkBtn}
+                  accessibilityLabel={isSaved ? 'Remove from saved' : 'Save spot'}
+                  accessibilityRole="button"
+                >
                   <MaterialCommunityIcons
                     name={isSaved ? 'bookmark' : 'bookmark-outline'}
                     size={20} color={isSaved ? colors.secondary : colors.textSecondary}
@@ -170,6 +181,11 @@ export default function SpotsScreen() {
                 <View style={s.ratingRow}>
                   <MaterialCommunityIcons name="star" size={12} color={colors.secondary} />
                   <Text style={s.ratingText}>{spot.rating}</Text>
+                </View>
+                <View style={[s.diffBadge, { backgroundColor: (DIFFICULTY_COLORS[spot.difficulty] || colors.primary) + '22' }]}>
+                  <Text style={[s.diffBadgeText, { color: DIFFICULTY_COLORS[spot.difficulty] || colors.primary }]}>
+                    {spot.difficulty[0].toUpperCase()}
+                  </Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -218,14 +234,15 @@ const s = StyleSheet.create({
 
   pillsRow: { paddingHorizontal: spacing.lg, gap: 8, paddingBottom: spacing.sm },
   pill: {
-    paddingHorizontal: 14, paddingVertical: 7,
+    paddingHorizontal: 16, paddingVertical: 11, minHeight: 44,
     borderRadius: radius.full,
     backgroundColor: colors.surface,
     borderWidth: 1, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
   },
   pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   pillText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
-  pillTextActive: { color: colors.background },
+  pillTextActive: { color: '#051410', fontWeight: '700' },
 
   spotCard: {
     flexDirection: 'row', alignItems: 'center',
@@ -242,11 +259,14 @@ const s = StyleSheet.create({
   spotInfo: { flex: 1, paddingHorizontal: 12, paddingVertical: 10 },
   spotName: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 3 },
   spotSub: { fontSize: 12, color: colors.textSecondary, marginBottom: 6 },
-  speciesRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  speciesRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
+  speciesChip: { fontSize: 11, color: colors.textSecondary },
   moreText: { fontSize: 11, color: colors.textTertiary },
 
-  spotRight: { alignItems: 'center', paddingRight: 14, gap: 8 },
-  bookmarkBtn: { padding: 2 },
+  spotRight: { alignItems: 'center', paddingRight: 12, gap: 6 },
+  bookmarkBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  diffBadge: { width: 22, height: 22, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
+  diffBadgeText: { fontSize: 10, fontWeight: '800' },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   ratingText: { fontSize: 13, fontWeight: '700', color: colors.secondary },
 

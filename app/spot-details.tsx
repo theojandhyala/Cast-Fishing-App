@@ -199,7 +199,13 @@ export default function SpotDetailsScreen() {
 
       {/* Bottom CTA */}
       <View style={s.bottomBar}>
-        <TouchableOpacity style={s.dirBtn} onPress={handleDirections} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={s.dirBtn}
+          onPress={handleDirections}
+          activeOpacity={0.85}
+          accessibilityLabel="Get directions to this spot"
+          accessibilityRole="button"
+        >
           <MaterialCommunityIcons name="map-marker-outline" size={18} color={colors.textSecondary} />
           <Text style={s.dirBtnText}>Get Directions</Text>
         </TouchableOpacity>

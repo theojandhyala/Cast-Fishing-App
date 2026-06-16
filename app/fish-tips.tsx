@@ -189,8 +189,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -214,8 +214,10 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
-    paddingVertical: spacing.sm,
+    paddingVertical: 11,
+    minHeight: 44,
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: radius.full,
   },
   segmentActive: {
@@ -230,10 +232,10 @@ const styles = StyleSheet.create({
     color: colors.background,
   },
   sectionLabel: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
     color: colors.textPrimary,
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
     marginBottom: spacing.sm,
   },
   biteCard: {
@@ -248,13 +250,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   biteCardBest: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: 'rgba(0,212,170,0.12)',
+    borderColor: 'rgba(0,212,170,0.35)',
   },
   biteCardBestLabel: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.background,
+    color: colors.primary,
     width: 50,
   },
   biteCardLabel: {
@@ -266,7 +268,7 @@ const styles = StyleSheet.create({
   biteCardBestTime: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.background,
+    color: colors.textPrimary,
     flex: 1,
   },
   biteCardTime: {
@@ -282,7 +284,7 @@ const styles = StyleSheet.create({
   biteCardBestQuality: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.background,
+    color: colors.primary,
   },
   biteCardQuality: {
     fontSize: 12,
