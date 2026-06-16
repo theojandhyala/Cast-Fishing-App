@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { useCatchStore } from '../store/catchStore';
 import { useAchievementStore } from '../store/achievementStore';
@@ -53,6 +54,7 @@ function getFishingPersonality(speciesCounts: Record<string, number>, catches: A
 }
 
 export default function ProfileScreen() {
+  const router = useRouter();
   const { user, updateUser } = useAuthStore();
   const { catches, getStats } = useCatchStore();
   const { achievements } = useAchievementStore();
@@ -176,6 +178,31 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Menu */}
+        <View style={styles.section}>
+          <View style={styles.menuCard}>
+            {[
+              { icon: 'trophy-outline', label: 'Achievements', route: '/my-stats' },
+              { icon: 'toolbox-outline', label: 'Gear', route: '/gear-tracker' },
+              { icon: 'map-marker-outline', label: 'Favorite Spots', route: '/(tabs)/map' },
+              { icon: 'cog-outline', label: 'Settings', route: '/settings' },
+              { icon: 'help-circle-outline', label: 'Help & Support', route: '/safety' },
+              { icon: 'information-outline', label: 'About Cast Fishing', route: '/more' },
+            ].map((item, i, arr) => (
+              <TouchableOpacity
+                key={item.label}
+                style={[styles.menuRow, i < arr.length - 1 && styles.menuRowBorder]}
+                onPress={() => router.push(item.route as any)}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name={item.icon as any} size={19} color={colors.textSecondary} />
+                <Text style={styles.menuLabel}>{item.label}</Text>
+                <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textTertiary} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* Edit button */}
         <TouchableOpacity style={styles.editBtn} onPress={() => { setEditName(user?.name || ''); setEditModal(true); }}>
           <MaterialCommunityIcons name="account-edit" size={18} color={colors.primary} />
@@ -276,6 +303,10 @@ const styles = StyleSheet.create({
   activityLabel: { fontSize: 14, color: colors.textPrimary, fontWeight: '500' },
   activitySub: { fontSize: 12, color: colors.textSecondary },
   activityDate: { fontSize: 11, color: colors.textSecondary },
+  menuCard: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: 14 },
+  menuRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  menuLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.textPrimary },
   editBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, marginHorizontal: spacing.lg, paddingVertical: spacing.md, backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)' },
   editBtnText: { fontSize: 15, fontWeight: '600', color: colors.primary },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
