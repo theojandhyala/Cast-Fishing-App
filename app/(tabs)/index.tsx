@@ -75,6 +75,17 @@ function getGreeting() {
   return 'Evening';
 }
 
+function timeAgo(dateStr: string) {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(diffMs / 86400000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return '1 day ago';
+  if (days < 7) return `${days} days ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks === 1) return '1 week ago';
+  return `${weeks} weeks ago`;
+}
+
 function getTopSpecies(count: number) {
   const hour  = new Date().getHours();
   const month = new Date().getMonth();
@@ -130,13 +141,9 @@ export default function HomeScreen() {
 
           {/* ── TOP BAR ── */}
           <View style={s.topBar}>
-            <View>
-              <View style={s.topGreetingRow}>
-                <Text style={s.topGreeting}>GOOD {getGreeting().toUpperCase()} ·</Text>
-                <MaterialCommunityIcons name={(MOON_ICONS[moon.name] ?? 'moon-waning-crescent') as any} size={12} color={colors.textSecondary} />
-                <Text style={s.topGreeting}>{moon.name.toUpperCase()}</Text>
-              </View>
-              <Text style={s.topName}>{user?.name?.split(' ')[0] || 'Angler'}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.topName}>Good {getGreeting()}, {user?.name?.split(' ')[0] || 'Angler'} 👋</Text>
+              <Text style={s.topSubtitle}>Let's catch something great today</Text>
             </View>
             <View style={s.topRight}>
               <TouchableOpacity onPress={() => router.push('/notifications' as any)} style={s.iconBtn}>
@@ -184,49 +191,39 @@ export default function HomeScreen() {
             </View>
           ) : (
             /* ── LOCATION SET: conditions panel ── */
-            <View style={s.condPanel}>
-              <TouchableOpacity style={s.condLocation} onPress={() => { setDraft(''); setEditing(true); }} activeOpacity={0.7}>
-                <MaterialCommunityIcons name="map-marker" size={15} color={colors.primary} />
-                <Text style={s.condLocationText}>{location?.name}</Text>
-                <MaterialCommunityIcons name="chevron-down" size={15} color={colors.textSecondary} />
-              </TouchableOpacity>
-
-              <View style={s.condMain}>
-                <View style={s.condLeft}>
-                  <Text style={s.condDesc}>{w.description}</Text>
-                  <View style={s.condStats}>
-                    <View style={s.condStatItem}>
-                      <MaterialCommunityIcons name="thermometer" size={13} color={colors.textSecondary} />
-                      <Text style={s.condStat}>{w.temp}°C</Text>
-                    </View>
-                    <Text style={s.condDot}>·</Text>
-                    <View style={s.condStatItem}>
-                      <MaterialCommunityIcons name="weather-windy" size={13} color={colors.textSecondary} />
-                      <Text style={s.condStat}>{w.wind}km/h</Text>
-                    </View>
-                    <Text style={s.condDot}>·</Text>
-                    <Text style={s.condStat}>{w.pressure}mb</Text>
-                  </View>
-                  <View style={[s.trendBadge, {
-                    backgroundColor: w.pressureTrend === 'rising' ? 'rgba(0,212,170,0.1)' : w.pressureTrend === 'falling' ? 'rgba(239,68,68,0.1)' : 'rgba(156,163,175,0.1)',
-                  }]}>
-                    <Text style={[s.trendText, {
-                      color: w.pressureTrend === 'rising' ? colors.primary : w.pressureTrend === 'falling' ? '#EF4444' : colors.textSecondary,
-                    }]}>
-                      {w.pressureTrend === 'rising' ? '↑ Pressure rising — fish feeding' : w.pressureTrend === 'falling' ? '↓ Dropping — fish before it falls' : '→ Pressure stable'}
-                    </Text>
-                  </View>
-                  <TouchableOpacity onPress={() => router.push('/conditions' as any)}>
-                    <Text style={s.condMore}>Full forecast →</Text>
+            <TouchableOpacity style={s.condPanel} onPress={() => router.push('/conditions' as any)} activeOpacity={0.85}>
+              <View style={s.condTopRow}>
+                <View style={{ flex: 1 }}>
+                  <TouchableOpacity style={s.condLocation} onPress={(e) => { e.stopPropagation(); setDraft(''); setEditing(true); }} activeOpacity={0.7}>
+                    <MaterialCommunityIcons name="map-marker" size={13} color={colors.primary} />
+                    <Text style={s.condLocationText}>{location?.name}</Text>
+                    <MaterialCommunityIcons name="chevron-down" size={13} color={colors.textSecondary} />
                   </TouchableOpacity>
+                  <Text style={s.condLabel}>Today's Conditions</Text>
+                  <Text style={s.condTemp}>{w.temp}°</Text>
+                  <Text style={s.condDesc}>{w.description}</Text>
                 </View>
-                <View style={s.condScore}>
-                  <Text style={[s.condScoreNum, { color: scoreColor }]}>{w.fishingScore}</Text>
-                  <Text style={[s.condScoreWord, { color: scoreColor }]}>{scoreWord}</Text>
+                <MaterialCommunityIcons name="weather-partly-cloudy" size={48} color={colors.secondary} />
+              </View>
+
+              <View style={s.condStatsRow}>
+                <View style={s.condStatCol}>
+                  <View style={s.condStatHead}>
+                    <MaterialCommunityIcons name="weather-windy" size={13} color={colors.textSecondary} />
+                    <Text style={s.condStatLabel}>Wind</Text>
+                  </View>
+                  <Text style={s.condStatValue}>{w.wind} km/h</Text>
+                </View>
+                <View style={s.condStatDivider} />
+                <View style={s.condStatCol}>
+                  <View style={s.condStatHead}>
+                    <MaterialCommunityIcons name={(MOON_ICONS[moon.name] ?? 'moon-waning-crescent') as any} size={13} color={colors.textSecondary} />
+                    <Text style={s.condStatLabel}>Solunar Activity</Text>
+                  </View>
+                  <Text style={[s.condStatValue, { color: scoreColor }]}>{scoreWord}</Text>
                 </View>
               </View>
-              <View style={[s.condBar, { backgroundColor: scoreColor }]} />
-            </View>
+            </TouchableOpacity>
           )}
 
           {/* ── STATS ROW ── */}
@@ -345,10 +342,10 @@ export default function HomeScreen() {
 
           <View style={s.divider} />
 
-          {/* ── RECENT CATCHES ── */}
+          {/* ── RECENTLY CAUGHT ── */}
           <View style={s.section}>
             <View style={s.sectionHead}>
-              <Text style={s.label}>RECENT CATCHES</Text>
+              <Text style={s.label}>RECENTLY CAUGHT</Text>
               <TouchableOpacity onPress={() => router.push('/(tabs)/catches' as any)}>
                 <Text style={s.linkText}>See all →</Text>
               </TouchableOpacity>
@@ -363,22 +360,24 @@ export default function HomeScreen() {
                 <MaterialCommunityIcons name="chevron-right" size={20} color={colors.primary} />
               </TouchableOpacity>
             ) : (
-              catches.slice(0, 4).map((c, i) => (
-                <TouchableOpacity
-                  key={c.id}
-                  style={[s.catchRow, i < Math.min(catches.length, 4) - 1 && s.catchBorder]}
-                  onPress={() => router.push({ pathname: '/catch-detail', params: { id: c.id } } as any)}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons name="fish" size={24} color={colors.textSecondary} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.catchSpecies}>{c.species}</Text>
-                    <Text style={s.catchMeta}>{c.location || 'Unknown location'}</Text>
-                  </View>
-                  {c.weight ? <Text style={s.catchWeight}>{c.weight}kg</Text> : null}
-                  <MaterialCommunityIcons name="chevron-right" size={16} color={colors.border} />
-                </TouchableOpacity>
-              ))
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.recentCatchRow} style={{ marginTop: 12 }}>
+                {catches.slice(0, 8).map((c) => (
+                  <TouchableOpacity
+                    key={c.id}
+                    style={s.recentCatchCard}
+                    onPress={() => router.push({ pathname: '/catch-detail', params: { id: c.id } } as any)}
+                    activeOpacity={0.85}
+                  >
+                    <View style={s.recentCatchIcon}>
+                      <MaterialCommunityIcons name="fish" size={26} color={colors.primary} />
+                    </View>
+                    <Text style={s.recentCatchSpecies} numberOfLines={1}>{c.species}</Text>
+                    {c.weight ? <Text style={s.recentCatchWeight}>{c.weight}kg</Text> : null}
+                    <Text style={s.recentCatchMeta} numberOfLines={1}>{timeAgo(c.date)}</Text>
+                    <Text style={s.recentCatchMeta} numberOfLines={1}>{c.location || 'Unknown location'}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             )}
           </View>
 
@@ -409,9 +408,8 @@ const s = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md,
   },
-  topGreetingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3 },
-  topGreeting: { fontSize: 10, color: colors.textSecondary, fontWeight: '700', letterSpacing: 1.5 },
-  topName: { ...typography.h1, fontSize: 30 },
+  topName: { ...typography.h2, fontSize: 22 },
+  topSubtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 3 },
   topRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   iconBtn: { padding: 6 },
   proChip: {
@@ -457,28 +455,29 @@ const s = StyleSheet.create({
     marginHorizontal: spacing.lg,
     backgroundColor: '#0D1620',
     borderRadius: radius.lg,
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
     marginBottom: spacing.lg,
   },
+  condTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   condLocation: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 4,
+    flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8,
   },
-  condLocationText: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.textPrimary },
-  condMain: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
-  condLeft: { flex: 1, gap: 7 },
-  condDesc: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
-  condStats: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  condStatItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  condStat: { ...typography.mono, fontSize: 12, color: colors.textSecondary },
-  condDot: { fontSize: 12, color: colors.border },
-  trendBadge: { alignSelf: 'flex-start', borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 4 },
-  trendText: { fontSize: 11, fontWeight: '600' },
-  condMore: { fontSize: 12, color: colors.primary, fontWeight: '700' },
-  condScore: { alignItems: 'flex-end', paddingLeft: spacing.md },
-  condScoreNum: { ...typography.monoLarge, fontSize: 56, lineHeight: 60, letterSpacing: -2 },
-  condScoreWord: { fontSize: 12, fontWeight: '900', letterSpacing: 2, textAlign: 'right' },
-  condBar: { height: 3 },
+  condLocationText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+  condLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5, marginBottom: 4 },
+  condTemp: { ...typography.monoLarge, fontSize: 44, lineHeight: 48, color: colors.textPrimary },
+  condDesc: { fontSize: 14, color: colors.textSecondary, marginTop: 2 },
+  condStatsRow: {
+    flexDirection: 'row', alignItems: 'center',
+    marginTop: spacing.lg, paddingTop: spacing.md,
+    borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  condStatCol: { flex: 1, gap: 4 },
+  condStatHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  condStatLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
+  condStatValue: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+  condStatDivider: { width: 1, height: 28, backgroundColor: colors.border, marginHorizontal: spacing.md },
 
   // Stats
   statsRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: 14 },
@@ -543,9 +542,17 @@ const s = StyleSheet.create({
   emptyRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border },
   emptyTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   emptySub: { fontSize: 12, color: colors.textSecondary },
-  catchRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, gap: 12 },
-  catchBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  catchSpecies: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  catchMeta: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
-  catchWeight: { ...typography.mono, fontSize: 14, fontFamily: fonts.monoBold, color: colors.primary },
+  recentCatchRow: { gap: 12, paddingRight: spacing.lg },
+  recentCatchCard: {
+    width: 140, backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: 4,
+  },
+  recentCatchIcon: {
+    width: 40, height: 40, borderRadius: radius.full,
+    backgroundColor: 'rgba(0,212,170,0.1)', alignItems: 'center', justifyContent: 'center',
+    marginBottom: 6,
+  },
+  recentCatchSpecies: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  recentCatchWeight: { ...typography.mono, fontSize: 13, fontFamily: fonts.monoBold, color: colors.primary },
+  recentCatchMeta: { fontSize: 11, color: colors.textSecondary },
 });
