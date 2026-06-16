@@ -1,23 +1,7 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, radius } from '../../constants/theme';
-
-function AddFabButton() {
-  const router = useRouter();
-  return (
-    <View style={styles.fabWrap}>
-      <TouchableOpacity
-        style={styles.fab}
-        activeOpacity={0.85}
-        onPress={() => router.push('/add-catch')}
-      >
-        <MaterialCommunityIcons name="plus" size={26} color="#06241D" />
-      </TouchableOpacity>
-    </View>
-  );
-}
+import { colors } from '../../constants/theme';
 
 export default function TabsLayout() {
   return (
@@ -61,16 +45,18 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="add-tab"
+        name="session"
         options={{
-          title: '',
-          tabBarButton: () => <AddFabButton />,
+          title: 'Session',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="timer-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="catches"
         options={{
-          title: 'Logbook',
+          title: 'Log',
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="book-open-variant" size={size} color={color} />
           ),
@@ -87,30 +73,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen name="tips" options={{ href: null }} />
       <Tabs.Screen name="more" options={{ href: null }} />
+      <Tabs.Screen name="add-tab" options={{ href: null }} />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  fabWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fab: {
-    width: 52,
-    height: 52,
-    borderRadius: radius.full,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -28,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-    borderWidth: 3,
-    borderColor: colors.surface,
-  },
-});
