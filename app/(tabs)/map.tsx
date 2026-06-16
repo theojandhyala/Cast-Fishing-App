@@ -45,7 +45,7 @@ export default function MapScreen() {
   const [selectedType, setSelectedType] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpot, setSelectedSpot] = useState<WorldSpot | null>(null);
-  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
+  const [viewMode, setViewMode] = useState<'map' | 'list' | 'hotspots'>('map');
   const [showAddSpot, setShowAddSpot] = useState(false);
   const [newSpotName, setNewSpotName] = useState('');
   const [newSpotCountry, setNewSpotCountry] = useState('');
@@ -63,6 +63,8 @@ export default function MapScreen() {
       s.region.toLowerCase().includes(searchQuery.toLowerCase());
     return matchContinent && matchType && matchSearch;
   }), [allSpots, selectedContinent, selectedType, searchQuery]);
+
+  const hotspots = useMemo(() => [...filtered].sort((a, b) => b.rating - a.rating).slice(0, 20), [filtered]);
 
   const handleAddSpot = () => {
     if (!newSpotName.trim()) return;
@@ -149,7 +151,7 @@ export default function MapScreen() {
       {/* Segmented Map/List control */}
       <View style={styles.segmentRow}>
         <View style={styles.segmentTrack}>
-          {(['map', 'list'] as const).map((mode) => (
+          {(['map', 'list', 'hotspots'] as const).map((mode) => (
             <TouchableOpacity
               key={mode}
               style={[styles.segmentBtn, viewMode === mode && styles.segmentBtnActive]}
@@ -157,12 +159,12 @@ export default function MapScreen() {
               activeOpacity={0.85}
             >
               <MaterialCommunityIcons
-                name={mode === 'map' ? 'map-outline' : 'view-list-outline'}
+                name={mode === 'map' ? 'map-outline' : mode === 'list' ? 'view-list-outline' : 'fire'}
                 size={15}
                 color={viewMode === mode ? colors.background : colors.textSecondary}
               />
               <Text style={[styles.segmentText, viewMode === mode && styles.segmentTextActive]}>
-                {mode === 'map' ? 'Map' : 'List'}
+                {mode === 'map' ? 'Map' : mode === 'list' ? 'List' : 'Hotspots'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -200,25 +202,33 @@ export default function MapScreen() {
       <>
       {/* Result count */}
       <View style={styles.countRow}>
-        <Text style={styles.countText}>Showing {filtered.length} spots worldwide</Text>
+        <Text style={styles.countText}>
+          {viewMode === 'hotspots' ? `Top ${hotspots.length} rated spots` : `Showing ${filtered.length} spots worldwide`}
+        </Text>
       </View>
 
       {/* Spot list */}
       <ScrollView style={styles.list} showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContent}>
-        {filtered.map((spot) => (
+        {(viewMode === 'hotspots' ? hotspots : filtered).map((spot, i) => (
           <TouchableOpacity
             key={spot.id}
             style={styles.spotRow}
             onPress={() => router.push({ pathname: '/spot-details', params: { id: spot.id } } as any)}
             activeOpacity={0.85}
           >
-            <View style={[styles.spotTypeIcon, { borderColor: difficultyColors[spot.difficulty] + '44' }]}>
-              <MaterialCommunityIcons
-                name={typeIcons[spot.type] as any}
-                size={20}
-                color={difficultyColors[spot.difficulty]}
-              />
-            </View>
+            {viewMode === 'hotspots' ? (
+              <View style={styles.hotspotRankBadge}>
+                <Text style={styles.hotspotRankText}>{i + 1}</Text>
+              </View>
+            ) : (
+              <View style={[styles.spotTypeIcon, { borderColor: difficultyColors[spot.difficulty] + '44' }]}>
+                <MaterialCommunityIcons
+                  name={typeIcons[spot.type] as any}
+                  size={20}
+                  color={difficultyColors[spot.difficulty]}
+                />
+              </View>
+            )}
             <View style={styles.spotInfo}>
               <Text style={styles.spotName} numberOfLines={1}>{spot.name}</Text>
               <Text style={styles.spotCountry} numberOfLines={1}>{spot.country} · {spot.region}</Text>
@@ -612,5 +622,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 11,
     color: colors.textTertiary,
+  },
+  hotspotRankBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(245,158,11,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hotspotRankText: {
+    ...typography.mono,
+    fontSize: 14,
+    fontFamily: fonts.monoBold,
+    color: colors.secondary,
   },
 });
