@@ -43,7 +43,7 @@ export default function SpeciesDetailScreen() {
         colors={['rgba(0,212,170,0.12)', 'transparent']}
         style={styles.hero}
       >
-        <Text style={styles.heroEmoji}>{fish.emoji}</Text>
+        <MaterialCommunityIcons name="fish" size={64} color={colors.primary} style={styles.heroEmoji} />
         <Text style={styles.heroName}>{fish.name}</Text>
         <Text style={styles.heroLatin}>{fish.latinName}</Text>
         <View style={styles.heroBadges}>
@@ -336,7 +336,7 @@ function BestTimesTab({ fish }: { fish: import('../data/species').Species }) {
       <Section title="Ideal Conditions">
         {/* Moon */}
         <View style={styles.condCard}>
-          <Text style={styles.condEmoji}>{moon.emoji}</Text>
+          <MaterialCommunityIcons name="moon-waning-crescent" size={22} color={colors.primary} style={styles.condEmoji} />
           <View style={{ flex: 1 }}>
             <Text style={styles.condCardTitle}>Moon Phase</Text>
             <Text style={styles.condCardBody}>{bt.moonPhase}</Text>
@@ -345,7 +345,7 @@ function BestTimesTab({ fish }: { fish: import('../data/species').Species }) {
 
         {/* Barometric */}
         <View style={styles.condCard}>
-          <Text style={styles.condEmoji}>📊</Text>
+          <MaterialCommunityIcons name="gauge" size={22} color={colors.primary} style={styles.condEmoji} />
           <View style={{ flex: 1 }}>
             <Text style={styles.condCardTitle}>Barometric Pressure</Text>
             <Text style={styles.condCardBody}>{bt.barometric}</Text>
@@ -354,7 +354,7 @@ function BestTimesTab({ fish }: { fish: import('../data/species').Species }) {
 
         {/* Water temp */}
         <View style={styles.condCard}>
-          <Text style={styles.condEmoji}>🌡️</Text>
+          <MaterialCommunityIcons name="thermometer" size={22} color={colors.primary} style={styles.condEmoji} />
           <View style={{ flex: 1 }}>
             <Text style={styles.condCardTitle}>Water Temperature</Text>
             <Text style={styles.condCardBody}>{bt.temperature}</Text>
@@ -363,7 +363,7 @@ function BestTimesTab({ fish }: { fish: import('../data/species').Species }) {
 
         {/* Weather */}
         <View style={styles.condCard}>
-          <Text style={styles.condEmoji}>⛅</Text>
+          <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color={colors.primary} style={styles.condEmoji} />
           <View style={{ flex: 1 }}>
             <Text style={styles.condCardTitle}>Weather</Text>
             <Text style={styles.condCardBody}>{bt.weather}</Text>
@@ -373,7 +373,7 @@ function BestTimesTab({ fish }: { fish: import('../data/species').Species }) {
         {/* Tide (if saltwater) */}
         {bt.tideState && (
           <View style={styles.condCard}>
-            <Text style={styles.condEmoji}>🌊</Text>
+            <MaterialCommunityIcons name="waves" size={22} color={colors.primary} style={styles.condEmoji} />
             <View style={{ flex: 1 }}>
               <Text style={styles.condCardTitle}>Tide State</Text>
               <Text style={styles.condCardBody}>{bt.tideState}</Text>
@@ -435,7 +435,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   heroEmoji: {
-    fontSize: 64,
     marginBottom: spacing.sm,
   },
   heroName: {
@@ -782,7 +781,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   condEmoji: {
-    fontSize: 22,
     marginTop: 2,
   },
   condCardTitle: {

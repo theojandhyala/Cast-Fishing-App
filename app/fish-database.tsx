@@ -146,18 +146,21 @@ export default function FishDatabaseScreen() {
             activeOpacity={0.85}
           >
             <View style={[styles.rarityBar, { backgroundColor: item.rarityColor }]} />
-            <Text style={styles.fishEmoji}>{item.emoji}</Text>
+            <MaterialCommunityIcons name="fish" size={32} color={item.rarityColor} style={styles.fishIcon} />
             <Text style={styles.fishName} numberOfLines={2}>{item.name}</Text>
             <Text style={styles.fishLatin} numberOfLines={1}>{item.latinName}</Text>
             <View style={styles.cardMeta}>
               <View style={[styles.rarityBadge, { backgroundColor: item.rarityColor + '22' }]}>
                 <Text style={[styles.rarityText, { color: item.rarityColor }]}>
-                  {item.rarity === 'mythic' ? '✦ MYTHIC' : RARITY_LABELS[item.rarity].toUpperCase()}
+                  {item.rarity === 'mythic' ? 'MYTHIC' : RARITY_LABELS[item.rarity].toUpperCase()}
                 </Text>
               </View>
             </View>
             <View style={styles.cardStats}>
-              <Text style={styles.statLabel}>⚖️ {item.averageWeight}</Text>
+              <View style={styles.statLabelRow}>
+                <MaterialCommunityIcons name="scale-balance" size={12} color={colors.textSecondary} />
+                <Text style={styles.statLabel}>{item.averageWeight}</Text>
+              </View>
               <View style={[styles.diffDot, { backgroundColor: DIFFICULTY_COLORS[item.difficulty] }]} />
             </View>
           </TouchableOpacity>
@@ -179,7 +182,7 @@ export default function FishDatabaseScreen() {
             <View style={styles.detailHandle} />
             {/* Header */}
             <View style={styles.detailHeader}>
-              <Text style={styles.detailEmoji}>{selectedFish.emoji}</Text>
+              <MaterialCommunityIcons name="fish" size={40} color={selectedFish.rarityColor} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.detailName}>{selectedFish.name}</Text>
                 <Text style={styles.detailLatin}>{selectedFish.latinName}</Text>
@@ -193,7 +196,7 @@ export default function FishDatabaseScreen() {
             <View style={[styles.detailRarityRow, { backgroundColor: selectedFish.rarityColor + '18' }]}>
               <View style={[styles.rarityDot, { backgroundColor: selectedFish.rarityColor, width: 10, height: 10, borderRadius: 5 }]} />
               <Text style={[styles.detailRarityText, { color: selectedFish.rarityColor }]}>
-                {selectedFish.rarity === 'mythic' ? '✦ MYTHIC ✦' : RARITY_LABELS[selectedFish.rarity].toUpperCase()}
+                {selectedFish.rarity === 'mythic' ? 'MYTHIC' : RARITY_LABELS[selectedFish.rarity].toUpperCase()}
               </Text>
               <Text style={styles.typeTag}>{TYPE_LABELS[selectedFish.type]}</Text>
             </View>
@@ -369,7 +372,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
   },
   rarityBar: { position: 'absolute', top: 0, left: 0, right: 0, height: 3, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg },
-  fishEmoji: { fontSize: 32, textAlign: 'center', marginTop: 8, marginBottom: 4 },
+  fishIcon: { alignSelf: 'center', marginTop: 8, marginBottom: 4 },
   fishName: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, textAlign: 'center' },
   fishLatin: { fontSize: 10, color: colors.textSecondary, textAlign: 'center', fontStyle: 'italic', marginTop: 2 },
   cardMeta: { alignItems: 'center', marginTop: 6 },
@@ -385,6 +388,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 6,
   },
+  statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   statLabel: { fontSize: 10, color: colors.textSecondary },
   diffDot: { width: 8, height: 8, borderRadius: 4 },
   empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
@@ -407,7 +411,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   detailHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, marginBottom: spacing.md },
-  detailEmoji: { fontSize: 40 },
+
   detailName: { fontSize: 20, fontWeight: '800', color: colors.textPrimary },
   detailLatin: { fontSize: 13, color: colors.textSecondary, fontStyle: 'italic', marginTop: 2 },
   detailRarityRow: {

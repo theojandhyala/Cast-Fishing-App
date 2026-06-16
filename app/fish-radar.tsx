@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Animated, Easing, SafeAreaView, ScrollView, Dimensions
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { species as allSpecies } from '../data/species';
 import { RarityBadge } from '../components/catches/RarityBadge';
 import { colors, radius, spacing } from '../constants/theme';
@@ -13,7 +14,6 @@ const RADAR_CENTER = RADAR_SIZE / 2;
 interface BlipData {
   id: string;
   name: string;
-  emoji: string;
   rarity: string;
   rarityColor: string;
   x: number;
@@ -51,7 +51,6 @@ export default function FishRadarScreen() {
       return {
         id: s.id,
         name: s.commonName,
-        emoji: s.emoji,
         rarity: s.rarity || 'common',
         rarityColor: s.rarityColor || '#9CA3AF',
         x: pos.x,
@@ -98,7 +97,8 @@ export default function FishRadarScreen() {
 
         {mythicAlert && (
           <View style={styles.mythicAlert}>
-            <Text style={styles.mythicAlertText}>🚨 MYTHIC ALERT — Rare signal detected!</Text>
+            <MaterialCommunityIcons name="alert" size={16} color="#EC4899" />
+            <Text style={styles.mythicAlertText}> MYTHIC ALERT — Rare signal detected!</Text>
           </View>
         )}
 
@@ -178,12 +178,15 @@ export default function FishRadarScreen() {
           .map((b) => (
             <View key={b.id} style={styles.detectedRow}>
               <View style={[styles.detectedDot, { backgroundColor: b.rarityColor }]} />
-              <Text style={styles.detectedEmoji}>{b.emoji}</Text>
+              <MaterialCommunityIcons name="fish" size={22} color={colors.textPrimary} style={styles.detectedEmoji} />
               <View style={styles.detectedInfo}>
                 <View style={styles.detectedNameRow}>
                   <Text style={styles.detectedName}>{b.name}</Text>
                   {isPeakHours && b.activity > 70 && (
-                    <Text style={styles.hotBadge}>🔥 Hot</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                      <MaterialCommunityIcons name="fire" size={12} color={colors.secondary} />
+                      <Text style={styles.hotBadge}>Hot</Text>
+                    </View>
                   )}
                 </View>
                 <View style={styles.activityBarBg}>
@@ -209,6 +212,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '800', color: colors.textPrimary },
   subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   mythicAlert: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     marginHorizontal: spacing.lg, marginBottom: spacing.sm,
     backgroundColor: 'rgba(236,72,153,0.15)',
     borderRadius: radius.lg, padding: spacing.md,
@@ -265,7 +269,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   detectedDot: { width: 10, height: 10, borderRadius: 5 },
-  detectedEmoji: { fontSize: 22 },
+  detectedEmoji: { marginRight: 0 },
   detectedInfo: { flex: 1 },
   detectedNameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 4 },
   detectedName: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },

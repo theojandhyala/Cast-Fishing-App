@@ -171,7 +171,7 @@ export default function SearchScreen() {
           <View style={styles.results}>
             {!hasResults && (
               <View style={styles.noResults}>
-                <Text style={styles.noResultsEmoji}>🔍</Text>
+                <MaterialCommunityIcons name="magnify" size={48} color={colors.textSecondary} style={styles.noResultsEmoji} />
                 <Text style={styles.noResultsTitle}>No results for "{query}"</Text>
                 <Text style={styles.noResultsSub}>Try a different search term</Text>
               </View>
@@ -215,7 +215,7 @@ export default function SearchScreen() {
                     }}
                   >
                     <View style={[styles.resultIcon, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
-                      <Text style={styles.resultEmoji}>{s.emoji}</Text>
+                      <MaterialCommunityIcons name="fish" size={16} color="#F59E0B" />
                     </View>
                     <View style={styles.resultInfo}>
                       <Text style={styles.resultName}>{s.commonName}</Text>
@@ -372,7 +372,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   noResultsEmoji: {
-    fontSize: 48,
     marginBottom: spacing.md,
   },
   noResultsTitle: {
@@ -399,9 +398,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  resultEmoji: {
-    fontSize: 16,
   },
   resultInfo: {
     flex: 1,

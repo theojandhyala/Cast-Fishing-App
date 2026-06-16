@@ -10,26 +10,26 @@ import { FISH_RECORDS } from '../data/worldRecords';
 import { colors, spacing, radius } from '../constants/theme';
 
 const SPECIES_LIST = [
-  { id: 'carp', name: 'Common Carp', emoji: '🐟' },
-  { id: 'pike', name: 'Pike', emoji: '🦷' },
-  { id: 'perch', name: 'Perch', emoji: '🎣' },
-  { id: 'tench', name: 'Tench', emoji: '🌿' },
-  { id: 'bream', name: 'Bream', emoji: '🫧' },
-  { id: 'roach', name: 'Roach', emoji: '🔴' },
-  { id: 'barbel', name: 'Barbel', emoji: '💪' },
-  { id: 'chub', name: 'Chub', emoji: '🌊' },
-  { id: 'salmon', name: 'Salmon', emoji: '🐠' },
-  { id: 'seabass', name: 'Sea Bass', emoji: '🌊' },
-  { id: 'rainbowTrout', name: 'Rainbow Trout', emoji: '🌈' },
-  { id: 'brownTrout', name: 'Brown Trout', emoji: '🟤' },
-  { id: 'zander', name: 'Zander', emoji: '🦈' },
-  { id: 'eel', name: 'Eel', emoji: '🐍' },
-  { id: 'crucianCarp', name: 'Crucian Carp', emoji: '🟡' },
-  { id: 'rudd', name: 'Rudd', emoji: '🔴' },
-  { id: 'dace', name: 'Dace', emoji: '💨' },
-  { id: 'gudgeon', name: 'Gudgeon', emoji: '⚪' },
-  { id: 'flounder', name: 'Flounder', emoji: '🐡' },
-  { id: 'bleak', name: 'Bleak', emoji: '⚡' },
+  { id: 'carp', name: 'Common Carp', icon: 'fish' },
+  { id: 'pike', name: 'Pike', icon: 'fish' },
+  { id: 'perch', name: 'Perch', icon: 'fish' },
+  { id: 'tench', name: 'Tench', icon: 'fish' },
+  { id: 'bream', name: 'Bream', icon: 'fish' },
+  { id: 'roach', name: 'Roach', icon: 'fish' },
+  { id: 'barbel', name: 'Barbel', icon: 'fish' },
+  { id: 'chub', name: 'Chub', icon: 'fish' },
+  { id: 'salmon', name: 'Salmon', icon: 'fish' },
+  { id: 'seabass', name: 'Sea Bass', icon: 'fish' },
+  { id: 'rainbowTrout', name: 'Rainbow Trout', icon: 'fish' },
+  { id: 'brownTrout', name: 'Brown Trout', icon: 'fish' },
+  { id: 'zander', name: 'Zander', icon: 'fish' },
+  { id: 'eel', name: 'Eel', icon: 'fish' },
+  { id: 'crucianCarp', name: 'Crucian Carp', icon: 'fish' },
+  { id: 'rudd', name: 'Rudd', icon: 'fish' },
+  { id: 'dace', name: 'Dace', icon: 'fish' },
+  { id: 'gudgeon', name: 'Gudgeon', icon: 'fish' },
+  { id: 'flounder', name: 'Flounder', icon: 'fish' },
+  { id: 'bleak', name: 'Bleak', icon: 'fish' },
 ];
 
 export default function RecordsScreen() {
@@ -65,14 +65,17 @@ export default function RecordsScreen() {
         {/* Your Personal Bests */}
         {Object.keys(stats.personalBests).length > 0 && (
           <View style={styles.pbSection}>
-            <Text style={styles.sectionTitle}>🏆 Your Personal Bests</Text>
+            <View style={styles.sectionTitleRow}>
+              <MaterialCommunityIcons name="trophy" size={18} color={colors.secondary} />
+              <Text style={styles.sectionTitle}>Your Personal Bests</Text>
+            </View>
             {Object.entries(stats.personalBests).map(([sp, weight]) => {
               const spData = SPECIES_LIST.find(s => s.name === sp || s.name.startsWith(sp));
               const record = spData ? FISH_RECORDS[spData.id] : null;
               const ukPct = record ? Math.round((weight / record.ukRecord.weightKg) * 100) : null;
               return (
                 <View key={sp} style={styles.pbCard}>
-                  <Text style={styles.pbEmoji}>{spData?.emoji || '🐟'}</Text>
+                  <MaterialCommunityIcons name={(spData?.icon || 'fish') as any} size={32} color={colors.primary} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.pbSpecies}>{sp}</Text>
                     <Text style={styles.pbWeight}>{weight} kg</Text>
@@ -87,7 +90,12 @@ export default function RecordsScreen() {
                             {((record?.ukRecord.weightKg || 0) - weight).toFixed(1)}kg more to beat the UK record
                           </Text>
                         )}
-                        {ukPct >= 100 && <Text style={[styles.targetText, { color: colors.success }]}>🎉 UK Record holder!</Text>}
+                        {ukPct >= 100 && (
+                          <View style={styles.recordHolderRow}>
+                            <MaterialCommunityIcons name="party-popper" size={12} color={colors.success} />
+                            <Text style={[styles.targetText, { color: colors.success }]}>UK Record holder!</Text>
+                          </View>
+                        )}
                       </View>
                     )}
                   </View>
@@ -99,7 +107,10 @@ export default function RecordsScreen() {
         )}
 
         {/* Browse all records */}
-        <Text style={[styles.sectionTitle, { paddingHorizontal: spacing.lg }]}>🌍 UK & World Records</Text>
+        <View style={[styles.sectionTitleRow, { paddingHorizontal: spacing.lg }]}>
+          <MaterialCommunityIcons name="earth" size={18} color={colors.textPrimary} />
+          <Text style={styles.sectionTitle}>UK & World Records</Text>
+        </View>
         <Text style={[styles.subTitle, { paddingHorizontal: spacing.lg, marginBottom: spacing.md }]}>Tap a species to see full records</Text>
         <View style={styles.speciesGrid}>
           {SPECIES_LIST.map(s => {
@@ -110,7 +121,7 @@ export default function RecordsScreen() {
                 style={[styles.speciesCard, selectedSpecies === s.id && styles.speciesCardActive]}
                 onPress={() => setSelectedSpecies(selectedSpecies === s.id ? null : s.id)}
               >
-                <Text style={styles.speciesEmoji}>{s.emoji}</Text>
+                <MaterialCommunityIcons name={s.icon as any} size={24} color={colors.primary} style={{ marginBottom: 2 }} />
                 <Text style={styles.speciesName}>{s.name}</Text>
                 {record && <Text style={styles.speciesRecord}>UK: {record.ukRecord.weightKg}kg</Text>}
               </TouchableOpacity>
@@ -121,10 +132,13 @@ export default function RecordsScreen() {
         {/* Selected species record detail */}
         {selected && selectedRecord && (
           <View style={styles.recordDetail}>
-            <Text style={styles.recordDetailTitle}>{selected.emoji} {selected.name} Records</Text>
+            <View style={styles.recordDetailTitleRow}>
+              <MaterialCommunityIcons name={selected.icon as any} size={20} color={colors.primary} />
+              <Text style={styles.recordDetailTitle}>{selected.name} Records</Text>
+            </View>
             <View style={styles.recordCards}>
               <View style={styles.recordCard}>
-                <Text style={styles.recordFlag}>🇬🇧</Text>
+                <MaterialCommunityIcons name="flag" size={22} color={colors.textSecondary} style={{ marginBottom: 4 }} />
                 <Text style={styles.recordType}>UK Record</Text>
                 <Text style={styles.recordWeight}>{selectedRecord.ukRecord.weightKg} kg</Text>
                 <Text style={styles.recordWeightLb}>({selectedRecord.ukRecord.weight} lb)</Text>
@@ -133,7 +147,7 @@ export default function RecordsScreen() {
                 {selectedRecord.ukRecord.angler && <Text style={styles.recordAngler}>{selectedRecord.ukRecord.angler}</Text>}
               </View>
               <View style={styles.recordCard}>
-                <Text style={styles.recordFlag}>🌍</Text>
+                <MaterialCommunityIcons name="earth" size={22} color={colors.textSecondary} style={{ marginBottom: 4 }} />
                 <Text style={styles.recordType}>World Record</Text>
                 <Text style={[styles.recordWeight, { color: colors.secondary }]}>{selectedRecord.worldRecord.weightKg} kg</Text>
                 <Text style={styles.recordWeightLb}>({selectedRecord.worldRecord.weight} lb)</Text>
@@ -168,27 +182,27 @@ const styles = StyleSheet.create({
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
   sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.sm, marginTop: spacing.md },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   subTitle: { fontSize: 13, color: colors.textSecondary },
   pbSection: { paddingHorizontal: spacing.lg },
   pbCard: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  pbEmoji: { fontSize: 32 },
   pbSpecies: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
   pbWeight: { fontSize: 22, fontWeight: '800', color: colors.primary, marginBottom: spacing.xs },
   progressBar: { height: 6, backgroundColor: colors.surface2, borderRadius: 3, overflow: 'hidden', marginBottom: 4 },
   progressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
   progressText: { fontSize: 11, color: colors.textSecondary },
   targetText: { fontSize: 11, color: colors.warning, marginTop: 2 },
+  recordHolderRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   speciesGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: spacing.lg, gap: spacing.sm, marginBottom: spacing.md },
   speciesCard: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, alignItems: 'center', borderWidth: 1, borderColor: colors.border, minWidth: 90 },
   speciesCardActive: { backgroundColor: 'rgba(245,158,11,0.1)', borderColor: colors.secondary },
-  speciesEmoji: { fontSize: 24, marginBottom: 2 },
   speciesName: { fontSize: 10, color: colors.textPrimary, textAlign: 'center', fontWeight: '600' },
   speciesRecord: { fontSize: 10, color: colors.textSecondary },
   recordDetail: { marginHorizontal: spacing.lg, backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.md, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md },
-  recordDetailTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.md },
+  recordDetailTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
+  recordDetailTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.md },
   recordCards: { flexDirection: 'row', gap: spacing.md },
   recordCard: { flex: 1, backgroundColor: colors.surface2, borderRadius: radius.lg, padding: spacing.md, alignItems: 'center' },
-  recordFlag: { fontSize: 24, marginBottom: 4 },
   recordType: { fontSize: 11, color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
   recordWeight: { fontSize: 22, fontWeight: '800', color: colors.primary },
   recordWeightLb: { fontSize: 11, color: colors.textSecondary, marginBottom: 4 },

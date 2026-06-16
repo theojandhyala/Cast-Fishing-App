@@ -12,13 +12,13 @@ import { colors, spacing, radius } from '../constants/theme';
 const SPECIES_OPTIONS = ['Carp', 'Pike', 'Perch', 'Barbel', 'Tench', 'Bream', 'Roach', 'Chub', 'Trout', 'Salmon'];
 
 const FORECAST = [
-  { day: 'Today', emoji: '⛅', score: 72, temp: 14 },
-  { day: 'Tue', emoji: '🌧️', score: 45, temp: 11 },
-  { day: 'Wed', emoji: '☀️', score: 88, temp: 17 },
-  { day: 'Thu', emoji: '⛅', score: 76, temp: 15 },
-  { day: 'Fri', emoji: '🌬️', score: 62, temp: 13 },
-  { day: 'Sat', emoji: '☀️', score: 91, temp: 18 },
-  { day: 'Sun', emoji: '⛅', score: 79, temp: 16 },
+  { day: 'Today', icon: 'weather-partly-cloudy', score: 72, temp: 14 },
+  { day: 'Tue', icon: 'weather-pouring', score: 45, temp: 11 },
+  { day: 'Wed', icon: 'weather-sunny', score: 88, temp: 17 },
+  { day: 'Thu', icon: 'weather-partly-cloudy', score: 76, temp: 15 },
+  { day: 'Fri', icon: 'weather-windy', score: 62, temp: 13 },
+  { day: 'Sat', icon: 'weather-sunny', score: 91, temp: 18 },
+  { day: 'Sun', icon: 'weather-partly-cloudy', score: 79, temp: 16 },
 ];
 
 function scoreColor(score: number) {
@@ -37,14 +37,14 @@ export default function TripPlannerScreen() {
   const [notes, setNotes] = useState('');
   const [selectedDay, setSelectedDay] = useState(0);
   const [checklist, setChecklist] = useState([
-    { id: 'rod', label: 'Rod(s)', checked: false, emoji: '🎣' },
-    { id: 'reel', label: 'Reel(s)', checked: false, emoji: '⚙️' },
-    { id: 'bait', label: 'Bait', checked: false, emoji: '🐛' },
-    { id: 'licence', label: 'Rod Licence', checked: false, emoji: '📄' },
-    { id: 'net', label: 'Landing Net', checked: false, emoji: '🕸️' },
-    { id: 'mat', label: 'Unhooking Mat', checked: false, emoji: '🛏️' },
-    { id: 'scales', label: 'Scales', checked: false, emoji: '⚖️' },
-    { id: 'food', label: 'Food & Drink', checked: false, emoji: '🥪' },
+    { id: 'rod', label: 'Rod(s)', checked: false, icon: 'fishing' },
+    { id: 'reel', label: 'Reel(s)', checked: false, icon: 'cog' },
+    { id: 'bait', label: 'Bait', checked: false, icon: 'bug' },
+    { id: 'licence', label: 'Rod Licence', checked: false, icon: 'file-document-outline' },
+    { id: 'net', label: 'Landing Net', checked: false, icon: 'spider-web' },
+    { id: 'mat', label: 'Unhooking Mat', checked: false, icon: 'bed-outline' },
+    { id: 'scales', label: 'Scales', checked: false, icon: 'scale-balance' },
+    { id: 'food', label: 'Food & Drink', checked: false, icon: 'food-apple-outline' },
   ]);
 
   const upcoming = getUpcomingTrips();
@@ -96,9 +96,16 @@ export default function TripPlannerScreen() {
       <View style={styles.tabs}>
         {(['trips', 'plan'] as const).map(t => (
           <TouchableOpacity key={t} style={[styles.tab, tab === t && styles.activeTab]} onPress={() => setTab(t)}>
-            <Text style={[styles.tabText, tab === t && styles.activeTabText]}>
-              {t === 'trips' ? '🗓 My Trips' : '➕ Plan Trip'}
-            </Text>
+            <View style={styles.tabContentRow}>
+              <MaterialCommunityIcons
+                name={t === 'trips' ? 'calendar-month-outline' : 'plus-circle-outline'}
+                size={16}
+                color={tab === t ? '#0A0E1A' : colors.textSecondary}
+              />
+              <Text style={[styles.tabText, tab === t && styles.activeTabText]}>
+                {t === 'trips' ? 'My Trips' : 'Plan Trip'}
+              </Text>
+            </View>
           </TouchableOpacity>
         ))}
       </View>
@@ -124,7 +131,7 @@ export default function TripPlannerScreen() {
             )}
             {upcoming.length === 0 && past.length === 0 && (
               <View style={styles.empty}>
-                <Text style={styles.emptyEmoji}>📅</Text>
+                <MaterialCommunityIcons name="calendar-blank-outline" size={56} color={colors.textSecondary} style={{ marginBottom: spacing.md }} />
                 <Text style={styles.emptyTitle}>No trips yet</Text>
                 <Text style={styles.emptyText}>Plan your first fishing trip!</Text>
                 <TouchableOpacity style={styles.emptyBtn} onPress={() => setTab('plan')}>
@@ -165,7 +172,7 @@ export default function TripPlannerScreen() {
                   onPress={() => setSelectedDay(i)}
                 >
                   <Text style={styles.forecastDay}>{f.day}</Text>
-                  <Text style={styles.forecastEmoji}>{f.emoji}</Text>
+                  <MaterialCommunityIcons name={f.icon as any} size={22} color={colors.textPrimary} style={styles.forecastIcon} />
                   <View style={[styles.scoreChip, { backgroundColor: scoreColor(f.score) + '33' }]}>
                     <Text style={[styles.scoreText, { color: scoreColor(f.score) }]}>{f.score}</Text>
                   </View>
@@ -178,11 +185,18 @@ export default function TripPlannerScreen() {
             <View style={styles.scoreCard}>
               <Text style={styles.scoreCardLabel}>Fishing Score for {forecast.day}</Text>
               <Text style={[styles.scoreCardValue, { color: scoreColor(forecast.score) }]}>{forecast.score}/100</Text>
-              <Text style={styles.scoreCardDesc}>
-                {forecast.score >= 75 ? '✅ Excellent conditions — fish will be active!' :
-                 forecast.score >= 50 ? '⚠️ Fair conditions — worth a try!' :
-                 '❌ Tough conditions — consider another day.'}
-              </Text>
+              <View style={styles.scoreCardDescRow}>
+                <MaterialCommunityIcons
+                  name={forecast.score >= 75 ? 'check-circle-outline' : forecast.score >= 50 ? 'alert-circle-outline' : 'close-circle-outline'}
+                  size={14}
+                  color={scoreColor(forecast.score)}
+                />
+                <Text style={styles.scoreCardDesc}>
+                  {forecast.score >= 75 ? 'Excellent conditions — fish will be active!' :
+                   forecast.score >= 50 ? 'Fair conditions — worth a try!' :
+                   'Tough conditions — consider another day.'}
+                </Text>
+              </View>
             </View>
 
             {/* Target species */}
@@ -206,7 +220,7 @@ export default function TripPlannerScreen() {
             <View style={styles.card}>
               {checklist.map(item => (
                 <TouchableOpacity key={item.id} style={styles.checkRow} onPress={() => toggleCheck(item.id)}>
-                  <Text style={styles.checkEmoji}>{item.emoji}</Text>
+                  <MaterialCommunityIcons name={item.icon as any} size={18} color={colors.textSecondary} style={styles.checkIcon} />
                   <Text style={[styles.checkLabel, item.checked && styles.checkLabelDone]}>{item.label}</Text>
                   <MaterialCommunityIcons
                     name={item.checked ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
@@ -252,10 +266,19 @@ function TripCard({ trip, onDelete, isPast }: { trip: any; onDelete: () => void;
       <View style={styles.tripCardHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.tripTitle}>{trip.title}</Text>
-          <Text style={styles.tripMeta}>📍 {trip.location}</Text>
-          <Text style={styles.tripMeta}>📅 {dateStr}</Text>
+          <View style={styles.tripMetaRow}>
+            <MaterialCommunityIcons name="map-marker-outline" size={13} color={colors.textSecondary} />
+            <Text style={styles.tripMeta}>{trip.location}</Text>
+          </View>
+          <View style={styles.tripMetaRow}>
+            <MaterialCommunityIcons name="calendar-outline" size={13} color={colors.textSecondary} />
+            <Text style={styles.tripMeta}>{dateStr}</Text>
+          </View>
           {trip.targetSpecies.length > 0 && (
-            <Text style={styles.tripMeta}>🎯 {trip.targetSpecies.join(', ')}</Text>
+            <View style={styles.tripMetaRow}>
+              <MaterialCommunityIcons name="target" size={13} color={colors.textSecondary} />
+              <Text style={styles.tripMeta}>{trip.targetSpecies.join(', ')}</Text>
+            </View>
           )}
         </View>
         <View style={styles.tripScoreBubble}>
@@ -266,9 +289,16 @@ function TripCard({ trip, onDelete, isPast }: { trip: any; onDelete: () => void;
       {trip.notes ? <Text style={styles.tripNotes} numberOfLines={2}>{trip.notes}</Text> : null}
       <View style={styles.tripFooter}>
         <View style={[styles.statusBadge, { backgroundColor: isPast ? colors.surface2 : 'rgba(0,212,170,0.15)' }]}>
-          <Text style={[styles.statusText, { color: isPast ? colors.textSecondary : colors.primary }]}>
-            {isPast ? '✓ Completed' : '📅 Upcoming'}
-          </Text>
+          <View style={styles.statusContentRow}>
+            <MaterialCommunityIcons
+              name={isPast ? 'check-circle-outline' : 'calendar-clock-outline'}
+              size={12}
+              color={isPast ? colors.textSecondary : colors.primary}
+            />
+            <Text style={[styles.statusText, { color: isPast ? colors.textSecondary : colors.primary }]}>
+              {isPast ? 'Completed' : 'Upcoming'}
+            </Text>
+          </View>
         </View>
         <TouchableOpacity onPress={onDelete} style={styles.deleteBtn}>
           <MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.danger} />
@@ -286,6 +316,7 @@ const styles = StyleSheet.create({
   tabs: { flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: colors.surface, borderRadius: radius.lg, padding: 4 },
   tab: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center', borderRadius: radius.md },
   activeTab: { backgroundColor: colors.primary },
+  tabContentRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   tabText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
   activeTabText: { color: '#0A0E1A' },
   content: { paddingHorizontal: spacing.lg },
@@ -297,13 +328,14 @@ const styles = StyleSheet.create({
   forecastCard: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, marginRight: spacing.sm, alignItems: 'center', minWidth: 70, borderWidth: 1, borderColor: colors.border },
   forecastCardActive: { borderColor: colors.primary, backgroundColor: 'rgba(0,212,170,0.1)' },
   forecastDay: { fontSize: 11, color: colors.textSecondary, marginBottom: 4 },
-  forecastEmoji: { fontSize: 22, marginBottom: 4 },
+  forecastIcon: { marginBottom: 4 },
   scoreChip: { borderRadius: radius.full, paddingHorizontal: 6, paddingVertical: 2, marginBottom: 4 },
   scoreText: { fontSize: 12, fontWeight: '700' },
   forecastTemp: { fontSize: 11, color: colors.textSecondary },
   scoreCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md, alignItems: 'center' },
   scoreCardLabel: { fontSize: 12, color: colors.textSecondary, marginBottom: 4 },
   scoreCardValue: { fontSize: 36, fontWeight: '800', marginBottom: 4 },
+  scoreCardDescRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   scoreCardDesc: { fontSize: 13, color: colors.textSecondary, textAlign: 'center' },
   speciesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
   speciesChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2, borderRadius: radius.full, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
@@ -312,13 +344,12 @@ const styles = StyleSheet.create({
   speciesChipTextActive: { color: colors.primary, fontWeight: '600' },
   card: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, marginBottom: spacing.md },
   checkRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
-  checkEmoji: { fontSize: 18, marginRight: spacing.sm },
+  checkIcon: { marginRight: spacing.sm },
   checkLabel: { flex: 1, fontSize: 15, color: colors.textPrimary },
   checkLabelDone: { textDecorationLine: 'line-through', color: colors.textSecondary },
   saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, borderRadius: radius.lg, paddingVertical: spacing.md, marginTop: spacing.md },
   saveBtnText: { fontSize: 16, fontWeight: '700', color: '#0A0E1A' },
   empty: { alignItems: 'center', padding: spacing.xxl, marginTop: spacing.xl },
-  emptyEmoji: { fontSize: 56, marginBottom: spacing.md },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.xs },
   emptyText: { fontSize: 14, color: colors.textSecondary, marginBottom: spacing.lg },
   emptyBtn: { backgroundColor: colors.primary, borderRadius: radius.lg, paddingHorizontal: spacing.xl, paddingVertical: spacing.sm + 4 },
@@ -326,13 +357,15 @@ const styles = StyleSheet.create({
   tripCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 },
   tripCardHeader: { flexDirection: 'row', alignItems: 'flex-start' },
   tripTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 },
-  tripMeta: { fontSize: 13, color: colors.textSecondary, marginBottom: 2 },
+  tripMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 },
+  tripMeta: { fontSize: 13, color: colors.textSecondary },
   tripScoreBubble: { alignItems: 'center', backgroundColor: colors.surface2, borderRadius: radius.lg, padding: spacing.sm, minWidth: 60 },
   tripScore: { fontSize: 24, fontWeight: '800' },
   tripScoreLabel: { fontSize: 10, color: colors.textSecondary },
   tripNotes: { fontSize: 13, color: colors.textSecondary, marginTop: spacing.sm, fontStyle: 'italic' },
   tripFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
   statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full },
+  statusContentRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statusText: { fontSize: 12, fontWeight: '600' },
   deleteBtn: { padding: 4 },
 });

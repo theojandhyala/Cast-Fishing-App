@@ -46,6 +46,24 @@ function getMonthActivity(speciesId: string): number {
   return data[new Date().getMonth()];
 }
 
+const MOON_PHASE_ICONS: Record<string, string> = {
+  'New Moon': 'moon-new',
+  'Waxing Crescent': 'moon-waxing-crescent',
+  'First Quarter': 'moon-first-quarter',
+  'Waxing Gibbous': 'moon-waxing-gibbous',
+  'Full Moon': 'moon-full',
+  'Waning Gibbous': 'moon-waning-gibbous',
+  'Last Quarter': 'moon-last-quarter',
+  'Waning Crescent': 'moon-waning-crescent',
+};
+
+const TIME_PERIOD_ICONS: Record<string, string> = {
+  Dawn: 'weather-sunset-up',
+  Midday: 'weather-sunny',
+  Dusk: 'weather-sunset-down',
+  Night: 'weather-night',
+};
+
 function ActivityBadge({ level }: { level: number }) {
   let label = 'Low';
   let bg = 'rgba(156,163,175,0.2)';
@@ -144,7 +162,7 @@ export default function FishTipsScreen() {
                   onPress={() => router.push({ pathname: '/species-detail', params: { id: fish.id } })}
                   activeOpacity={0.75}
                 >
-                  <Text style={styles.speciesEmoji}>{fish.emoji}</Text>
+                  <MaterialCommunityIcons name="fish" size={28} color={colors.primary} style={styles.speciesEmoji} />
                   <View style={styles.speciesInfo}>
                     <Text style={styles.speciesName}>{fish.commonName}</Text>
                     <Text style={styles.speciesTimeOfDay} numberOfLines={1}>
@@ -170,7 +188,7 @@ export default function FishTipsScreen() {
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Time period banner */}
           <View style={styles.timeBanner}>
-            <Text style={styles.timeBannerEmoji}>{timePeriod.emoji}</Text>
+            <MaterialCommunityIcons name={(TIME_PERIOD_ICONS[timePeriod.label] || 'weather-sunny') as any} size={32} color={colors.primary} />
             <View style={styles.timeBannerText}>
               <Text style={styles.timeBannerLabel}>{timePeriod.label} Session</Text>
               <Text style={styles.timeBannerDesc}>{periodDescriptions[periodLabel]}</Text>
@@ -180,7 +198,7 @@ export default function FishTipsScreen() {
           {/* Moon phase card */}
           <View style={styles.condCard}>
             <View style={styles.condCardRow}>
-              <Text style={styles.condEmoji}>{moon.emoji}</Text>
+              <MaterialCommunityIcons name={(MOON_PHASE_ICONS[moon.name] || 'moon-full') as any} size={24} color={colors.textPrimary} style={styles.condEmoji} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.condTitle}>{moon.name}</Text>
                 <Text style={styles.condBody}>{moon.tip}</Text>
@@ -191,7 +209,7 @@ export default function FishTipsScreen() {
           {/* Barometric tip card */}
           <View style={[styles.condCard, { borderColor: 'rgba(245,158,11,0.25)' }]}>
             <View style={styles.condCardRow}>
-              <Text style={styles.condEmoji}>📊</Text>
+              <MaterialCommunityIcons name="chart-line" size={24} color={colors.textPrimary} style={styles.condEmoji} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.condTitle}>Barometric Tip</Text>
                 <Text style={styles.condBody}>
@@ -215,7 +233,7 @@ export default function FishTipsScreen() {
                 activeOpacity={0.75}
               >
                 <Text style={styles.rankNum}>#{idx + 1}</Text>
-                <Text style={styles.topFishEmoji}>{fish.emoji}</Text>
+                <MaterialCommunityIcons name="fish" size={26} color={colors.primary} style={styles.topFishEmoji} />
                 <View style={styles.topFishInfo}>
                   <Text style={styles.topFishName}>{fish.commonName}</Text>
                   <Text style={styles.topFishTime} numberOfLines={1}>
@@ -242,7 +260,7 @@ export default function FishTipsScreen() {
                 onPress={() => router.push({ pathname: '/species-detail', params: { id: fish.id } })}
                 activeOpacity={0.75}
               >
-                <Text style={styles.speciesEmoji}>{fish.emoji}</Text>
+                <MaterialCommunityIcons name="fish" size={28} color={colors.primary} style={styles.speciesEmoji} />
                 <View style={styles.speciesInfo}>
                   <Text style={styles.speciesName}>{fish.commonName}</Text>
                   <Text style={styles.speciesTimeOfDay} numberOfLines={1}>
@@ -347,7 +365,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   speciesEmoji: {
-    fontSize: 28,
     width: 36,
     textAlign: 'center',
   },
@@ -398,9 +415,6 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,212,170,0.25)',
     marginBottom: spacing.md,
   },
-  timeBannerEmoji: {
-    fontSize: 32,
-  },
   timeBannerText: {
     flex: 1,
   },
@@ -429,7 +443,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   condEmoji: {
-    fontSize: 24,
     marginTop: 2,
   },
   condTitle: {
@@ -470,7 +483,6 @@ const styles = StyleSheet.create({
     width: 28,
   },
   topFishEmoji: {
-    fontSize: 26,
     width: 32,
     textAlign: 'center',
   },

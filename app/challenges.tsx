@@ -11,6 +11,19 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { WEEKLY_CHALLENGES, MONTHLY_CHALLENGES, SPECIAL_CHALLENGES, PAST_CHALLENGES } from '../data/challengesData';
 import { colors, radius, spacing } from '../constants/theme';
 
+const CHALLENGE_ICONS: Record<string, string> = {
+  wc1: 'fish',
+  wc2: 'weather-sunset',
+  wc3: 'map-marker',
+  mc1: 'trophy',
+  sc1: 'fish',
+  sc2: 'snowflake',
+  sc3: 'weather-sunny',
+  past1: 'bug',
+  past2: 'waves',
+  past3: 'scale-balance',
+};
+
 export default function ChallengesScreen() {
   const allWeeklyComplete = WEEKLY_CHALLENGES.every(c => c.completed);
   const streakBonus = 500;
@@ -60,7 +73,7 @@ export default function ChallengesScreen() {
           <View style={styles.card}>
             {PAST_CHALLENGES.map((c, i) => (
               <View key={c.id} style={[styles.historyRow, i < PAST_CHALLENGES.length - 1 && styles.historyBorder]}>
-                <Text style={styles.historyEmoji}>{c.emoji}</Text>
+                <MaterialCommunityIcons name={(CHALLENGE_ICONS[c.id] || 'trophy') as any} size={24} color={colors.secondary} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.historyTitle}>{c.title}</Text>
                   <Text style={styles.historySub}>Completed {new Date(c.completedAt).toLocaleDateString('en-GB')}</Text>
@@ -86,7 +99,7 @@ function ChallengeCard({ challenge, featured }: { challenge: (typeof WEEKLY_CHAL
   return (
     <View style={[styles.challengeCard, featured && styles.challengeFeatured, challenge.completed && styles.challengeCompleted]}>
       <View style={styles.challengeTop}>
-        <Text style={styles.challengeEmoji}>{challenge.emoji}</Text>
+        <MaterialCommunityIcons name={(CHALLENGE_ICONS[challenge.id] || 'trophy') as any} size={28} color={colors.secondary} />
         <View style={{ flex: 1 }}>
           <Text style={styles.challengeTitle}>{challenge.title}</Text>
           <Text style={styles.challengeDesc}>{challenge.description}</Text>
@@ -137,7 +150,6 @@ const styles = StyleSheet.create({
   challengeFeatured: { borderColor: colors.primary + '44', backgroundColor: 'rgba(0,212,170,0.04)' },
   challengeCompleted: { borderColor: colors.success + '44', backgroundColor: 'rgba(16,185,129,0.04)' },
   challengeTop: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  challengeEmoji: { fontSize: 28 },
   challengeTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   challengeDesc: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   completedBadge: {},
@@ -155,7 +167,6 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   historyRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.sm },
   historyBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  historyEmoji: { fontSize: 24 },
   historyTitle: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
   historySub: { fontSize: 12, color: colors.textSecondary },
   xpEarned: { backgroundColor: 'rgba(16,185,129,0.15)', borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 4 },

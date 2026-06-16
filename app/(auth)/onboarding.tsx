@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { useLocationStore } from '../../store/locationStore';
@@ -22,24 +23,24 @@ const { width } = Dimensions.get('window');
 const TOTAL_STEPS = 5;
 
 const SPECIES = [
-  { id: 'carp', name: 'Carp', emoji: '🐟' },
-  { id: 'pike', name: 'Pike', emoji: '🦷' },
-  { id: 'perch', name: 'Perch', emoji: '🎣' },
-  { id: 'tench', name: 'Tench', emoji: '🌿' },
-  { id: 'bream', name: 'Bream', emoji: '🫧' },
-  { id: 'roach', name: 'Roach', emoji: '🔴' },
-  { id: 'barbel', name: 'Barbel', emoji: '💪' },
-  { id: 'chub', name: 'Chub', emoji: '🌊' },
-  { id: 'salmon', name: 'Salmon', emoji: '🐠' },
-  { id: 'seabass', name: 'Sea Bass', emoji: '🌊' },
-  { id: 'trout', name: 'Trout', emoji: '🌈' },
-  { id: 'zander', name: 'Zander', emoji: '🦈' },
+  { id: 'carp', name: 'Carp', icon: 'fish' },
+  { id: 'pike', name: 'Pike', icon: 'fish' },
+  { id: 'perch', name: 'Perch', icon: 'fish' },
+  { id: 'tench', name: 'Tench', icon: 'fish' },
+  { id: 'bream', name: 'Bream', icon: 'fish' },
+  { id: 'roach', name: 'Roach', icon: 'fish' },
+  { id: 'barbel', name: 'Barbel', icon: 'fish' },
+  { id: 'chub', name: 'Chub', icon: 'fish' },
+  { id: 'salmon', name: 'Salmon', icon: 'fish' },
+  { id: 'seabass', name: 'Sea Bass', icon: 'fish' },
+  { id: 'trout', name: 'Trout', icon: 'fish' },
+  { id: 'zander', name: 'Zander', icon: 'fish' },
 ];
 
 const LEVELS = [
-  { id: 'beginner', label: 'Beginner', desc: 'Just starting out or less than 1 year fishing', emoji: '🌱' },
-  { id: 'intermediate', label: 'Intermediate', desc: '1–5 years, comfortable with most techniques', emoji: '🎣' },
-  { id: 'expert', label: 'Expert', desc: '5+ years, advanced angler', emoji: '🏆' },
+  { id: 'beginner', label: 'Beginner', desc: 'Just starting out or less than 1 year fishing', icon: 'sprout' },
+  { id: 'intermediate', label: 'Intermediate', desc: '1–5 years, comfortable with most techniques', icon: 'fish' },
+  { id: 'expert', label: 'Expert', desc: '5+ years, advanced angler', icon: 'trophy' },
 ];
 
 export default function OnboardingScreen() {
@@ -143,22 +144,24 @@ export default function OnboardingScreen() {
         {/* Slide 1: Welcome */}
         <View style={[styles.slide, { width }]}>
           <LinearGradient colors={['rgba(0,212,170,0.25)', 'transparent']} style={styles.slideGradient} />
-          <Animated.Text style={[styles.slideEmoji, { transform: [{ translateY: fishBounce }] }]}>🎣</Animated.Text>
+          <Animated.View style={{ transform: [{ translateY: fishBounce }] }}>
+            <MaterialCommunityIcons name="fish" size={64} color={colors.primary} style={styles.slideIcon} />
+          </Animated.View>
           <Text style={styles.slideTitle}>Welcome to CAST</Text>
           <Text style={styles.slideSubtitle}>
             The UK's most advanced fishing companion. Track catches, plan trips, get AI advice, and become a better angler.
           </Text>
           <View style={styles.features}>
             {[
-              { icon: '🤖', text: 'AI Fishing Advisor — ask anything' },
-              { icon: '📍', text: '500+ UK fishing spots' },
-              { icon: '🌙', text: 'Solunar times & moon phases' },
-              { icon: '🏆', text: 'Track PBs vs UK records' },
-              { icon: '🪢', text: '20 essential knots with guides' },
-              { icon: '🐛', text: 'Full bait guide & matcher' },
+              { icon: 'robot', text: 'AI Fishing Advisor — ask anything' },
+              { icon: 'map-marker', text: '500+ UK fishing spots' },
+              { icon: 'weather-night', text: 'Solunar times & moon phases' },
+              { icon: 'trophy', text: 'Track PBs vs UK records' },
+              { icon: 'hook', text: '20 essential knots with guides' },
+              { icon: 'bug', text: 'Full bait guide & matcher' },
             ].map((f) => (
               <View key={f.text} style={styles.featureRow}>
-                <Text style={styles.featureIcon}>{f.icon}</Text>
+                <MaterialCommunityIcons name={f.icon as any} size={20} color={colors.primary} style={styles.featureIcon} />
                 <Text style={styles.featureText}>{f.text}</Text>
               </View>
             ))}
@@ -170,7 +173,7 @@ export default function OnboardingScreen() {
 
         {/* Slide 2: Where do you fish? */}
         <View style={[styles.slide, { width }]}>
-          <Text style={styles.slideEmoji}>📍</Text>
+          <MaterialCommunityIcons name="map-marker" size={64} color={colors.primary} style={styles.slideIcon} />
           <Text style={styles.slideTitle}>Where do you fish?</Text>
           <Text style={styles.slideSubtitle}>
             Tell us your usual fishing spot — a lake, river, coast or town. We'll show local weather, conditions and what's biting.
@@ -195,7 +198,7 @@ export default function OnboardingScreen() {
 
         {/* Slide 3: Species */}
         <View style={[styles.slide, { width }]}>
-          <Text style={styles.slideEmoji}>🐠</Text>
+          <MaterialCommunityIcons name="fish" size={64} color={colors.primary} style={styles.slideIcon} />
           <Text style={styles.slideTitle}>What do you fish for?</Text>
           <Text style={styles.slideSubtitle}>
             Select your target species — we'll personalise tips, alerts and conditions for you.
@@ -207,7 +210,7 @@ export default function OnboardingScreen() {
                 style={[styles.speciesChip, selectedSpecies.includes(s.id) && styles.speciesChipActive]}
                 onPress={() => toggleSpecies(s.id)}
               >
-                <Text style={styles.speciesEmoji}>{s.emoji}</Text>
+                <MaterialCommunityIcons name={s.icon as any} size={16} color={selectedSpecies.includes(s.id) ? colors.primary : colors.textSecondary} />
                 <Text style={[styles.speciesName, selectedSpecies.includes(s.id) && styles.speciesNameActive]}>
                   {s.name}
                 </Text>
@@ -222,7 +225,7 @@ export default function OnboardingScreen() {
 
         {/* Slide 4: Experience level */}
         <View style={[styles.slide, { width }]}>
-          <Text style={styles.slideEmoji}>🎖</Text>
+          <MaterialCommunityIcons name="medal" size={64} color={colors.primary} style={styles.slideIcon} />
           <Text style={styles.slideTitle}>Your Experience</Text>
           <Text style={styles.slideSubtitle}>
             This helps us tailor tips, rig complexity, and species suggestions to your skill level.
@@ -234,13 +237,13 @@ export default function OnboardingScreen() {
                 style={[styles.levelCard, selectedLevel === l.id && styles.levelCardActive]}
                 onPress={() => setSelectedLevel(l.id)}
               >
-                <Text style={styles.levelEmoji}>{l.emoji}</Text>
+                <MaterialCommunityIcons name={l.icon as any} size={32} color={selectedLevel === l.id ? colors.primary : colors.textSecondary} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.levelLabel, selectedLevel === l.id && { color: colors.primary }]}>{l.label}</Text>
                   <Text style={styles.levelDesc}>{l.desc}</Text>
                 </View>
                 {selectedLevel === l.id && (
-                  <Text style={styles.levelCheck}>✓</Text>
+                  <MaterialCommunityIcons name="check" size={20} color={colors.primary} />
                 )}
               </TouchableOpacity>
             ))}
@@ -253,23 +256,23 @@ export default function OnboardingScreen() {
 
         {/* Slide 5: Licence */}
         <View style={[styles.slide, { width }]}>
-          <Text style={styles.slideEmoji}>📄</Text>
+          <MaterialCommunityIcons name="file-document" size={64} color={colors.primary} style={styles.slideIcon} />
           <Text style={styles.slideTitle}>Rod Licence</Text>
           <Text style={styles.slideSubtitle}>
             In England & Wales, you need an EA rod licence to fish for freshwater fish. Do you have one?
           </Text>
           <View style={styles.licenceOptions}>
             {[
-              { id: 'yes', label: 'Yes, I have a licence', emoji: '✅', desc: 'Great — you\'re legal to fish!' },
-              { id: 'no', label: 'No, not yet', emoji: '❌', desc: 'You\'ll need one before fishing' },
-              { id: 'notsure', label: 'Not sure', emoji: '🤔', desc: 'We\'ll help you check' },
+              { id: 'yes', label: 'Yes, I have a licence', icon: 'check-circle', desc: 'Great — you\'re legal to fish!' },
+              { id: 'no', label: 'No, not yet', icon: 'close-circle', desc: 'You\'ll need one before fishing' },
+              { id: 'notsure', label: 'Not sure', icon: 'help-circle', desc: 'We\'ll help you check' },
             ].map((opt) => (
               <TouchableOpacity
                 key={opt.id}
                 style={[styles.licenceOption, hasLicence === opt.id && styles.licenceOptionActive]}
                 onPress={() => setHasLicence(opt.id)}
               >
-                <Text style={styles.licenceEmoji}>{opt.emoji}</Text>
+                <MaterialCommunityIcons name={opt.icon as any} size={28} color={hasLicence === opt.id ? colors.primary : colors.textSecondary} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.licenceLabel, hasLicence === opt.id && { color: colors.primary }]}>{opt.label}</Text>
                   <Text style={styles.licenceDesc}>{opt.desc}</Text>
@@ -280,13 +283,13 @@ export default function OnboardingScreen() {
           {(hasLicence === 'no' || hasLicence === 'notsure') && (
             <View style={styles.licenceAlert}>
               <Text style={styles.licenceAlertText}>
-                🇬🇧 A 1-day licence costs just £6. Buy at gov.uk/get-a-fishing-licence or through the free NI Angler app.
+                A 1-day licence costs just £6. Buy at gov.uk/get-a-fishing-licence or through the free NI Angler app.
               </Text>
             </View>
           )}
           <View style={styles.slideActions}>
             <CastButton title="Back" onPress={() => goToStep(3)} variant="ghost" style={{ flex: 1 }} />
-            <CastButton title="Start Fishing! 🎣" onPress={handleComplete} style={{ flex: 2 }} />
+            <CastButton title="Start Fishing!" onPress={handleComplete} style={{ flex: 2 }} />
           </View>
         </View>
       </ScrollView>
@@ -307,11 +310,6 @@ export default function OnboardingScreen() {
       </View>
     </View>
   );
-}
-
-// Simple wrapper to avoid importing just for one icon
-function MaterialIcon({ name }: { name: string }) {
-  return null;
 }
 
 const styles = StyleSheet.create({
@@ -336,8 +334,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: 300,
   },
-  slideEmoji: {
-    fontSize: 64,
+  slideIcon: {
     marginBottom: spacing.lg,
   },
   slideTitle: {
@@ -370,7 +367,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   featureIcon: {
-    fontSize: 20,
+    width: 20,
   },
   featureText: {
     fontSize: 14,
@@ -464,9 +461,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,212,170,0.15)',
     borderColor: colors.primary,
   },
-  speciesEmoji: {
-    fontSize: 16,
-  },
   speciesName: {
     fontSize: 14,
     color: colors.textSecondary,
@@ -496,9 +490,6 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: 'rgba(0,212,170,0.08)',
   },
-  levelEmoji: {
-    fontSize: 32,
-  },
   levelLabel: {
     fontSize: 17,
     fontWeight: '700',
@@ -508,11 +499,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  levelCheck: {
-    fontSize: 20,
-    color: colors.primary,
-    fontWeight: '800',
   },
   // Licence
   licenceOptions: {
@@ -533,9 +519,6 @@ const styles = StyleSheet.create({
   licenceOptionActive: {
     borderColor: colors.primary,
     backgroundColor: 'rgba(0,212,170,0.08)',
-  },
-  licenceEmoji: {
-    fontSize: 28,
   },
   licenceLabel: {
     fontSize: 15,

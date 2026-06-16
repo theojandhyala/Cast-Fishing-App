@@ -12,6 +12,19 @@ import { colors, spacing, radius } from '../constants/theme';
 
 const CONDITIONS = ['Mint', 'Excellent', 'Good', 'Fair', 'Poor'];
 
+const CATEGORY_ICONS: Record<string, string> = {
+  rods: 'fishing',
+  reels: 'cog',
+  lines: 'thread',
+  hooks: 'hook',
+  lures: 'sparkles',
+  bait: 'bug',
+  terminal: 'anchor',
+  clothing: 'tshirt-crew',
+  electronics: 'satellite-uplink',
+  accessories: 'bag-personal',
+};
+
 export default function GearTrackerScreen() {
   const router = useRouter();
   const { gear, removeItem, updateItem, toggleWishlist, getTotalValue, getWishlistValue } = useGearStore();
@@ -71,7 +84,10 @@ export default function GearTrackerScreen() {
           style={[styles.toggleBtn, showWishlist && styles.toggleBtnActive]}
           onPress={() => setShowWishlist(true)}
         >
-          <Text style={[styles.toggleText, showWishlist && styles.toggleTextActive]}>⭐ Wishlist</Text>
+          <View style={styles.toggleContentRow}>
+            <MaterialCommunityIcons name="star" size={14} color={showWishlist ? colors.primary : colors.textSecondary} />
+            <Text style={[styles.toggleText, showWishlist && styles.toggleTextActive]}>Wishlist</Text>
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -90,9 +106,12 @@ export default function GearTrackerScreen() {
               style={[styles.catChip, activeCategory === cat.id && styles.catChipActive]}
               onPress={() => setActiveCategory(cat.id)}
             >
-              <Text style={[styles.catChipText, activeCategory === cat.id && styles.catChipTextActive]}>
-                {cat.emoji} {cat.name}
-              </Text>
+              <View style={styles.catChipContentRow}>
+                <MaterialCommunityIcons name={(CATEGORY_ICONS[cat.id] || 'tools') as any} size={14} color={activeCategory === cat.id ? colors.primary : colors.textSecondary} />
+                <Text style={[styles.catChipText, activeCategory === cat.id && styles.catChipTextActive]}>
+                  {cat.name}
+                </Text>
+              </View>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -102,7 +121,7 @@ export default function GearTrackerScreen() {
         <View style={styles.list}>
           {filteredGear.length === 0 ? (
             <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>🎒</Text>
+              <MaterialCommunityIcons name="bag-personal-outline" size={48} color={colors.textSecondary} style={{ marginBottom: spacing.md }} />
               <Text style={styles.emptyTitle}>No gear here yet</Text>
               <Text style={styles.emptyText}>{showWishlist ? 'Mark items as wishlist from your gear' : 'Your tackle box is empty'}</Text>
             </View>
@@ -112,12 +131,17 @@ export default function GearTrackerScreen() {
               return (
                 <View key={item.id} style={styles.gearCard}>
                   <View style={[styles.catIcon, { backgroundColor: (cat?.color || colors.primary) + '22' }]}>
-                    <Text style={styles.catIconEmoji}>{cat?.emoji || '🎣'}</Text>
+                    <MaterialCommunityIcons name={(CATEGORY_ICONS[cat?.id || ''] || 'toolbox') as any} size={22} color={cat?.color || colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={styles.gearHeader}>
                       <Text style={styles.gearName}>{item.name}</Text>
-                      {item.isWishlist && <Text style={styles.wishlistBadge}>⭐ Wishlist</Text>}
+                      {item.isWishlist && (
+                        <View style={styles.wishlistBadgeRow}>
+                          <MaterialCommunityIcons name="star" size={11} color={colors.secondary} />
+                          <Text style={styles.wishlistBadge}>Wishlist</Text>
+                        </View>
+                      )}
                     </View>
                     <Text style={styles.gearBrand}>{item.brand} — {item.model}</Text>
                     <View style={styles.gearFooter}>
@@ -183,19 +207,21 @@ const styles = StyleSheet.create({
   toggleBtnActive: { backgroundColor: 'rgba(0,212,170,0.15)', borderColor: colors.primary },
   toggleText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
   toggleTextActive: { color: colors.primary },
+  toggleContentRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   categoriesScroll: { marginBottom: spacing.sm },
   categoriesContent: { paddingHorizontal: spacing.lg, gap: spacing.xs },
   catChip: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2, borderRadius: radius.full, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginRight: spacing.xs },
   catChipActive: { backgroundColor: 'rgba(0,212,170,0.15)', borderColor: colors.primary },
+  catChipContentRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   catChipText: { fontSize: 13, color: colors.textSecondary },
   catChipTextActive: { color: colors.primary, fontWeight: '600' },
   list: { paddingHorizontal: spacing.lg },
   gearCard: { flexDirection: 'row', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12 },
   catIcon: { width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  catIconEmoji: { fontSize: 22 },
   gearHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: 2 },
   gearName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  wishlistBadge: { fontSize: 11, color: colors.secondary, backgroundColor: 'rgba(245,158,11,0.15)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.full },
+  wishlistBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(245,158,11,0.15)', paddingHorizontal: 6, paddingVertical: 1, borderRadius: radius.full },
+  wishlistBadge: { fontSize: 11, color: colors.secondary },
   gearBrand: { fontSize: 13, color: colors.textSecondary, marginBottom: spacing.xs },
   gearFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
   conditionDots: { flexDirection: 'row', alignItems: 'center', gap: 3 },
@@ -210,7 +236,6 @@ const styles = StyleSheet.create({
   maintenanceTitle: { fontSize: 14, fontWeight: '700', color: colors.warning, marginBottom: 4 },
   maintenanceText: { fontSize: 13, color: colors.textSecondary },
   empty: { alignItems: 'center', padding: spacing.xxl },
-  emptyEmoji: { fontSize: 48, marginBottom: spacing.md },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.xs },
   emptyText: { fontSize: 14, color: colors.textSecondary },
 });

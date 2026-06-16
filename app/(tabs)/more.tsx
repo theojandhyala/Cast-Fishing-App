@@ -118,7 +118,7 @@ export default function MoreScreen() {
         >
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarEmoji}>🎣</Text>
+              <MaterialCommunityIcons name="fish" size={36} color={colors.primary} />
             </View>
             {user?.isPro && (
               <View style={styles.proBadge}>
@@ -155,14 +155,14 @@ export default function MoreScreen() {
         <View style={styles.achievementsCard}>
           <View style={styles.achievementsRow}>
             {[
-              { emoji: '🎣', title: 'First Cast', unlocked: stats.total >= 1 },
-              { emoji: '🐟', title: '10 Catches', unlocked: stats.total >= 10 },
-              { emoji: '🏆', title: '5kg Fish', unlocked: (stats.heaviest?.weight || 0) >= 5 },
-              { emoji: '🔥', title: '7 Day Streak', unlocked: (user?.streak || 0) >= 7 },
-              { emoji: '🌟', title: '5 Species', unlocked: Object.keys(stats.speciesCounts).length >= 5 },
+              { icon: 'hook', title: 'First Cast', unlocked: stats.total >= 1 },
+              { icon: 'fish', title: '10 Catches', unlocked: stats.total >= 10 },
+              { icon: 'trophy', title: '5kg Fish', unlocked: (stats.heaviest?.weight || 0) >= 5 },
+              { icon: 'fire', title: '7 Day Streak', unlocked: (user?.streak || 0) >= 7 },
+              { icon: 'star', title: '5 Species', unlocked: Object.keys(stats.speciesCounts).length >= 5 },
             ].map((a) => (
               <View key={a.title} style={[styles.achievement, !a.unlocked && styles.achievementLocked]}>
-                <Text style={styles.achievementEmoji}>{a.emoji}</Text>
+                <MaterialCommunityIcons name={a.icon as any} size={28} color={a.unlocked ? colors.primary : colors.textSecondary} />
                 <Text style={styles.achievementTitle}>{a.title}</Text>
               </View>
             ))}
@@ -185,7 +185,7 @@ export default function MoreScreen() {
                     if (item.route) {
                       router.push(item.route as any);
                     } else if (item.label === 'Rate the App') {
-                      Alert.alert('Rate CAST', 'Thank you for using CAST! A rating on the App Store means the world to us. ⭐⭐⭐⭐⭐');
+                      Alert.alert('Rate CAST', 'Thank you for using CAST! A rating on the App Store means the world to us.');
                     } else if (item.label === 'Settings' || item.label === 'Help & Feedback' || item.label === 'Fishing Clubs') {
                       Alert.alert('Coming Soon', 'This feature is coming in a future update!');
                     } else if (item.label === 'My Profile') {
@@ -213,7 +213,7 @@ export default function MoreScreen() {
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>CAST v1.0.0 • Made for UK Anglers 🇬🇧</Text>
+        <Text style={styles.version}>CAST v1.0.0 • Made for UK Anglers</Text>
 
         <View style={{ height: 80 }} />
       </ScrollView>
@@ -254,9 +254,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: colors.primary + '44',
-  },
-  avatarEmoji: {
-    fontSize: 36,
   },
   proBadge: {
     position: 'absolute',
@@ -372,9 +369,6 @@ const styles = StyleSheet.create({
   },
   achievementLocked: {
     opacity: 0.3,
-  },
-  achievementEmoji: {
-    fontSize: 28,
   },
   achievementTitle: {
     fontSize: 9,

@@ -65,7 +65,7 @@ export default function CatchDetailScreen() {
         <Image source={{ uri: catchItem.photo }} style={styles.photo} />
       ) : (
         <View style={styles.emojiHero}>
-          <Text style={styles.heroEmoji}>{catchItem.emoji || '🐟'}</Text>
+          <MaterialCommunityIcons name="fish" size={80} color={colors.primary} />
         </View>
       )}
 
@@ -169,9 +169,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  heroEmoji: {
-    fontSize: 80,
   },
   header: {
     flexDirection: 'row',

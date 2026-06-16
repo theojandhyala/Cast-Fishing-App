@@ -9,16 +9,19 @@ import { useLocationStore } from '../store/locationStore';
 import { useWeather } from '../hooks/useWeather';
 import { colors, spacing, radius } from '../constants/theme';
 
-const MOON_PHASES = ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
+const MOON_PHASES = [
+  'moon-new', 'moon-waxing-crescent', 'moon-first-quarter', 'moon-waxing-gibbous',
+  'moon-full', 'moon-waning-gibbous', 'moon-last-quarter', 'moon-waning-crescent',
+];
 
 const FORECAST_7DAY = [
-  { day: 'Today', emoji: '⛅', high: 14, low: 9, wind: 12, windDir: 'SW', pressure: 1016, fishScore: 72, description: 'Partly Cloudy' },
-  { day: 'Tuesday', emoji: '🌧️', high: 11, low: 7, wind: 22, windDir: 'W', pressure: 1008, fishScore: 41, description: 'Heavy Rain' },
-  { day: 'Wednesday', emoji: '☀️', high: 17, low: 10, wind: 8, windDir: 'S', pressure: 1024, fishScore: 91, description: 'Sunny' },
-  { day: 'Thursday', emoji: '⛅', high: 15, low: 9, wind: 10, windDir: 'SW', pressure: 1020, fishScore: 78, description: 'Partly Cloudy' },
-  { day: 'Friday', emoji: '🌬️', high: 13, low: 7, wind: 28, windDir: 'NW', pressure: 1012, fishScore: 55, description: 'Windy' },
-  { day: 'Saturday', emoji: '☀️', high: 18, low: 11, wind: 7, windDir: 'SE', pressure: 1022, fishScore: 88, description: 'Sunny' },
-  { day: 'Sunday', emoji: '⛅', high: 16, low: 10, wind: 11, windDir: 'S', pressure: 1019, fishScore: 81, description: 'Partly Cloudy' },
+  { day: 'Today', icon: 'weather-partly-cloudy', high: 14, low: 9, wind: 12, windDir: 'SW', pressure: 1016, fishScore: 72, description: 'Partly Cloudy' },
+  { day: 'Tuesday', icon: 'weather-pouring', high: 11, low: 7, wind: 22, windDir: 'W', pressure: 1008, fishScore: 41, description: 'Heavy Rain' },
+  { day: 'Wednesday', icon: 'weather-sunny', high: 17, low: 10, wind: 8, windDir: 'S', pressure: 1024, fishScore: 91, description: 'Sunny' },
+  { day: 'Thursday', icon: 'weather-partly-cloudy', high: 15, low: 9, wind: 10, windDir: 'SW', pressure: 1020, fishScore: 78, description: 'Partly Cloudy' },
+  { day: 'Friday', icon: 'weather-windy', high: 13, low: 7, wind: 28, windDir: 'NW', pressure: 1012, fishScore: 55, description: 'Windy' },
+  { day: 'Saturday', icon: 'weather-sunny', high: 18, low: 11, wind: 7, windDir: 'SE', pressure: 1022, fishScore: 88, description: 'Sunny' },
+  { day: 'Sunday', icon: 'weather-partly-cloudy', high: 16, low: 10, wind: 11, windDir: 'S', pressure: 1019, fishScore: 81, description: 'Partly Cloudy' },
 ];
 
 const PRESSURE_TREND = [1010, 1012, 1014, 1013, 1015, 1016, 1017, 1016, 1018, 1019, 1018, 1016];
@@ -86,15 +89,22 @@ export default function WeatherDetailScreen() {
               );
             })}
           </View>
-          <Text style={styles.pressureTrendText}>
-            {pressureTrend === 'rising' ? '📈 Pressure rising — excellent fishing conditions ahead!' :
-             pressureTrend === 'falling' ? '📉 Pressure falling — fish may feed aggressively before the change.' :
-             '➡️ Pressure stable — consistent conditions, moderate activity expected.'}
-          </Text>
+          <View style={styles.pressureTrendRow}>
+            <MaterialCommunityIcons
+              name={pressureTrend === 'rising' ? 'trending-up' : pressureTrend === 'falling' ? 'trending-down' : 'arrow-right'}
+              size={16}
+              color={colors.textPrimary}
+            />
+            <Text style={styles.pressureTrendText}>
+              {pressureTrend === 'rising' ? 'Pressure rising — excellent fishing conditions ahead!' :
+               pressureTrend === 'falling' ? 'Pressure falling — fish may feed aggressively before the change.' :
+               'Pressure stable — consistent conditions, moderate activity expected.'}
+            </Text>
+          </View>
         </View>
 
         {/* 7-day forecast */}
-        <Text style={styles.sectionTitle}>7-Day Forecast</Text>
+        <Text style={[styles.sectionTitle, styles.sectionTitlePadded]}>7-Day Forecast</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.forecastScroll}>
           {FORECAST_7DAY.map((f, i) => (
             <TouchableOpacity
@@ -104,7 +114,7 @@ export default function WeatherDetailScreen() {
             >
               {i === bestDayIndex && <Text style={styles.bestBadge}>Best</Text>}
               <Text style={styles.dayName}>{f.day}</Text>
-              <Text style={styles.dayEmoji}>{f.emoji}</Text>
+              <MaterialCommunityIcons name={f.icon as any} size={24} color={colors.textPrimary} style={styles.dayIcon} />
               <Text style={styles.dayTemp}>{f.high}°</Text>
               <View style={[styles.scoreChip, { backgroundColor: scoreColor(f.fishScore) + '22' }]}>
                 <Text style={[styles.scoreText, { color: scoreColor(f.fishScore) }]}>{f.fishScore}</Text>
@@ -133,7 +143,7 @@ export default function WeatherDetailScreen() {
 
         {/* Wind compass */}
         <View style={styles.compassSection}>
-          <Text style={styles.sectionTitle}>Wind Direction</Text>
+          <Text style={[styles.sectionTitle, styles.sectionTitlePadded]}>Wind Direction</Text>
           <View style={styles.compassCard}>
             <View style={styles.compass}>
               {['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'].map((dir, i) => {
@@ -153,20 +163,34 @@ export default function WeatherDetailScreen() {
               </View>
             </View>
             <View style={styles.compassInfo}>
-              <Text style={styles.compassTip}>
-                {current.windDir === 'SW' || current.windDir === 'S' ?
-                  '🟢 SW/S winds bring warm air — excellent fishing conditions' :
-                  current.windDir === 'NE' || current.windDir === 'N' ?
-                  '🔴 N/NE winds bring cold air — fish will be less active' :
-                  '🟡 Moderate conditions — fish may be somewhat active'}
-              </Text>
+              <View style={styles.compassTipRow}>
+                <MaterialCommunityIcons
+                  name="circle"
+                  size={10}
+                  color={
+                    current.windDir === 'SW' || current.windDir === 'S' ? colors.success :
+                    current.windDir === 'NE' || current.windDir === 'N' ? colors.danger :
+                    colors.warning
+                  }
+                />
+                <Text style={styles.compassTip}>
+                  {current.windDir === 'SW' || current.windDir === 'S' ?
+                    'SW/S winds bring warm air — excellent fishing conditions' :
+                    current.windDir === 'NE' || current.windDir === 'N' ?
+                    'N/NE winds bring cold air — fish will be less active' :
+                    'Moderate conditions — fish may be somewhat active'}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
 
         {/* Solunar times */}
         <View style={styles.solunarSection}>
-          <Text style={styles.sectionTitle}>🌙 Solunar Feeding Times</Text>
+          <View style={styles.sectionTitleRow}>
+            <MaterialCommunityIcons name="weather-night" size={18} color={colors.textPrimary} />
+            <Text style={styles.sectionTitle}>Solunar Feeding Times</Text>
+          </View>
           {SOLUNAR.map((s, i) => (
             <View key={i} style={styles.solunarRow}>
               <View style={[styles.solunarDot, { backgroundColor: s.quality === 'Excellent' ? colors.success : s.quality === 'Good' ? colors.warning : colors.textSecondary }]} />
@@ -180,13 +204,16 @@ export default function WeatherDetailScreen() {
 
         {/* Moon phases */}
         <View style={styles.moonSection}>
-          <Text style={styles.sectionTitle}>🌕 Moon Phase Calendar</Text>
+          <View style={styles.sectionTitleRow}>
+            <MaterialCommunityIcons name="moon-full" size={18} color={colors.textPrimary} />
+            <Text style={styles.sectionTitle}>Moon Phase Calendar</Text>
+          </View>
           <View style={styles.moonGrid}>
             {Array.from({ length: 30 }, (_, i) => {
               const phase = Math.floor(i / 3.75) % 8;
               return (
                 <View key={i} style={styles.moonDay}>
-                  <Text style={styles.moonEmoji}>{MOON_PHASES[phase]}</Text>
+                  <MaterialCommunityIcons name={MOON_PHASES[phase] as any} size={16} color={colors.textPrimary} />
                   <Text style={styles.moonDayNum}>{i + 1}</Text>
                 </View>
               );
@@ -215,7 +242,9 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, paddingHorizontal: spacing.lg, marginTop: spacing.lg, marginBottom: spacing.sm },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, marginTop: spacing.lg, marginBottom: spacing.sm },
+  sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.lg },
+  sectionTitlePadded: { paddingHorizontal: spacing.lg },
   pressureCard: { backgroundColor: colors.surface, borderRadius: radius.xl, margin: spacing.lg, marginTop: spacing.sm, padding: spacing.md, borderWidth: 1, borderColor: colors.border },
   pressureHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
   pressureTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.textPrimary },
@@ -224,14 +253,15 @@ const styles = StyleSheet.create({
   pressureBarCol: { flex: 1, alignItems: 'center' },
   pressureBar: { width: '100%', borderRadius: 2, minHeight: 5 },
   pressureHour: { fontSize: 8, color: colors.textSecondary, marginTop: 2 },
-  pressureTrendText: { fontSize: 13, color: colors.textPrimary, fontStyle: 'italic', lineHeight: 18 },
+  pressureTrendRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
+  pressureTrendText: { flex: 1, fontSize: 13, color: colors.textPrimary, fontStyle: 'italic', lineHeight: 18 },
   forecastScroll: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   dayCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.sm, marginRight: spacing.sm, alignItems: 'center', minWidth: 80, borderWidth: 1, borderColor: colors.border },
   dayCardActive: { borderColor: colors.primary, backgroundColor: 'rgba(0,212,170,0.1)' },
   dayCardBest: { borderColor: colors.success + '66' },
   bestBadge: { backgroundColor: colors.success, borderRadius: radius.full, paddingHorizontal: 6, paddingVertical: 1, fontSize: 9, color: '#0A0E1A', fontWeight: '800', marginBottom: 2 },
   dayName: { fontSize: 11, color: colors.textSecondary, marginBottom: 2 },
-  dayEmoji: { fontSize: 24, marginBottom: 2 },
+  dayIcon: { marginBottom: 2 },
   dayTemp: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 },
   scoreChip: { borderRadius: radius.full, paddingHorizontal: 6, paddingVertical: 2 },
   scoreText: { fontSize: 12, fontWeight: '700' },
@@ -254,6 +284,7 @@ const styles = StyleSheet.create({
   compassWindDir: { fontSize: 18, fontWeight: '800', color: colors.primary },
   compassWindSpeed: { fontSize: 12, color: colors.textSecondary },
   compassInfo: { alignItems: 'center' },
+  compassTipRow: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' },
   compassTip: { fontSize: 13, color: colors.textPrimary, textAlign: 'center', lineHeight: 18 },
   solunarSection: { paddingHorizontal: spacing.lg },
   solunarRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.xs, borderWidth: 1, borderColor: colors.border },
@@ -265,6 +296,5 @@ const styles = StyleSheet.create({
   moonSection: { paddingHorizontal: spacing.lg },
   moonGrid: { flexDirection: 'row', flexWrap: 'wrap', backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.sm, borderWidth: 1, borderColor: colors.border },
   moonDay: { width: '10%', alignItems: 'center', paddingVertical: 4 },
-  moonEmoji: { fontSize: 16 },
   moonDayNum: { fontSize: 9, color: colors.textSecondary },
 });

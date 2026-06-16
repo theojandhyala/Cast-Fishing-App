@@ -48,7 +48,7 @@ export default function FishEncyclopediaScreen() {
 
         {/* Mythic Featured */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>✦ Mythic Catches</Text>
+          <Text style={styles.sectionTitle}>Mythic Catches</Text>
           <Text style={styles.sectionSub}>Extraordinarily rare species</Text>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mythicScroll}>
@@ -62,7 +62,7 @@ export default function FishEncyclopediaScreen() {
               <View style={styles.mythicStamp}>
                 <Text style={styles.mythicStampText}>MYTHIC</Text>
               </View>
-              <Text style={styles.mythicEmoji}>{s.emoji}</Text>
+              <MaterialCommunityIcons name="fish" size={40} color={colors.textPrimary} style={styles.mythicEmoji} />
               <Text style={styles.mythicName} numberOfLines={1}>{s.name}</Text>
               <Text style={styles.mythicLatin} numberOfLines={1}>{s.latinName}</Text>
               <RarityBadge rarity={s.rarity} rarityColor={s.rarityColor} size="sm" />
@@ -113,7 +113,7 @@ export default function FishEncyclopediaScreen() {
               onPress={() => router.push({ pathname: '/species-detail', params: { id: s.id } })}
               activeOpacity={0.85}
             >
-              <Text style={styles.cardEmoji}>{s.emoji}</Text>
+              <MaterialCommunityIcons name="fish" size={32} color={colors.textPrimary} style={styles.cardEmoji} />
               <Text style={styles.cardName} numberOfLines={2}>{s.name}</Text>
               <Text style={styles.cardLatin} numberOfLines={1}>{s.latinName}</Text>
               {s.rarity && (

@@ -45,7 +45,7 @@ export default function KnotDetailScreen() {
         style={styles.hero}
       >
         <View style={styles.heroTop}>
-          <Text style={styles.heroEmoji}>{knot.emoji}</Text>
+          <MaterialCommunityIcons name="link-variant" size={48} color={colors.primary} />
           <TouchableOpacity
             onPress={() => isBookmarked ? unbookmarkKnot(knot.id) : bookmarkKnot(knot.id)}
             style={styles.bookmarkBtn}
@@ -145,7 +145,7 @@ export default function KnotDetailScreen() {
 
       {currentStep === knot.steps.length - 1 && (
         <View style={styles.completedBanner}>
-          <Text style={styles.completedEmoji}>🎉</Text>
+          <MaterialCommunityIcons name="party-popper" size={36} color={colors.primary} />
           <Text style={styles.completedText}>Knot complete! Practice makes perfect.</Text>
         </View>
       )}
@@ -179,9 +179,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: spacing.sm,
-  },
-  heroEmoji: {
-    fontSize: 48,
   },
   bookmarkBtn: {
     padding: spacing.xs,
@@ -329,9 +326,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0,212,170,0.3)',
     gap: spacing.sm,
-  },
-  completedEmoji: {
-    fontSize: 36,
   },
   completedText: {
     fontSize: 15,

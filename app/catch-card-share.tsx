@@ -50,7 +50,7 @@ export default function CatchCardShareScreen() {
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `🎣 Just caught a ${catchItem.weight}kg ${catchItem.species} at ${catchItem.location || 'a secret spot'}! Caught with CAST — the UK's best fishing app. #CaughtWithCAST #Fishing`,
+        message: `Just caught a ${catchItem.weight}kg ${catchItem.species} at ${catchItem.location || 'a secret spot'}! Caught with CAST — the UK's best fishing app. #CaughtWithCAST #Fishing`,
         title: `${catchItem.species} Catch — CAST`,
       });
     } catch (e) {
@@ -80,27 +80,36 @@ export default function CatchCardShareScreen() {
             {/* CAST Branding */}
             <View style={styles.cardHeader}>
               <Text style={styles.castLogo}>CAST</Text>
-              <Text style={styles.castTagline}>🎣 UK Fishing</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <MaterialCommunityIcons name="fish" size={12} color={colors.textSecondary} />
+                <Text style={styles.castTagline}>UK Fishing</Text>
+              </View>
             </View>
 
             {/* Divider */}
             <View style={styles.divider} />
 
             {/* Fish Emoji */}
-            <Text style={styles.fishEmoji}>{catchItem.emoji || '🐟'}</Text>
+            <MaterialCommunityIcons name="fish" size={72} color={colors.primary} style={styles.fishEmoji} />
 
             {/* Species & Weight */}
             <Text style={styles.speciesName}>{catchItem.species}</Text>
             <View style={styles.statsRow}>
               {catchItem.weight > 0 && (
                 <View style={styles.statPill}>
-                  <Text style={styles.statPillLabel}>⚖️ Weight</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <MaterialCommunityIcons name="scale-balance" size={11} color={colors.textSecondary} />
+                    <Text style={styles.statPillLabel}>Weight</Text>
+                  </View>
                   <Text style={styles.statPillValue}>{catchItem.weight}kg</Text>
                 </View>
               )}
               {catchItem.length && (
                 <View style={styles.statPill}>
-                  <Text style={styles.statPillLabel}>📏 Length</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <MaterialCommunityIcons name="ruler" size={11} color={colors.textSecondary} />
+                    <Text style={styles.statPillLabel}>Length</Text>
+                  </View>
                   <Text style={styles.statPillValue}>{catchItem.length}cm</Text>
                 </View>
               )}
@@ -130,15 +139,21 @@ export default function CatchCardShareScreen() {
             {catchItem.weather && (
               <View style={styles.weatherRow}>
                 <View style={styles.weatherItem}>
-                  <Text style={styles.weatherLabel}>🌡️ Temp</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <MaterialCommunityIcons name="thermometer" size={10} color={colors.textSecondary} />
+                    <Text style={styles.weatherLabel}>Temp</Text>
+                  </View>
                   <Text style={styles.weatherValue}>{catchItem.weather.temp}°C</Text>
                 </View>
                 <View style={styles.weatherItem}>
-                  <Text style={styles.weatherLabel}>💨 Wind</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+                    <MaterialCommunityIcons name="weather-windy" size={10} color={colors.textSecondary} />
+                    <Text style={styles.weatherLabel}>Wind</Text>
+                  </View>
                   <Text style={styles.weatherValue}>{catchItem.weather.wind}km/h</Text>
                 </View>
                 <View style={styles.weatherItem}>
-                  <Text style={styles.weatherLabel}>☁️</Text>
+                  <MaterialCommunityIcons name="weather-cloudy" size={14} color={colors.textSecondary} />
                   <Text style={styles.weatherValue}>{catchItem.weather.description}</Text>
                 </View>
               </View>

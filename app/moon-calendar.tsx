@@ -118,7 +118,7 @@ export default function MoonCalendarScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <LinearGradient colors={['rgba(167,139,250,0.15)', 'transparent']} style={styles.hero}>
-          <MaterialCommunityIcons name="moon-full" size={52} color={colors.textPrimary} style={styles.moonHero} />
+          <MaterialCommunityIcons name="moon-full" size={52} color={colors.textPrimary} />
           <Text style={styles.heroTitle}>Moon Calendar</Text>
           <Text style={styles.heroSub}>Plan your sessions around lunar cycles</Text>
         </LinearGradient>
@@ -266,7 +266,6 @@ export default function MoonCalendarScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   hero: { alignItems: 'center', paddingVertical: spacing.xl },
-  moonHero: { fontSize: 52 },
   heroTitle: { fontSize: 26, fontWeight: '800', color: colors.textPrimary, marginTop: spacing.sm },
   heroSub: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
   monthNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg, marginBottom: spacing.md },
@@ -280,7 +279,6 @@ const styles = StyleSheet.create({
   todayCell: { backgroundColor: 'rgba(0,212,170,0.1)', borderWidth: 1, borderColor: colors.primary },
   selectedCell: { backgroundColor: '#A78BFA', borderWidth: 1, borderColor: '#A78BFA' },
   bestCell: { backgroundColor: 'rgba(245,158,11,0.1)' },
-  moonEmoji: { fontSize: 18 },
   dayNum: { fontSize: 10, color: colors.textSecondary, marginTop: 1 },
   dayNumSelected: { color: '#fff', fontWeight: '800' },
   dayNumToday: { color: colors.primary, fontWeight: '800' },
@@ -288,7 +286,6 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 11, fontWeight: '800', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: spacing.sm },
   detailCard: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.md },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  detailEmoji: { fontSize: 44 },
   phaseName: { fontSize: 20, fontWeight: '800', color: colors.textPrimary },
   illumination: { fontSize: 13, color: colors.textSecondary, marginTop: 3 },
   solunarBadge: { alignItems: 'center', backgroundColor: 'rgba(167,139,250,0.15)', borderRadius: radius.md, padding: spacing.sm, borderWidth: 1, borderColor: 'rgba(167,139,250,0.3)' },
@@ -304,14 +301,12 @@ const styles = StyleSheet.create({
   bestDaysCard: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   bestDaysList: { gap: 0 },
   bestDayRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
-  bestDayEmoji: { fontSize: 22 },
   bestDayDate: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, flex: 1 },
   bestDayPhase: { fontSize: 12, color: colors.textSecondary },
   bestBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(245,158,11,0.15)', borderRadius: radius.full, paddingHorizontal: 7, paddingVertical: 3 },
   bestBadgeText: { fontSize: 11, color: colors.secondary, fontWeight: '700' },
   noBest: { padding: spacing.md, fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
   legendRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, marginBottom: spacing.sm },
-  legendEmoji: { fontSize: 26, width: 36, textAlign: 'center' },
   legendName: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   legendTip: { fontSize: 13, color: colors.textSecondary, lineHeight: 18, marginTop: 2 },
 });

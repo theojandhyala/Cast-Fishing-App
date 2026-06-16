@@ -8,7 +8,7 @@ export interface Trip {
   targetSpecies: string[];
   fishingScore: number;
   notes: string;
-  checklist: Array<{ id: string; label: string; checked: boolean; emoji: string }>;
+  checklist: Array<{ id: string; label: string; checked: boolean; icon: string }>;
   catchIds: string[];
   status: 'upcoming' | 'completed' | 'cancelled';
 }
@@ -25,11 +25,11 @@ export const SAMPLE_TRIPS: Trip[] = [
     fishingScore: 82,
     notes: 'Going for the big mirror in the north bay. Bring the 3.5lb rods.',
     checklist: [
-      { id: 'rod', label: 'Rod(s)', checked: true, emoji: '🎣' },
-      { id: 'reel', label: 'Reel(s)', checked: true, emoji: '⚙️' },
-      { id: 'bait', label: 'Boilies & Corn', checked: false, emoji: '🐛' },
-      { id: 'licence', label: 'Rod Licence', checked: true, emoji: '📄' },
-      { id: 'landing-net', label: 'Landing Net', checked: false, emoji: '🕸️' },
+      { id: 'rod', label: 'Rod(s)', checked: true, icon: 'fishing' },
+      { id: 'reel', label: 'Reel(s)', checked: true, icon: 'cog' },
+      { id: 'bait', label: 'Boilies & Corn', checked: false, icon: 'bug' },
+      { id: 'licence', label: 'Rod Licence', checked: true, icon: 'file-document-outline' },
+      { id: 'landing-net', label: 'Landing Net', checked: false, icon: 'spider-web' },
     ],
     catchIds: [],
     status: 'upcoming',
@@ -45,10 +45,10 @@ export const SAMPLE_TRIPS: Trip[] = [
     fishingScore: 74,
     notes: 'Targeted the fast run below the weir. Luncheon meat and pellets.',
     checklist: [
-      { id: 'rod', label: 'Rod(s)', checked: true, emoji: '🎣' },
-      { id: 'reel', label: 'Reel(s)', checked: true, emoji: '⚙️' },
-      { id: 'bait', label: 'Luncheon Meat', checked: true, emoji: '🐛' },
-      { id: 'licence', label: 'Rod Licence', checked: true, emoji: '📄' },
+      { id: 'rod', label: 'Rod(s)', checked: true, icon: 'fishing' },
+      { id: 'reel', label: 'Reel(s)', checked: true, icon: 'cog' },
+      { id: 'bait', label: 'Luncheon Meat', checked: true, icon: 'bug' },
+      { id: 'licence', label: 'Rod Licence', checked: true, icon: 'file-document-outline' },
     ],
     catchIds: ['sample2'],
     status: 'completed',
@@ -62,9 +62,9 @@ export const SAMPLE_TRIPS: Trip[] = [
     fishingScore: 68,
     notes: '3 hours light lure fishing. Drop-shot rigs worked brilliantly.',
     checklist: [
-      { id: 'rod', label: 'Light Spinning Rod', checked: true, emoji: '🎣' },
-      { id: 'lures', label: 'Soft Plastics', checked: true, emoji: '✨' },
-      { id: 'licence', label: 'Rod Licence', checked: true, emoji: '📄' },
+      { id: 'rod', label: 'Light Spinning Rod', checked: true, icon: 'fishing' },
+      { id: 'lures', label: 'Soft Plastics', checked: true, icon: 'creation' },
+      { id: 'licence', label: 'Rod Licence', checked: true, icon: 'file-document-outline' },
     ],
     catchIds: ['sample3'],
     status: 'completed',
@@ -78,10 +78,10 @@ export const SAMPLE_TRIPS: Trip[] = [
     fishingScore: 88,
     notes: '48-hour session. Need to pre-bait Friday evening.',
     checklist: [
-      { id: 'rod', label: 'Rods x3', checked: false, emoji: '🎣' },
-      { id: 'bait', label: '5kg Boilies', checked: false, emoji: '🐛' },
-      { id: 'bivvy', label: 'Bivvy & Bedchair', checked: false, emoji: '⛺' },
-      { id: 'licence', label: 'Rod Licence', checked: true, emoji: '📄' },
+      { id: 'rod', label: 'Rods x3', checked: false, icon: 'fishing' },
+      { id: 'bait', label: '5kg Boilies', checked: false, icon: 'bug' },
+      { id: 'bivvy', label: 'Bivvy & Bedchair', checked: false, icon: 'tent' },
+      { id: 'licence', label: 'Rod Licence', checked: true, icon: 'file-document-outline' },
     ],
     catchIds: [],
     status: 'upcoming',

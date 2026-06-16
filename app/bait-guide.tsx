@@ -10,6 +10,25 @@ import { colors, spacing, radius } from '../constants/theme';
 
 const TARGET_SPECIES = ['Carp', 'Pike', 'Perch', 'Barbel', 'Tench', 'Bream', 'Roach', 'Chub', 'Trout', 'Zander'];
 
+const BAIT_ICONS: Record<string, string> = {
+  boilies: 'circle',
+  pellets: 'circle-small',
+  corn: 'corn',
+  'luncheon-meat': 'food-steak',
+  maggots: 'worm',
+  worms: 'worm',
+  bread: 'bread-slice',
+  spinners: 'star-four-points',
+  'soft-plastics': 'fish',
+  'dry-flies': 'butterfly',
+  nymphs: 'bug',
+  'mackerel-deadbait': 'fish',
+  hemp: 'sprout',
+  groundbait: 'water',
+  'tiger-nuts': 'peanut',
+  paste: 'circle',
+};
+
 export default function BaitGuideScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<'guide' | 'match'>('guide');
@@ -42,9 +61,16 @@ export default function BaitGuideScreen() {
       <View style={styles.tabs}>
         {(['guide', 'match'] as const).map(t => (
           <TouchableOpacity key={t} style={[styles.tab, tab === t && styles.activeTab]} onPress={() => setTab(t)}>
-            <Text style={[styles.tabText, tab === t && styles.activeTabText]}>
-              {t === 'guide' ? '📚 Bait Guide' : '🎯 Bait Match'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <MaterialCommunityIcons
+                name={t === 'guide' ? 'book-open-variant' : 'target'}
+                size={14}
+                color={tab === t ? '#0A0E1A' : colors.textSecondary}
+              />
+              <Text style={[styles.tabText, tab === t && styles.activeTabText]}>
+                {t === 'guide' ? 'Bait Guide' : 'Bait Match'}
+              </Text>
+            </View>
           </TouchableOpacity>
         ))}
       </View>
@@ -72,7 +98,7 @@ export default function BaitGuideScreen() {
                   onPress={() => setSelectedBait(selectedBait?.id === bait.id ? null : bait)}
                 >
                   <View style={styles.baitHeader}>
-                    <Text style={styles.baitEmoji}>{bait.emoji}</Text>
+                    <MaterialCommunityIcons name={(BAIT_ICONS[bait.id] || 'circle') as any} size={28} color={colors.primary} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.baitName}>{bait.name}</Text>
                       <Text style={styles.baitCategory}>{bait.category}</Text>
@@ -155,7 +181,7 @@ export default function BaitGuideScreen() {
                   return (
                     <View key={bait.id} style={styles.matchCard}>
                       <Text style={styles.matchRank}>#{i + 1}</Text>
-                      <Text style={styles.matchEmoji}>{bait.emoji}</Text>
+                      <MaterialCommunityIcons name={(BAIT_ICONS[bait.id] || 'circle') as any} size={24} color={colors.primary} />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.matchBaitName}>{bait.name}</Text>
                         <View style={styles.scoreBar}>
@@ -172,7 +198,10 @@ export default function BaitGuideScreen() {
 
             {/* Groundbait calculator */}
             <View style={styles.calcSection}>
-              <Text style={styles.calcTitle}>⚖️ Groundbait Calculator</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <MaterialCommunityIcons name="scale-balance" size={16} color={colors.textPrimary} />
+                <Text style={styles.calcTitle}>Groundbait Calculator</Text>
+              </View>
               <Text style={styles.calcDesc}>How many hours is your session?</Text>
               <View style={styles.calcRow}>
                 <TextInput
@@ -216,7 +245,6 @@ const styles = StyleSheet.create({
   baitCard: { backgroundColor: colors.surface, borderRadius: radius.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   baitCardActive: { borderColor: colors.primary },
   baitHeader: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.sm },
-  baitEmoji: { fontSize: 28 },
   baitName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   baitCategory: { fontSize: 12, color: colors.textSecondary },
   baitSeasons: { flexDirection: 'row', gap: 3 },
@@ -242,7 +270,6 @@ const styles = StyleSheet.create({
   matchResultTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.sm },
   matchCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   matchRank: { fontSize: 16, fontWeight: '800', color: colors.textSecondary, width: 28, textAlign: 'center' },
-  matchEmoji: { fontSize: 24 },
   matchBaitName: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 },
   scoreBar: { height: 4, backgroundColor: colors.surface2, borderRadius: 2, overflow: 'hidden', marginBottom: 4 },
   scoreBarFill: { height: '100%', borderRadius: 2 },

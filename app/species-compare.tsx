@@ -86,7 +86,7 @@ export default function SpeciesCompareScreen() {
         <View style={styles.pickerRow}>
           <View style={{ flex: 1 }}>
             <TouchableOpacity style={styles.pickerBtn} onPress={() => { setShowPickerA(!showPickerA); setShowPickerB(false); }}>
-              <Text style={styles.pickerEmoji}>{fishA?.emoji}</Text>
+              <MaterialCommunityIcons name="fish" size={20} color={colors.textPrimary} style={styles.pickerEmoji} />
               <Text style={styles.pickerName} numberOfLines={1}>{fishA?.commonName}</Text>
               <MaterialCommunityIcons name="chevron-down" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -94,7 +94,7 @@ export default function SpeciesCompareScreen() {
               <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
                 {allSpecies.map(s => (
                   <TouchableOpacity key={s.id} style={styles.dropdownItem} onPress={() => { setSpeciesA(s.id); setShowPickerA(false); }}>
-                    <Text style={styles.dropdownEmoji}>{s.emoji}</Text>
+                    <MaterialCommunityIcons name="fish" size={16} color={colors.textSecondary} style={styles.dropdownEmoji} />
                     <Text style={[styles.dropdownText, speciesA === s.id && { color: colors.primary }]}>{s.commonName}</Text>
                   </TouchableOpacity>
                 ))}
@@ -108,7 +108,7 @@ export default function SpeciesCompareScreen() {
 
           <View style={{ flex: 1 }}>
             <TouchableOpacity style={styles.pickerBtn} onPress={() => { setShowPickerB(!showPickerB); setShowPickerA(false); }}>
-              <Text style={styles.pickerEmoji}>{fishB?.emoji}</Text>
+              <MaterialCommunityIcons name="fish" size={20} color={colors.textPrimary} style={styles.pickerEmoji} />
               <Text style={styles.pickerName} numberOfLines={1}>{fishB?.commonName}</Text>
               <MaterialCommunityIcons name="chevron-down" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -116,7 +116,7 @@ export default function SpeciesCompareScreen() {
               <ScrollView style={styles.dropdownScroll} nestedScrollEnabled>
                 {allSpecies.map(s => (
                   <TouchableOpacity key={s.id} style={styles.dropdownItem} onPress={() => { setSpeciesB(s.id); setShowPickerB(false); }}>
-                    <Text style={styles.dropdownEmoji}>{s.emoji}</Text>
+                    <MaterialCommunityIcons name="fish" size={16} color={colors.textSecondary} style={styles.dropdownEmoji} />
                     <Text style={[styles.dropdownText, speciesB === s.id && { color: colors.primary }]}>{s.commonName}</Text>
                   </TouchableOpacity>
                 ))}
@@ -146,7 +146,7 @@ export default function SpeciesCompareScreen() {
         {/* Conclusion */}
         {harderFish && (
           <View style={styles.conclusionCard}>
-            <Text style={styles.conclusionEmoji}>{harderFish.emoji}</Text>
+            <MaterialCommunityIcons name="fish" size={40} color={colors.primary} style={styles.conclusionEmoji} />
             <View>
               <Text style={styles.conclusionTitle}>{harderFish.name} is harder to catch</Text>
               <Text style={styles.conclusionText}>
