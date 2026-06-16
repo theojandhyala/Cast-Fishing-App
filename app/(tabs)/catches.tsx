@@ -62,19 +62,6 @@ export default function CatchesScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-      {/* Start Fishing banner */}
-      <TouchableOpacity style={s.banner} onPress={() => router.push('/add-catch' as any)} activeOpacity={0.85}>
-        <LinearGradient colors={['#00D4AA', '#00B892']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.bannerGrad}>
-          <MaterialCommunityIcons name="fishbowl-outline" size={16} color="#0A0E1A" />
-          <Text style={s.bannerText}>START FISHING HERE</Text>
-        </LinearGradient>
-      </TouchableOpacity>
-
-      {/* Header */}
-      <View style={s.header}>
-        <Text style={s.title}>Catch Log</Text>
-      </View>
-
       {/* Search */}
       <View style={s.searchRow}>
         <MaterialCommunityIcons name="magnify" size={18} color={colors.textSecondary} />
@@ -153,16 +140,9 @@ export default function CatchesScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
-  banner: { marginHorizontal: spacing.lg, marginTop: spacing.md, borderRadius: radius.full, overflow: 'hidden', ...elevation.glow },
-  bannerGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13 },
-  bannerText: { fontSize: 13, fontWeight: '800', color: '#0A0E1A', letterSpacing: 1 },
-
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
-  title: { fontSize: 24, fontWeight: '700', color: colors.textPrimary },
-
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginHorizontal: spacing.lg, marginBottom: spacing.sm,
+    marginHorizontal: spacing.lg, marginTop: spacing.md, marginBottom: spacing.sm,
     backgroundColor: colors.surface, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.border,
     paddingHorizontal: spacing.md, paddingVertical: 10,
