@@ -45,6 +45,7 @@ export default function MapScreen() {
   const [selectedType, setSelectedType] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpot, setSelectedSpot] = useState<WorldSpot | null>(null);
+  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
   const [showAddSpot, setShowAddSpot] = useState(false);
   const [newSpotName, setNewSpotName] = useState('');
   const [newSpotCountry, setNewSpotCountry] = useState('');
@@ -145,13 +146,61 @@ export default function MapScreen() {
         ))}
       </ScrollView>
 
-      {/* Result count */}
-      <View style={styles.countRow}>
-        <Text style={styles.countText}>Showing {filtered.length} spots worldwide</Text>
+      {/* Segmented Map/List control */}
+      <View style={styles.segmentRow}>
+        <View style={styles.segmentTrack}>
+          {(['map', 'list'] as const).map((mode) => (
+            <TouchableOpacity
+              key={mode}
+              style={[styles.segmentBtn, viewMode === mode && styles.segmentBtnActive]}
+              onPress={() => setViewMode(mode)}
+              activeOpacity={0.85}
+            >
+              <MaterialCommunityIcons
+                name={mode === 'map' ? 'map-outline' : 'view-list-outline'}
+                size={15}
+                color={viewMode === mode ? colors.background : colors.textSecondary}
+              />
+              <Text style={[styles.segmentText, viewMode === mode && styles.segmentTextActive]}>
+                {mode === 'map' ? 'Map' : 'List'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         <TouchableOpacity style={styles.addSpotBtn} onPress={() => setShowAddSpot(true)}>
           <MaterialCommunityIcons name="plus" size={16} color={colors.background} />
           <Text style={styles.addSpotText}>Add Spot</Text>
         </TouchableOpacity>
+      </View>
+
+      {viewMode === 'map' ? (
+        <View style={styles.mapView}>
+          <View style={styles.mapGridPanel}>
+            {filtered.slice(0, 8).map((spot, i) => {
+              const left = `${12 + (i % 4) * 24}%`;
+              const top = `${18 + Math.floor(i / 4) * 38}%`;
+              return (
+                <TouchableOpacity
+                  key={spot.id}
+                  style={[styles.mapPinMarker, { left, top } as any]}
+                  onPress={() => setSelectedSpot(spot)}
+                  activeOpacity={0.85}
+                >
+                  <View style={[styles.mapPinNum, { borderColor: difficultyColors[spot.difficulty] }]}>
+                    <Text style={styles.mapPinNumText}>{i + 1}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+            <Text style={styles.mapHint}>Tap a pin to view spot details</Text>
+          </View>
+          <Text style={styles.countText}>Showing {filtered.length} spots worldwide</Text>
+        </View>
+      ) : (
+      <>
+      {/* Result count */}
+      <View style={styles.countRow}>
+        <Text style={styles.countText}>Showing {filtered.length} spots worldwide</Text>
       </View>
 
       {/* Spot list */}
@@ -190,6 +239,8 @@ export default function MapScreen() {
         ))}
         <View style={{ height: 80 }} />
       </ScrollView>
+      </>
+      )}
 
       {/* Spot detail bottom sheet */}
       <Modal
@@ -486,5 +537,80 @@ const styles = StyleSheet.create({
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
+  },
+  segmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  segmentTrack: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 3,
+  },
+  segmentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.sm,
+  },
+  segmentBtnActive: {
+    backgroundColor: colors.primary,
+  },
+  segmentText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  segmentTextActive: {
+    color: colors.background,
+  },
+  mapView: {
+    paddingHorizontal: spacing.lg,
+    flex: 1,
+  },
+  mapGridPanel: {
+    flex: 1,
+    backgroundColor: 'rgba(0,212,170,0.05)',
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,170,0.18)',
+    marginBottom: spacing.sm,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  mapPinMarker: {
+    position: 'absolute',
+  },
+  mapPinNum: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapPinNumText: {
+    ...typography.mono,
+    fontSize: 12,
+    color: colors.textPrimary,
+  },
+  mapHint: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    fontSize: 11,
+    color: colors.textTertiary,
   },
 });
