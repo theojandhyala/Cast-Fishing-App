@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, radius, spacing, typography, fonts } from '../constants/theme';
+import { colors, radius, spacing, typography, fonts, elevation } from '../constants/theme';
 import { CastButton } from '../components/ui/CastButton';
 import { useSessionStore } from '../store/sessionStore';
 import { useCatchStore, Catch } from '../store/catchStore';
@@ -143,8 +143,53 @@ export default function SessionScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.spotName}>{activeSession.spotName}</Text>
-        <Text style={styles.timer}>{formatElapsed(elapsedMs)}</Text>
+        <View style={styles.spotRow}>
+          <MaterialCommunityIcons name="map-marker" size={14} color={colors.accentBlue} />
+          <Text style={styles.spotName}>{activeSession.spotName}</Text>
+        </View>
+
+        <View style={styles.timerWrap}>
+          <View style={styles.timerGlow} />
+          <View style={styles.timerRing}>
+            <Text style={styles.timer}>{formatElapsed(elapsedMs)}</Text>
+            <Text style={styles.timerCaption}>TIME ON WATER</Text>
+          </View>
+        </View>
+
+        <View style={styles.quickActionsRow}>
+          <TouchableOpacity style={styles.quickAction} onPress={() => setLogOpen(true)} activeOpacity={0.85}>
+            <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(0,212,170,0.12)' }]}>
+              <MaterialCommunityIcons name="fish" size={20} color={colors.primary} />
+            </View>
+            <Text style={styles.quickActionLabel}>Log Catch</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickAction}
+            onPress={() => router.push('/identifier')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(45,212,255,0.12)' }]}>
+              <MaterialCommunityIcons name="camera-outline" size={20} color={colors.accentBlue} />
+            </View>
+            <Text style={styles.quickActionLabel}>Scan Fish</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickAction}
+            onPress={() => Alert.alert('Add Note', 'Note-taking coming soon.')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(245,158,11,0.12)' }]}>
+              <MaterialCommunityIcons name="note-text-outline" size={20} color={colors.secondary} />
+            </View>
+            <Text style={styles.quickActionLabel}>Add Note</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickAction} onPress={handleEnd} activeOpacity={0.85}>
+            <View style={[styles.quickActionIcon, { backgroundColor: 'rgba(239,68,68,0.12)' }]}>
+              <MaterialCommunityIcons name="stop-circle-outline" size={20} color={colors.danger} />
+            </View>
+            <Text style={styles.quickActionLabel}>End Session</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.statRow}>
           <View style={styles.statCell}>
@@ -213,20 +258,42 @@ export default function SessionScreen() {
         <View style={styles.sectionDivider} />
 
         <View style={styles.windowHead}>
-          <Text style={styles.sectionLabel}>SESSION CATCHES</Text>
+          <Text style={styles.sectionLabel}>SESSION TIMELINE</Text>
         </View>
         {sessionCatches.length === 0 ? (
-          <Text style={styles.emptyText}>No catches logged yet this session.</Text>
+          <View style={styles.emptyTimeline}>
+            <MaterialCommunityIcons name="waves" size={18} color={colors.textTertiary} />
+            <Text style={styles.emptyText}>No catches logged yet this session.</Text>
+          </View>
         ) : (
-          sessionCatches.map((c) => (
-            <View key={c.id} style={styles.catchRow}>
-              <Text style={styles.catchSpecies}>{c.species}</Text>
-              <Text style={styles.catchWeight}>{c.weight}kg</Text>
-              <Text style={styles.catchTime}>
-                {new Date(c.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-            </View>
-          ))
+          <View style={styles.timeline}>
+            {sessionCatches.map((c, idx) => {
+              const isBest = sessionCatches.every((other) => other.weight <= c.weight) && c.weight > 0;
+              return (
+                <View key={c.id} style={styles.timelineRow}>
+                  <View style={styles.timelineRail}>
+                    <View style={[styles.timelineDot, isBest && styles.timelineDotBest]} />
+                    {idx < sessionCatches.length - 1 && <View style={styles.timelineLine} />}
+                  </View>
+                  <View style={styles.timelineContent}>
+                    <View style={styles.catchRow}>
+                      <Text style={styles.catchSpecies}>{c.species}</Text>
+                      <Text style={styles.catchWeight}>{c.weight}kg</Text>
+                      <Text style={styles.catchTime}>
+                        {new Date(c.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </Text>
+                    </View>
+                    {isBest && (
+                      <View style={styles.bestBadge}>
+                        <MaterialCommunityIcons name="trophy-outline" size={11} color={colors.secondary} />
+                        <Text style={styles.bestBadgeText}>PERSONAL BEST THIS SESSION</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
+          </View>
         )}
       </ScrollView>
 
@@ -312,14 +379,78 @@ const styles = StyleSheet.create({
   },
   endBtnText: { color: colors.danger, fontFamily: fonts.bodySemi, fontSize: 12, letterSpacing: 1 },
   content: { padding: spacing.md, paddingBottom: spacing.xxl },
-  spotName: { ...typography.h2, textAlign: 'center', marginTop: spacing.md },
+  spotRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: spacing.md,
+  },
+  spotName: { ...typography.h3, fontSize: 16, color: colors.textSecondary },
+  timerWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.lg,
+  },
+  timerGlow: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: colors.primary,
+    opacity: 0.12,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 40,
+  },
+  timerRing: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 2,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...elevation.glow,
+  },
   timer: {
     ...typography.monoLarge,
-    fontSize: 56,
+    fontSize: 40,
     textAlign: 'center',
     color: colors.primary,
-    marginTop: spacing.sm,
   },
+  timerCaption: {
+    ...typography.caption,
+    fontSize: 9,
+    marginTop: 6,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.xl,
+    gap: 8,
+  },
+  quickAction: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.sm + 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...elevation.raised,
+  },
+  quickActionIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActionLabel: { ...typography.caption, fontSize: 9.5, textAlign: 'center' },
   statRow: {
     flexDirection: 'row',
     marginTop: spacing.xl,
@@ -327,6 +458,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.lg,
     paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+    ...elevation.card,
   },
   statCell: { flex: 1, alignItems: 'center', gap: 4 },
   statDivider: { width: 1, backgroundColor: colors.border },
@@ -340,6 +473,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.md,
     gap: 6,
+    backgroundColor: colors.surface,
+    ...elevation.card,
   },
   windowHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   windowBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.sm, backgroundColor: colors.surface2 },
@@ -358,7 +493,27 @@ const styles = StyleSheet.create({
   },
   speciesChipName: { ...typography.label, fontSize: 12 },
   speciesChipScore: { ...typography.mono, fontSize: 12, color: colors.primary },
-  emptyText: { ...typography.bodySmall, marginTop: spacing.sm },
+  emptyTimeline: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: spacing.sm },
+  emptyText: { ...typography.bodySmall, marginTop: 0 },
+  timeline: { marginTop: spacing.xs },
+  timelineRow: { flexDirection: 'row' },
+  timelineRail: { width: 20, alignItems: 'center' },
+  timelineDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+    marginTop: 14,
+  },
+  timelineDotBest: {
+    backgroundColor: colors.secondary,
+    shadowColor: colors.secondary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+  },
+  timelineLine: { flex: 1, width: 1, backgroundColor: colors.border, marginTop: 4 },
+  timelineContent: { flex: 1, paddingBottom: 4 },
   catchRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -370,6 +525,14 @@ const styles = StyleSheet.create({
   catchSpecies: { ...typography.label, flex: 1 },
   catchWeight: { ...typography.mono, fontSize: 13, color: colors.primary },
   catchTime: { ...typography.mono, fontSize: 12, color: colors.textTertiary, marginLeft: spacing.md },
+  bestBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  bestBadgeText: { fontSize: 9.5, fontFamily: fonts.bodySemi, color: colors.secondary, letterSpacing: 0.6 },
   footer: { padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   modalSheet: {

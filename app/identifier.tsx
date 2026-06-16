@@ -16,7 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFishIdentifier } from '../hooks/useFishIdentifier';
 import { CastButton } from '../components/ui/CastButton';
-import { colors, radius, spacing, typography, fonts } from '../constants/theme';
+import { colors, radius, spacing, typography, fonts, elevation } from '../constants/theme';
 
 const HISTORY_KEY = '@cast_fish_id_history';
 
@@ -170,25 +170,34 @@ export default function IdentifierScreen() {
         {/* Result */}
         {result && (
           <View style={styles.resultCard}>
-            <Text style={styles.idTag}>Identified</Text>
+            <View style={styles.idTagRow}>
+              <MaterialCommunityIcons name="check-decagram" size={12} color={colors.accentBlue} />
+              <Text style={styles.idTag}>Identified</Text>
+            </View>
             <View style={styles.resultHeader}>
               <Text style={styles.resultSpecies}>{result.commonName}</Text>
               <View style={styles.matchBadge}>
+                <MaterialCommunityIcons name="target" size={11} color={colors.accentBlue} />
                 <Text style={styles.matchBadgeText}>{result.confidence}% Match</Text>
               </View>
             </View>
             <Text style={styles.resultLatin}>{result.latinName}</Text>
 
+            <View style={[styles.statusChip, result.isLegal ? styles.statusChipLegal : styles.statusChipWarn]}>
+              <MaterialCommunityIcons
+                name={result.isLegal ? 'check-circle-outline' : 'alert-circle-outline'}
+                size={14}
+                color={result.isLegal ? colors.primary : colors.secondary}
+              />
+              <Text style={[styles.statusChipText, { color: result.isLegal ? colors.primary : colors.secondary }]}>
+                {result.isLegal ? `Legal to keep · min ${result.legalSize}cm` : `Check regulations · min ${result.legalSize}cm`}
+              </Text>
+            </View>
+
             <View style={styles.idRows}>
               <View style={styles.idRow}><Text style={styles.idRowLabel}>Length</Text><Text style={styles.idRowValue}>{result.estimatedLength}</Text></View>
               <View style={styles.idRow}><Text style={styles.idRowLabel}>Weight</Text><Text style={styles.idRowValue}>{result.estimatedWeight}</Text></View>
               <View style={styles.idRow}><Text style={styles.idRowLabel}>Legal Size</Text><Text style={styles.idRowValue}>{result.legalSize}cm</Text></View>
-              <View style={styles.idRow}>
-                <Text style={styles.idRowLabel}>Status</Text>
-                <Text style={[styles.idRowValue, { color: result.isLegal ? colors.primary : colors.danger }]}>
-                  {result.isLegal ? 'Legal to keep' : 'Check regulations'}
-                </Text>
-              </View>
             </View>
 
             <Text style={styles.aboutLabel}>About</Text>
@@ -253,15 +262,16 @@ const styles = StyleSheet.create({
     height: 280, backgroundColor: colors.surface, borderRadius: radius.lg,
     borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden', position: 'relative', marginBottom: spacing.md,
+    ...elevation.card,
   },
   scanPlaceholderTitle: { ...typography.h3, marginTop: spacing.md },
   scanPlaceholderSub: { ...typography.bodySmall, marginTop: 4 },
   scanImage: { width: '100%', height: '100%' },
-  corner: { position: 'absolute', width: 22, height: 22, borderColor: colors.primary },
-  cornerTL: { top: 12, left: 12, borderTopWidth: 2, borderLeftWidth: 2 },
-  cornerTR: { top: 12, right: 12, borderTopWidth: 2, borderRightWidth: 2 },
-  cornerBL: { bottom: 12, left: 12, borderBottomWidth: 2, borderLeftWidth: 2 },
-  cornerBR: { bottom: 12, right: 12, borderBottomWidth: 2, borderRightWidth: 2 },
+  corner: { position: 'absolute', width: 26, height: 26, borderColor: colors.accentBlue },
+  cornerTL: { top: 12, left: 12, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: radius.sm },
+  cornerTR: { top: 12, right: 12, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: radius.sm, borderColor: colors.primary },
+  cornerBL: { bottom: 12, left: 12, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: radius.sm, borderColor: colors.primary },
+  cornerBR: { bottom: 12, right: 12, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: radius.sm },
   scanBadge: {
     position: 'absolute', top: 14, left: 14, flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(10,14,26,0.85)', borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 5,
@@ -279,13 +289,22 @@ const styles = StyleSheet.create({
   loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.lg },
   loadingText: { ...typography.bodySmall },
 
-  resultCard: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg },
-  idTag: { ...typography.caption, marginBottom: 6 },
+  resultCard: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, ...elevation.card },
+  idTagRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
+  idTag: { ...typography.caption, color: colors.accentBlue },
   resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  resultSpecies: { ...typography.h3, fontSize: 20 },
+  resultSpecies: { ...typography.h2, fontSize: 24 },
   resultLatin: { ...typography.bodySmall, fontStyle: 'italic', marginTop: 2, marginBottom: spacing.md },
-  matchBadge: { backgroundColor: 'rgba(0,212,170,0.12)', borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)' },
-  matchBadgeText: { fontSize: 11, fontWeight: '800', color: colors.primary },
+  matchBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(45,212,255,0.12)', borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(45,212,255,0.3)' },
+  matchBadgeText: { fontSize: 11, fontWeight: '800', color: colors.accentBlue },
+  statusChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderRadius: radius.md, paddingVertical: 8, paddingHorizontal: 10,
+    borderWidth: 1, marginBottom: spacing.md,
+  },
+  statusChipLegal: { backgroundColor: 'rgba(0,212,170,0.08)', borderColor: 'rgba(0,212,170,0.25)' },
+  statusChipWarn: { backgroundColor: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.25)' },
+  statusChipText: { fontSize: 12, fontFamily: fonts.bodySemi },
   idRows: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, marginBottom: spacing.md },
   idRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7 },
   idRowLabel: { fontSize: 13, color: colors.textSecondary },
@@ -299,7 +318,7 @@ const styles = StyleSheet.create({
   altChipText: { fontSize: 12, color: colors.textSecondary },
   resultActions: { flexDirection: 'row', gap: spacing.sm },
 
-  historySection: { marginTop: spacing.lg, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  historySection: { marginTop: spacing.lg, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', ...elevation.raised },
   historyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   cardLabel: { ...typography.caption },
   clearText: { fontSize: 12, color: colors.danger, fontWeight: '700' },

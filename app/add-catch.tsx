@@ -18,7 +18,7 @@ import { useCatchStore } from '../store/catchStore';
 import { useLocationStore } from '../store/locationStore';
 import { species } from '../data/species';
 import { CastButton } from '../components/ui/CastButton';
-import { colors, radius, spacing, typography, fonts } from '../constants/theme';
+import { colors, radius, spacing, typography, fonts, elevation } from '../constants/theme';
 
 type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
 
@@ -169,130 +169,140 @@ export default function AddCatchScreen() {
           </View>
         ) : (
           <View style={styles.photoButtons}>
-            <TouchableOpacity style={styles.photoBtn} onPress={() => pickPhoto(true)}>
-              <MaterialCommunityIcons name="camera" size={24} color={colors.primary} />
+            <TouchableOpacity style={styles.photoBtn} onPress={() => pickPhoto(true)} activeOpacity={0.85}>
+              <View style={styles.photoBtnIconWrap}>
+                <MaterialCommunityIcons name="camera-outline" size={26} color={colors.primary} />
+              </View>
               <Text style={styles.photoBtnText}>Camera</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.photoBtn} onPress={() => pickPhoto(false)}>
-              <MaterialCommunityIcons name="image" size={24} color={colors.primary} />
+            <TouchableOpacity style={styles.photoBtn} onPress={() => pickPhoto(false)} activeOpacity={0.85}>
+              <View style={styles.photoBtnIconWrap}>
+                <MaterialCommunityIcons name="image-outline" size={26} color={colors.primary} />
+              </View>
               <Text style={styles.photoBtnText}>Gallery</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
-      {/* Species */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Species *</Text>
-        <TouchableOpacity
-          style={styles.pickerButton}
-          onPress={() => setShowSpeciesPicker(!showSpeciesPicker)}
-        >
-          {selectedSpeciesData ? (
-            <View style={styles.selectedSpecies}>
-              <MaterialCommunityIcons name="fish" size={20} color={colors.primary} />
-              <Text style={styles.selectedName}>{selectedSpeciesData.name}</Text>
-            </View>
-          ) : (
-            <Text style={styles.pickerPlaceholder}>Select species...</Text>
-          )}
-          <MaterialCommunityIcons
-            name={showSpeciesPicker ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color={colors.textSecondary}
-          />
-        </TouchableOpacity>
-        {showSpeciesPicker && (
-          <View style={styles.picker}>
-            {SPECIES_OPTIONS.map((s) => (
-              <TouchableOpacity
-                key={s.id}
-                style={[styles.pickerItem, selectedSpecies === s.id && styles.pickerItemActive]}
-                onPress={() => {
-                  setSelectedSpecies(s.id);
-                  setShowSpeciesPicker(false);
-                }}
-              >
-                <MaterialCommunityIcons name="fish" size={20} color={selectedSpecies === s.id ? colors.primary : colors.textSecondary} />
-                <Text style={[styles.pickerName, selectedSpecies === s.id && { color: colors.primary }]}>
-                  {s.name}
-                </Text>
-                {selectedSpecies === s.id && (
-                  <MaterialCommunityIcons name="check" size={18} color={colors.primary} />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
-
-      {/* Weight & Length */}
-      <View style={styles.row}>
-        <View style={[styles.section, { flex: 1 }]}>
-          <Text style={styles.sectionTitle}>Weight (kg) *</Text>
-          <TextInput
-            style={[styles.input, styles.inputMono]}
-            value={weight}
-            onChangeText={setWeight}
-            placeholder="e.g. 3.5"
-            placeholderTextColor={colors.textSecondary}
-            keyboardType="decimal-pad"
-          />
-        </View>
-        <View style={[styles.section, { flex: 1, marginLeft: spacing.sm }]}>
-          <Text style={styles.sectionTitle}>Length (cm)</Text>
-          <TextInput
-            style={[styles.input, styles.inputMono]}
-            value={length}
-            onChangeText={setLength}
-            placeholder="e.g. 45"
-            placeholderTextColor={colors.textSecondary}
-            keyboardType="decimal-pad"
-          />
-        </View>
-      </View>
-
-      {/* Location */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Location</Text>
-        <View style={styles.locationRow}>
-          <TextInput
-            style={[styles.input, { flex: 1, marginRight: spacing.sm }]}
-            value={location}
-            onChangeText={setLocation}
-            placeholder="Enter location..."
-            placeholderTextColor={colors.textSecondary}
-          />
-          <TouchableOpacity style={styles.gpsBtn} onPress={handleAutoLocation}>
-            <MaterialCommunityIcons name="crosshairs-gps" size={20} color={colors.primary} />
+      {/* Catch details card */}
+      <View style={styles.card}>
+        <View style={styles.cardSection}>
+          <Text style={styles.sectionTitle}>Species *</Text>
+          <TouchableOpacity
+            style={styles.pickerButton}
+            onPress={() => setShowSpeciesPicker(!showSpeciesPicker)}
+          >
+            {selectedSpeciesData ? (
+              <View style={styles.selectedSpecies}>
+                <MaterialCommunityIcons name="fish" size={20} color={colors.primary} />
+                <Text style={styles.selectedName}>{selectedSpeciesData.name}</Text>
+              </View>
+            ) : (
+              <Text style={styles.pickerPlaceholder}>Select species...</Text>
+            )}
+            <MaterialCommunityIcons
+              name={showSpeciesPicker ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={colors.textSecondary}
+            />
           </TouchableOpacity>
+          {showSpeciesPicker && (
+            <View style={styles.picker}>
+              {SPECIES_OPTIONS.map((s) => (
+                <TouchableOpacity
+                  key={s.id}
+                  style={[styles.pickerItem, selectedSpecies === s.id && styles.pickerItemActive]}
+                  onPress={() => {
+                    setSelectedSpecies(s.id);
+                    setShowSpeciesPicker(false);
+                  }}
+                >
+                  <MaterialCommunityIcons name="fish" size={20} color={selectedSpecies === s.id ? colors.primary : colors.textSecondary} />
+                  <Text style={[styles.pickerName, selectedSpecies === s.id && { color: colors.primary }]}>
+                    {s.name}
+                  </Text>
+                  {selectedSpecies === s.id && (
+                    <MaterialCommunityIcons name="check" size={18} color={colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
-      </View>
 
-      {/* Bait */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Bait Used</Text>
-        <TextInput
-          style={styles.input}
-          value={bait}
-          onChangeText={setBait}
-          placeholder="e.g. Boilies, Worms..."
-          placeholderTextColor={colors.textSecondary}
-        />
-      </View>
+        <View style={styles.cardDivider} />
 
-      {/* Notes */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Notes</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={notes}
-          onChangeText={setNotes}
-          placeholder="Conditions, techniques, anything memorable..."
-          placeholderTextColor={colors.textSecondary}
-          multiline
-          numberOfLines={4}
-        />
+        <View style={[styles.cardSection, styles.row]}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.sectionTitle}>Weight (kg) *</Text>
+            <TextInput
+              style={[styles.input, styles.inputMono]}
+              value={weight}
+              onChangeText={setWeight}
+              placeholder="e.g. 3.5"
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="decimal-pad"
+            />
+          </View>
+          <View style={{ flex: 1, marginLeft: spacing.sm }}>
+            <Text style={styles.sectionTitle}>Length (cm)</Text>
+            <TextInput
+              style={[styles.input, styles.inputMono]}
+              value={length}
+              onChangeText={setLength}
+              placeholder="e.g. 45"
+              placeholderTextColor={colors.textSecondary}
+              keyboardType="decimal-pad"
+            />
+          </View>
+        </View>
+
+        <View style={styles.cardDivider} />
+
+        <View style={styles.cardSection}>
+          <Text style={styles.sectionTitle}>Location</Text>
+          <View style={styles.locationRow}>
+            <TextInput
+              style={[styles.input, { flex: 1, marginRight: spacing.sm }]}
+              value={location}
+              onChangeText={setLocation}
+              placeholder="Enter location..."
+              placeholderTextColor={colors.textSecondary}
+            />
+            <TouchableOpacity style={styles.gpsBtn} onPress={handleAutoLocation}>
+              <MaterialCommunityIcons name="crosshairs-gps" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.cardDivider} />
+
+        <View style={styles.cardSection}>
+          <Text style={styles.sectionTitle}>Bait Used</Text>
+          <TextInput
+            style={styles.input}
+            value={bait}
+            onChangeText={setBait}
+            placeholder="e.g. Boilies, Worms..."
+            placeholderTextColor={colors.textSecondary}
+          />
+        </View>
+
+        <View style={styles.cardDivider} />
+
+        <View style={[styles.cardSection, { marginBottom: 0 }]}>
+          <Text style={styles.sectionTitle}>Notes</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Conditions, techniques, anything memorable..."
+            placeholderTextColor={colors.textSecondary}
+            multiline
+            numberOfLines={4}
+          />
+        </View>
       </View>
 
       <View style={styles.saveBtn}>
@@ -332,8 +342,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 0,
   },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    ...elevation.card,
+  },
+  cardSection: {
+    marginBottom: spacing.md,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginBottom: spacing.md,
+  },
   photoContainer: {
     position: 'relative',
+    borderRadius: radius.lg,
+    ...elevation.card,
   },
   photo: {
     width: '100%',
@@ -357,13 +385,22 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     paddingVertical: spacing.xl,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
     borderStyle: 'dashed',
-    gap: spacing.xs,
+    gap: spacing.sm,
+    ...elevation.raised,
+  },
+  photoBtnIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(0,212,170,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   photoBtnText: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
     fontWeight: '600',
   },
@@ -443,12 +480,12 @@ const styles = StyleSheet.create({
   gpsBtn: {
     width: 46,
     height: 46,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(45,212,255,0.1)',
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: colors.primary + '44',
+    borderColor: 'rgba(45,212,255,0.3)',
   },
   saveBtn: {
     marginTop: spacing.md,
