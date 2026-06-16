@@ -34,7 +34,7 @@ export interface CatchStats {
 interface CatchState {
   catches: Catch[];
   isLoading: boolean;
-  addCatch: (c: Omit<Catch, 'id' | 'date'>) => void;
+  addCatch: (c: Omit<Catch, 'id' | 'date'>) => Promise<Catch>;
   removeCatch: (id: string) => void;
   updateCatch: (id: string, updates: Partial<Catch>) => void;
   loadCatches: () => Promise<void>;
@@ -103,6 +103,7 @@ export const useCatchStore = create<CatchState>((set, get) => ({
     const updated = [newCatch, ...get().catches];
     set({ catches: updated });
     await AsyncStorage.setItem('cast_catches', JSON.stringify(updated));
+    return newCatch;
   },
 
   removeCatch: async (id) => {

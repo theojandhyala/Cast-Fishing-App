@@ -1,8 +1,12 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { WorldSpot } from '../../data/worldSpots';
-import { colors, radius, spacing } from '../../constants/theme';
+import { colors, radius, spacing, typography, fonts } from '../../constants/theme';
+import { CastButton } from '../ui/CastButton';
+import { useSessionStore } from '../../store/sessionStore';
+import { useLocationStore } from '../../store/locationStore';
 
 interface SpotCardProps {
   spot: WorldSpot;
@@ -25,35 +29,56 @@ const difficultyColors = {
 };
 
 export function SpotCard({ spot, onClose, onNavigate }: SpotCardProps) {
+  const router = useRouter();
+  const { activeSession, startSession } = useSessionStore();
+  const { setLocation } = useLocationStore();
+
+  const handleStartSession = () => {
+    if (activeSession) {
+      Alert.alert(
+        'Session in progress',
+        `You already have an active session at ${activeSession.spotName}. End it before starting a new one.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    setLocation({ name: spot.name, query: spot.name });
+    startSession(spot.name, { spotQuery: spot.name, latitude: spot.latitude, longitude: spot.longitude });
+    onClose();
+    router.push('/session');
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.handle} />
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <MaterialCommunityIcons name={typeIcons[spot.type] as any} size={20} color={colors.primary} />
+          <View style={styles.iconBox}>
+            <MaterialCommunityIcons name={typeIcons[spot.type] as any} size={18} color={colors.primary} />
+          </View>
           <View style={styles.headerText}>
             <Text style={styles.name}>{spot.name}</Text>
-            <Text style={styles.type}>{spot.country} · {spot.type.charAt(0).toUpperCase() + spot.type.slice(1)}</Text>
+            <Text style={styles.type}>{spot.country.toUpperCase()} · {spot.type.toUpperCase()}</Text>
           </View>
         </View>
         <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-          <MaterialCommunityIcons name="close" size={22} color={colors.textSecondary} />
+          <MaterialCommunityIcons name="close" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.meta}>
         <View style={styles.metaItem}>
-          <MaterialCommunityIcons name="star" size={14} color={colors.secondary} />
-          <Text style={styles.metaText}>{spot.rating}/5</Text>
+          <MaterialCommunityIcons name="star" size={13} color={colors.secondary} />
+          <Text style={styles.metaText}>{spot.rating.toFixed(1)}/5</Text>
         </View>
-        <View style={[styles.badge, { backgroundColor: difficultyColors[spot.difficulty] + '22' }]}>
+        <View style={[styles.badge, { borderColor: difficultyColors[spot.difficulty] }]}>
           <Text style={[styles.badgeText, { color: difficultyColors[spot.difficulty] }]}>
-            {spot.difficulty}
+            {spot.difficulty.toUpperCase()}
           </Text>
         </View>
         {spot.permitRequired && (
-          <View style={[styles.badge, { backgroundColor: colors.danger + '22' }]}>
-            <Text style={[styles.badgeText, { color: colors.danger }]}>Permit Required</Text>
+          <View style={[styles.badge, { borderColor: colors.danger }]}>
+            <Text style={[styles.badgeText, { color: colors.danger }]}>PERMIT REQUIRED</Text>
           </View>
         )}
       </View>
@@ -75,11 +100,11 @@ export function SpotCard({ spot, onClose, onNavigate }: SpotCardProps) {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Best Bait</Text>
-        <Text style={styles.detail}>{spot.bestBait.join(', ')}</Text>
+        <Text style={styles.detail}>{spot.bestBait.join(' · ')}</Text>
       </View>
 
       <View style={styles.tipContainer}>
-        <MaterialCommunityIcons name="lightbulb" size={14} color={colors.secondary} />
+        <MaterialCommunityIcons name="lightbulb-outline" size={14} color={colors.secondary} />
         <Text style={styles.tip}>{spot.tips}</Text>
       </View>
 
@@ -91,24 +116,26 @@ export function SpotCard({ spot, onClose, onNavigate }: SpotCardProps) {
           <View style={styles.reviewsSection}>
             <View style={styles.reviewsHeader}>
               <View style={styles.reviewsRating}>
-                <MaterialCommunityIcons name="star" size={14} color={colors.secondary} />
+                <MaterialCommunityIcons name="star" size={13} color={colors.secondary} />
                 <Text style={styles.reviewsAvg}>{avgRating.toFixed(1)}</Text>
-                <Text style={styles.reviewsCount}>({spot.reviews.length} reviews)</Text>
+                <Text style={styles.reviewsCount}>({spot.reviews.length})</Text>
               </View>
               <TouchableOpacity
                 style={styles.writeReviewBtn}
                 onPress={() => Alert.alert('Write a Review', 'Review submission coming soon! Stay tuned for this feature.', [{ text: 'OK' }])}
               >
-                <Text style={styles.writeReviewText}>Write a Review</Text>
+                <Text style={styles.writeReviewText}>WRITE A REVIEW</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.latestReview}>
               <Text style={styles.reviewAuthor}>"{latest.comment}"</Text>
-              <Text style={styles.reviewMeta}>— {latest.author} · {'⭐'.repeat(latest.rating)}</Text>
+              <Text style={styles.reviewMeta}>— {latest.author.toUpperCase()} · {latest.rating}/5</Text>
             </View>
           </View>
         );
       })()}
+
+      <CastButton title="Start Session" onPress={handleStartSession} fullWidth size="lg" style={{ marginTop: spacing.lg }} />
     </View>
   );
 }
@@ -118,12 +145,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
+    borderTopWidth: 1,
+    borderColor: colors.border,
     padding: spacing.lg,
     paddingTop: spacing.sm,
   },
   handle: {
-    width: 40,
-    height: 4,
+    width: 32,
+    height: 3,
     backgroundColor: colors.border,
     borderRadius: 2,
     alignSelf: 'center',
@@ -137,22 +166,28 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     flex: 1,
     gap: spacing.sm,
+  },
+  iconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerText: {
     flex: 1,
   },
   name: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    ...typography.h3,
   },
   type: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 2,
+    ...typography.caption,
+    marginTop: 3,
   },
   meta: {
     flexDirection: 'row',
@@ -166,34 +201,30 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   metaText: {
+    ...typography.mono,
     fontSize: 13,
-    color: colors.textSecondary,
   },
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
+    borderWidth: 1,
   },
   badgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'capitalize',
+    fontSize: 10,
+    fontFamily: fonts.bodySemi,
+    letterSpacing: 0.6,
   },
   description: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
+    ...typography.bodySmall,
+    lineHeight: 19,
     marginBottom: spacing.md,
   },
   section: {
     marginBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    ...typography.caption,
     marginBottom: spacing.xs,
   },
   chips: {
@@ -204,22 +235,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface2,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
   },
   chipText: {
-    fontSize: 13,
+    fontSize: 12,
     color: colors.primary,
-    fontWeight: '600',
+    fontFamily: fonts.bodySemi,
   },
   detail: {
+    ...typography.body,
     fontSize: 14,
-    color: colors.textPrimary,
     lineHeight: 20,
   },
   tipContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(245,158,11,0.08)',
+    backgroundColor: 'rgba(245,158,11,0.06)',
     borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.2)',
     padding: spacing.md,
     gap: spacing.sm,
     alignItems: 'flex-start',
@@ -248,29 +281,29 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   reviewsAvg: {
+    ...typography.mono,
     fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
+    fontFamily: fonts.monoBold,
   },
   reviewsCount: {
-    fontSize: 12,
-    color: colors.textSecondary,
+    ...typography.caption,
+    textTransform: 'none',
   },
   writeReviewBtn: {
-    backgroundColor: 'rgba(0,212,170,0.12)',
-    borderRadius: radius.full,
+    borderRadius: radius.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,170,0.3)',
+    borderColor: colors.line,
   },
   writeReviewText: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontFamily: fonts.bodySemi,
     color: colors.primary,
+    letterSpacing: 0.6,
   },
   latestReview: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: radius.md,
     padding: spacing.sm,
     gap: 4,
@@ -282,7 +315,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   reviewMeta: {
-    fontSize: 11,
-    color: colors.textSecondary,
+    ...typography.caption,
+    textTransform: 'none',
   },
 });

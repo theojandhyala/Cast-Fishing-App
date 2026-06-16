@@ -11,9 +11,11 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { WORLD_SPOTS, WorldSpot } from '../../data/worldSpots';
 import { SpotCard } from '../../components/map/SpotCard';
-import { colors, radius, spacing } from '../../constants/theme';
+import { colors, radius, spacing, typography, fonts } from '../../constants/theme';
+import { useSessionStore } from '../../store/sessionStore';
 
 const { height } = Dimensions.get('window');
 
@@ -37,6 +39,8 @@ const difficultyColors = {
 };
 
 export default function MapScreen() {
+  const router = useRouter();
+  const { activeSession } = useSessionStore();
   const [selectedContinent, setSelectedContinent] = useState('All');
   const [selectedType, setSelectedType] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -92,8 +96,19 @@ export default function MapScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Fishing Spots</Text>
-        <Text style={styles.subtitle}>{allSpots.length} spots worldwide</Text>
+        <Text style={styles.subtitle}>{allSpots.length} SPOTS WORLDWIDE</Text>
       </View>
+
+      {activeSession && (
+        <TouchableOpacity style={styles.resumeBanner} onPress={() => router.push('/session')} activeOpacity={0.85}>
+          <View style={styles.resumeDot} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.resumeLabel}>SESSION IN PROGRESS</Text>
+            <Text style={styles.resumeSpot}>{activeSession.spotName}</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={20} color={colors.primary} />
+        </TouchableOpacity>
+      )}
 
       {/* Search bar */}
       <View style={styles.searchContainer}>
@@ -227,13 +242,36 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.textPrimary,
+    ...typography.h1,
   },
   subtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
+    ...typography.caption,
+    marginTop: 4,
+  },
+  resumeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: 'rgba(0,212,170,0.06)',
+  },
+  resumeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+  },
+  resumeLabel: {
+    ...typography.caption,
+    color: colors.primary,
+  },
+  resumeSpot: {
+    ...typography.label,
     marginTop: 2,
   },
   mapContainer: {

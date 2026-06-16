@@ -117,11 +117,13 @@ const styles = StyleSheet.create({
   primaryText: {
     color: '#0A0E1A',
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   text: {
-    fontWeight: '600',
-    letterSpacing: 0.3,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   disabled: {
     opacity: 0.5,

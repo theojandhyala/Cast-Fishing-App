@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Syne_600SemiBold, Syne_700Bold } from '@expo-google-fonts/syne';
+import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
 import { useAuthStore } from '../store/authStore';
 import { useCatchStore } from '../store/catchStore';
 import { useUserStore } from '../store/userStore';
@@ -23,6 +24,8 @@ export default function RootLayout() {
     Inter_700Bold,
     Syne_600SemiBold,
     Syne_700Bold,
+    JetBrainsMono_500Medium,
+    JetBrainsMono_700Bold,
   });
 
   useEffect(() => {
@@ -109,6 +112,8 @@ export default function RootLayout() {
         <Stack.Screen name="species-compare" options={{ title: 'Species Compare' }} />
         <Stack.Screen name="quests" options={{ title: 'Quest Log' }} />
         <Stack.Screen name="fish-database" options={{ title: 'Fish Database' }} />
+        <Stack.Screen name="session" options={{ headerShown: false }} />
+        <Stack.Screen name="session-summary" options={{ headerShown: false, presentation: 'modal' }} />
       </Stack>
     </>
   );

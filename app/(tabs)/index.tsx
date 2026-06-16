@@ -19,7 +19,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useCatchStore } from '../../store/catchStore';
 import { useLocationStore } from '../../store/locationStore';
 import { useWeather } from '../../hooks/useWeather';
-import { colors, spacing } from '../../constants/theme';
+import { colors, spacing, radius, typography, fonts } from '../../constants/theme';
 import { species } from '../../data/species';
 import { SPECIES_ACTIVITY_BY_HOUR, MONTHLY_ACTIVITY, getMoonPhase, getTimePeriodLabel } from '../../data/fishingTimes';
 
@@ -31,15 +31,33 @@ const QUICK_SPOTS = [
 ];
 
 const FISH_OF_WEEK_DATA = [
-  { id: 'carp',   name: 'Carp',   emoji: '🐠', bestBait: 'Boilies & Sweetcorn', bestTime: 'Dawn & Dusk',   difficulty: 'Intermediate', accent: '#22C55E' },
-  { id: 'pike',   name: 'Pike',   emoji: '🦷', bestBait: 'Deadbait (Mackerel)', bestTime: 'Cold mornings', difficulty: 'Intermediate', accent: '#3B82F6' },
-  { id: 'perch',  name: 'Perch',  emoji: '🎣', bestBait: 'Worms & Lures',       bestTime: 'Morning',       difficulty: 'Beginner',     accent: '#00D4AA' },
-  { id: 'tench',  name: 'Tench',  emoji: '🌿', bestBait: 'Maggots & Corn',      bestTime: 'Early dawn',    difficulty: 'Intermediate', accent: '#22C55E' },
-  { id: 'bream',  name: 'Bream',  emoji: '🫧', bestBait: 'Maggots & Groundbait',bestTime: 'Night',         difficulty: 'Beginner',     accent: '#9CA3AF' },
-  { id: 'barbel', name: 'Barbel', emoji: '💪', bestBait: 'Pellets & Hemp',       bestTime: 'Evening',       difficulty: 'Expert',       accent: '#F59E0B' },
-  { id: 'trout',  name: 'Trout',  emoji: '🌈', bestBait: 'Flies & Spinners',     bestTime: 'Morning',       difficulty: 'Intermediate', accent: '#8B5CF6' },
-  { id: 'salmon', name: 'Salmon', emoji: '🐟', bestBait: 'Spinners & Flies',     bestTime: 'Autumn dawn',   difficulty: 'Expert',       accent: '#EC4899' },
+  { id: 'carp',   name: 'Carp',   icon: 'fish',  bestBait: 'Boilies & Sweetcorn', bestTime: 'Dawn & Dusk',   difficulty: 'Intermediate', accent: '#22C55E' },
+  { id: 'pike',   name: 'Pike',   icon: 'fish',  bestBait: 'Deadbait (Mackerel)', bestTime: 'Cold mornings', difficulty: 'Intermediate', accent: '#3B82F6' },
+  { id: 'perch',  name: 'Perch',  icon: 'fish',  bestBait: 'Worms & Lures',       bestTime: 'Morning',       difficulty: 'Beginner',     accent: '#00D4AA' },
+  { id: 'tench',  name: 'Tench',  icon: 'fish',  bestBait: 'Maggots & Corn',      bestTime: 'Early dawn',    difficulty: 'Intermediate', accent: '#22C55E' },
+  { id: 'bream',  name: 'Bream',  icon: 'fish',  bestBait: 'Maggots & Groundbait',bestTime: 'Night',         difficulty: 'Beginner',     accent: '#9CA3AF' },
+  { id: 'barbel', name: 'Barbel', icon: 'fish',  bestBait: 'Pellets & Hemp',       bestTime: 'Evening',       difficulty: 'Expert',       accent: '#F59E0B' },
+  { id: 'trout',  name: 'Trout',  icon: 'fish',  bestBait: 'Flies & Spinners',     bestTime: 'Morning',       difficulty: 'Intermediate', accent: '#8B5CF6' },
+  { id: 'salmon', name: 'Salmon', icon: 'fish',  bestBait: 'Spinners & Flies',     bestTime: 'Autumn dawn',   difficulty: 'Expert',       accent: '#EC4899' },
 ];
+
+const MOON_ICONS: Record<string, string> = {
+  'New Moon': 'moon-new',
+  'Waxing Crescent': 'moon-waxing-crescent',
+  'First Quarter': 'moon-first-quarter',
+  'Waxing Gibbous': 'moon-waxing-gibbous',
+  'Full Moon': 'moon-full',
+  'Waning Gibbous': 'moon-waning-gibbous',
+  'Last Quarter': 'moon-last-quarter',
+  'Waning Crescent': 'moon-waning-crescent',
+};
+
+const PERIOD_ICONS: Record<string, string> = {
+  Dawn: 'weather-sunset-up',
+  Midday: 'weather-sunny',
+  Dusk: 'weather-sunset-down',
+  Night: 'weather-night',
+};
 
 function getWeekNumber(d: Date) {
   const u = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -113,7 +131,11 @@ export default function HomeScreen() {
           {/* ── TOP BAR ── */}
           <View style={s.topBar}>
             <View>
-              <Text style={s.topGreeting}>GOOD {getGreeting().toUpperCase()} · {moon.emoji} {moon.name.toUpperCase()}</Text>
+              <View style={s.topGreetingRow}>
+                <Text style={s.topGreeting}>GOOD {getGreeting().toUpperCase()} ·</Text>
+                <MaterialCommunityIcons name={(MOON_ICONS[moon.name] ?? 'moon-waning-crescent') as any} size={12} color={colors.textSecondary} />
+                <Text style={s.topGreeting}>{moon.name.toUpperCase()}</Text>
+              </View>
               <Text style={s.topName}>{user?.name?.split(' ')[0] || 'Angler'}</Text>
             </View>
             <View style={s.topRight}>
@@ -173,9 +195,15 @@ export default function HomeScreen() {
                 <View style={s.condLeft}>
                   <Text style={s.condDesc}>{w.description}</Text>
                   <View style={s.condStats}>
-                    <Text style={s.condStat}>🌡 {w.temp}°C</Text>
+                    <View style={s.condStatItem}>
+                      <MaterialCommunityIcons name="thermometer" size={13} color={colors.textSecondary} />
+                      <Text style={s.condStat}>{w.temp}°C</Text>
+                    </View>
                     <Text style={s.condDot}>·</Text>
-                    <Text style={s.condStat}>💨 {w.wind}km/h</Text>
+                    <View style={s.condStatItem}>
+                      <MaterialCommunityIcons name="weather-windy" size={13} color={colors.textSecondary} />
+                      <Text style={s.condStat}>{w.wind}km/h</Text>
+                    </View>
                     <Text style={s.condDot}>·</Text>
                     <Text style={s.condStat}>{w.pressure}mb</Text>
                   </View>
@@ -207,7 +235,7 @@ export default function HomeScreen() {
             <View style={s.statLine} />
             <StatCell label="CATCHES" value={`${stats.total}`} />
             <View style={s.statLine} />
-            <StatCell label="STREAK" value={`${user?.streak || 0}🔥`} />
+            <StatCell label="STREAK" value={`${user?.streak || 0}`} icon="fire" />
             <View style={s.statLine} />
             <StatCell label="XP" value={`${user?.xp || 0}`} />
           </View>
@@ -247,7 +275,10 @@ export default function HomeScreen() {
                 <Text style={s.linkText}>All species →</Text>
               </TouchableOpacity>
             </View>
-            <Text style={s.sectionSub}>{timePeriod.emoji} {timePeriod.description}</Text>
+            <View style={s.sectionSubRow}>
+              <MaterialCommunityIcons name={(PERIOD_ICONS[timePeriod.label] ?? 'weather-night') as any} size={12} color={colors.textSecondary} />
+              <Text style={s.sectionSub}>{timePeriod.description}</Text>
+            </View>
             {top5.map((fish, i) => {
               const pct = Math.min(100, Math.round((fish.score / 20) * 100));
               const ac  = pct >= 80 ? colors.primary : pct >= 60 ? colors.success : pct >= 40 ? colors.secondary : colors.textSecondary;
@@ -255,7 +286,6 @@ export default function HomeScreen() {
               return (
                 <TouchableOpacity key={fish.id} style={[s.bitingRow, i < 4 && s.bitingBorder]} onPress={() => router.push({ pathname: '/species-detail', params: { id: fish.id } })} activeOpacity={0.7}>
                   <Text style={s.bitingRank}>{i + 1}</Text>
-                  <Text style={s.bitingEmoji}>{fish.emoji}</Text>
                   <View style={s.bitingMid}>
                     <Text style={s.bitingName}>{fish.commonName}</Text>
                     <View style={s.bitingBarTrack}>
@@ -283,7 +313,7 @@ export default function HomeScreen() {
                   <Text style={s.fowDetail}>{fow.bestTime} · {fow.difficulty}</Text>
                   <Text style={[s.fowCta, { color: fow.accent }]}>Full guide →</Text>
                 </View>
-                <Text style={s.fowEmoji}>{fow.emoji}</Text>
+                <MaterialCommunityIcons name={fow.icon as any} size={56} color={fow.accent} />
               </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -295,16 +325,16 @@ export default function HomeScreen() {
             <Text style={s.label}>EXPLORE</Text>
             <View style={s.exploreGrid}>
               {[
-                { emoji: '🐠', title: 'Fish Database', sub: '132 species',    route: '/fish-database',    color: '#3B82F6'       },
-                { emoji: '🗺️', title: 'World Spots',   sub: '168+ locations', route: '/(tabs)/map',       color: colors.primary  },
-                { emoji: '🌙', title: 'Moon Calendar', sub: 'Solunar times',  route: '/moon-calendar',    color: '#8B5CF6'       },
-                { emoji: '🪢', title: 'Knot Guide',    sub: '20+ knots',      route: '/knots',            color: colors.secondary},
-                { emoji: '🤖', title: 'AI Advisor',    sub: 'Ask anything',   route: '/ai-advisor',       color: '#EC4899'       },
-                { emoji: '📊', title: 'My Stats',      sub: 'PBs & records',  route: '/my-stats',         color: '#22C55E'       },
+                { icon: 'database',           title: 'Fish Database', sub: '132 species',    route: '/fish-database',    color: '#3B82F6'       },
+                { icon: 'earth',               title: 'World Spots',   sub: '168+ locations', route: '/(tabs)/map',       color: colors.primary  },
+                { icon: 'moon-waning-crescent',title: 'Moon Calendar', sub: 'Solunar times',  route: '/moon-calendar',    color: '#8B5CF6'       },
+                { icon: 'tie',                 title: 'Knot Guide',    sub: '20+ knots',      route: '/knots',            color: colors.secondary},
+                { icon: 'robot',               title: 'AI Advisor',    sub: 'Ask anything',   route: '/ai-advisor',       color: '#EC4899'       },
+                { icon: 'chart-bar',           title: 'My Stats',      sub: 'PBs & records',  route: '/my-stats',         color: '#22C55E'       },
               ].map(card => (
                 <TouchableOpacity key={card.route} style={s.exploreItem} onPress={() => router.push(card.route as any)} activeOpacity={0.7}>
                   <View style={[s.exploreIcon, { backgroundColor: card.color + '18' }]}>
-                    <Text style={{ fontSize: 26 }}>{card.emoji}</Text>
+                    <MaterialCommunityIcons name={card.icon as any} size={24} color={card.color} />
                   </View>
                   <Text style={s.exploreTitle}>{card.title}</Text>
                   <Text style={s.exploreSub}>{card.sub}</Text>
@@ -325,7 +355,7 @@ export default function HomeScreen() {
             </View>
             {catches.length === 0 ? (
               <TouchableOpacity onPress={() => router.push('/add-catch')} style={s.emptyRow} activeOpacity={0.8}>
-                <Text style={{ fontSize: 28 }}>🎣</Text>
+                <MaterialCommunityIcons name="fish" size={26} color={colors.primary} />
                 <View style={{ flex: 1 }}>
                   <Text style={s.emptyTitle}>Log your first catch</Text>
                   <Text style={s.emptySub}>Start your fishing journal</Text>
@@ -340,7 +370,7 @@ export default function HomeScreen() {
                   onPress={() => router.push({ pathname: '/catch-detail', params: { id: c.id } } as any)}
                   activeOpacity={0.7}
                 >
-                  <Text style={{ fontSize: 26 }}>🐟</Text>
+                  <MaterialCommunityIcons name="fish" size={24} color={colors.textSecondary} />
                   <View style={{ flex: 1 }}>
                     <Text style={s.catchSpecies}>{c.species}</Text>
                     <Text style={s.catchMeta}>{c.location || 'Unknown location'}</Text>
@@ -359,10 +389,13 @@ export default function HomeScreen() {
   );
 }
 
-function StatCell({ label, value }: { label: string; value: string }) {
+function StatCell({ label, value, icon }: { label: string; value: string; icon?: string }) {
   return (
     <View style={s.statCell}>
-      <Text style={s.statVal}>{value}</Text>
+      <View style={s.statValRow}>
+        <Text style={s.statVal}>{value}</Text>
+        {icon && <MaterialCommunityIcons name={icon as any} size={13} color={colors.secondary} />}
+      </View>
       <Text style={s.statLbl}>{label}</Text>
     </View>
   );
@@ -376,13 +409,14 @@ const s = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.md,
   },
-  topGreeting: { fontSize: 10, color: colors.textSecondary, fontWeight: '700', letterSpacing: 1.5, marginBottom: 3 },
-  topName: { fontSize: 30, fontWeight: '900', color: colors.textPrimary, letterSpacing: -1 },
+  topGreetingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3 },
+  topGreeting: { fontSize: 10, color: colors.textSecondary, fontWeight: '700', letterSpacing: 1.5 },
+  topName: { ...typography.h1, fontSize: 30 },
   topRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   iconBtn: { padding: 6 },
   proChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(245,158,11,0.12)', borderRadius: 20,
+    backgroundColor: 'rgba(245,158,11,0.12)', borderRadius: radius.full,
     paddingHorizontal: 10, paddingVertical: 5,
     borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)',
   },
@@ -398,7 +432,7 @@ const s = StyleSheet.create({
   locationInputRow: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#0D1620',
-    borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)',
+    borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)',
     marginBottom: 12,
   },
   locationInput: {
@@ -406,14 +440,14 @@ const s = StyleSheet.create({
     fontSize: 16, color: colors.textPrimary,
   },
   locationGo: {
-    backgroundColor: colors.primary, borderRadius: 10,
+    backgroundColor: colors.primary, borderRadius: radius.sm,
     margin: 6, paddingHorizontal: 16, paddingVertical: 8,
   },
   locationGoText: { fontSize: 13, fontWeight: '900', color: '#0A0E1A', letterSpacing: 0.5 },
   quickSpotsRow: { gap: 8, paddingRight: spacing.lg },
   quickSpotChip: {
     backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: radius.full, paddingHorizontal: 14, paddingVertical: 8,
     borderWidth: 1, borderColor: colors.border,
   },
   quickSpotText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
@@ -422,7 +456,7 @@ const s = StyleSheet.create({
   condPanel: {
     marginHorizontal: spacing.lg,
     backgroundColor: '#0D1620',
-    borderRadius: 16,
+    borderRadius: radius.lg,
     overflow: 'hidden',
     marginBottom: spacing.lg,
   },
@@ -435,20 +469,22 @@ const s = StyleSheet.create({
   condLeft: { flex: 1, gap: 7 },
   condDesc: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
   condStats: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  condStat: { fontSize: 12, color: colors.textSecondary },
+  condStatItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  condStat: { ...typography.mono, fontSize: 12, color: colors.textSecondary },
   condDot: { fontSize: 12, color: colors.border },
-  trendBadge: { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  trendBadge: { alignSelf: 'flex-start', borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 4 },
   trendText: { fontSize: 11, fontWeight: '600' },
   condMore: { fontSize: 12, color: colors.primary, fontWeight: '700' },
   condScore: { alignItems: 'flex-end', paddingLeft: spacing.md },
-  condScoreNum: { fontSize: 56, fontWeight: '900', lineHeight: 60, letterSpacing: -2 },
+  condScoreNum: { ...typography.monoLarge, fontSize: 56, lineHeight: 60, letterSpacing: -2 },
   condScoreWord: { fontSize: 12, fontWeight: '900', letterSpacing: 2, textAlign: 'right' },
   condBar: { height: 3 },
 
   // Stats
   statsRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: 14 },
   statCell: { flex: 1, alignItems: 'center' },
-  statVal: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
+  statValRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  statVal: { ...typography.mono, fontSize: 18, fontFamily: fonts.monoBold, color: colors.textPrimary },
   statLbl: { fontSize: 9, color: colors.textSecondary, fontWeight: '700', letterSpacing: 1, marginTop: 2 },
   statLine: { width: 1, height: 24, backgroundColor: colors.border },
   xpTrack: { height: 2, backgroundColor: colors.surface2, marginHorizontal: spacing.lg, marginBottom: spacing.lg },
@@ -460,14 +496,15 @@ const s = StyleSheet.create({
   section: { paddingHorizontal: spacing.lg, paddingVertical: spacing.lg },
   sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 },
   label: { fontSize: 11, fontWeight: '800', color: colors.textSecondary, letterSpacing: 2 },
-  sectionSub: { fontSize: 11, color: colors.textSecondary, marginBottom: 12 },
+  sectionSubRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 12 },
+  sectionSub: { fontSize: 11, color: colors.textSecondary },
   linkText: { fontSize: 12, color: colors.primary, fontWeight: '700' },
 
   // Quick actions
   qaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 14 },
   qaItem: { alignItems: 'center', gap: 6 },
   qaCircle: {
-    width: 50, height: 50, borderRadius: 25,
+    width: 50, height: 50, borderRadius: radius.full,
     backgroundColor: 'rgba(255,255,255,0.04)',
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1,
@@ -477,30 +514,28 @@ const s = StyleSheet.create({
   // Biting
   bitingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, gap: 12 },
   bitingBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  bitingRank: { fontSize: 12, fontWeight: '800', color: colors.textSecondary, width: 16, textAlign: 'center' },
-  bitingEmoji: { fontSize: 24, width: 32, textAlign: 'center' },
+  bitingRank: { ...typography.mono, fontSize: 12, fontFamily: fonts.monoBold, color: colors.textSecondary, width: 20, textAlign: 'center' },
   bitingMid: { flex: 1, gap: 6 },
   bitingName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  bitingBarTrack: { height: 3, backgroundColor: colors.surface2, borderRadius: 2 },
-  bitingBarFill: { height: 3, borderRadius: 2 },
+  bitingBarTrack: { height: 3, backgroundColor: colors.surface2, borderRadius: radius.xs },
+  bitingBarFill: { height: 3, borderRadius: radius.xs },
   bitingStatus: { fontSize: 12, fontWeight: '700', width: 36, textAlign: 'right' },
-  hotTag: { backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: 4, paddingHorizontal: 5, paddingVertical: 2 },
+  hotTag: { backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: radius.xs, paddingHorizontal: 5, paddingVertical: 2 },
   hotText: { fontSize: 8, fontWeight: '800', color: '#EF4444', letterSpacing: 0.5 },
 
   // Spotlight
   fowBlock: { flexDirection: 'row', paddingVertical: 28 },
-  fowAccent: { width: 3, marginLeft: spacing.lg, borderRadius: 2 },
+  fowAccent: { width: 3, marginLeft: spacing.lg, borderRadius: radius.xs },
   fowInner: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingLeft: 14, paddingRight: spacing.lg },
   fowLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5 },
   fowName: { fontSize: 30, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.5 },
   fowDetail: { fontSize: 13, color: colors.textSecondary },
   fowCta: { fontSize: 12, fontWeight: '700', marginTop: 4 },
-  fowEmoji: { fontSize: 64 },
 
   // Explore
   exploreGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14 },
   exploreItem: { width: (width - spacing.lg * 2 - 20) / 3, gap: 4 },
-  exploreIcon: { borderRadius: 12, height: 56, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  exploreIcon: { borderRadius: radius.lg, height: 56, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   exploreTitle: { fontSize: 12, fontWeight: '700', color: colors.textPrimary },
   exploreSub: { fontSize: 10, color: colors.textSecondary },
 
@@ -512,5 +547,5 @@ const s = StyleSheet.create({
   catchBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   catchSpecies: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   catchMeta: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
-  catchWeight: { fontSize: 14, fontWeight: '800', color: colors.primary },
+  catchWeight: { ...typography.mono, fontSize: 14, fontFamily: fonts.monoBold, color: colors.primary },
 });
