@@ -1,0 +1,92 @@
+{
+  "expo": {
+    "name": "CAST — Fishing Companion",
+    "slug": "cast-fishing-app",
+    "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "sdkVersion": "54.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "scheme": "cast",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0E1A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cast.fishingapp",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "CAST uses your camera to identify fish species using AI.",
+        "NSPhotoLibraryUsageDescription": "CAST accesses your photos so you can log your catches.",
+        "NSLocationWhenInUseUsageDescription": "CAST uses your location to show nearby fishing spots and local weather conditions.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "CAST uses your location to show nearby fishing spots and local weather conditions.",
+        "NSMicrophoneUsageDescription": "CAST may use the microphone when recording catch videos.",
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0E1A",
+        "foregroundImage": "./assets/adaptive-icon.png"
+      },
+      "package": "com.cast.fishingapp",
+      "versionCode": 1,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "INTERNET"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "CAST — Fishing App | AI Fish ID, Spots & Catch Log",
+      "shortName": "CAST",
+      "description": "AI-powered fish identification, 10,000+ worldwide fishing spots, weather conditions, tides and catch logging. The ultimate fishing companion.",
+      "themeColor": "#0A0E1A",
+      "backgroundColor": "#0A0E1A"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow CAST to access your camera to identify fish."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow CAST to access your photos to log catches."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow CAST to access your location for fishing spots and weather."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "baseUrl": "/app"
+    },
+    "extra": {}
+  }
+}
