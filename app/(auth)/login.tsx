@@ -9,6 +9,7 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -51,7 +52,11 @@ export default function LoginScreen() {
         />
 
         <View style={styles.header}>
-          <Text style={styles.logo}>🎣</Text>
+          <Image
+            source={require('../../assets/logo-mark.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.appName}>CAST</Text>
           <Text style={styles.tagline}>Your Premium Fishing Companion</Text>
         </View>
@@ -151,7 +156,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxl,
   },
   logo: {
-    fontSize: 60,
+    width: 120,
+    height: 120,
     marginBottom: spacing.sm,
   },
   appName: {
