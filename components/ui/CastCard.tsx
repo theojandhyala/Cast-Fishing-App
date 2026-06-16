@@ -6,7 +6,7 @@ import {
   StyleSheet,
   ViewStyle,
 } from 'react-native';
-import { colors, radius, spacing } from '../../constants/theme';
+import { colors, radius, spacing, elevation } from '../../constants/theme';
 
 interface CastCardProps {
   children: React.ReactNode;
@@ -45,6 +45,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    ...elevation.card,
   },
   header: {
     marginBottom: spacing.sm,

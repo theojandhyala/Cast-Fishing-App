@@ -8,7 +8,7 @@ import {
   TextStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, radius, spacing } from '../../constants/theme';
+import { colors, radius, spacing, elevation } from '../../constants/theme';
 
 interface CastButtonProps {
   title: string;
@@ -52,7 +52,7 @@ export function CastButton({
       <TouchableOpacity
         onPress={onPress}
         disabled={isDisabled}
-        style={[fullWidth && { width: '100%' }, style]}
+        style={[fullWidth && { width: '100%' }, !isDisabled && elevation.glow, style]}
         activeOpacity={0.85}
       >
         <LinearGradient

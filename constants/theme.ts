@@ -1,19 +1,46 @@
 export const colors = {
   primary: '#00D4AA',
   primaryDim: '#0B5F4F',
+  accentBlue: '#2DD4FF',
   secondary: '#F59E0B',
   background: '#0A0E1A',
-  surface: '#0E1320',
-  surface2: '#161D2E',
+  surface: '#101827',
+  surface2: '#121C2D',
   textPrimary: '#F9FAFB',
   textSecondary: '#8B95A7',
   textTertiary: '#4B5566',
   success: '#10B981',
   warning: '#F59E0B',
   danger: '#EF4444',
-  border: 'rgba(255,255,255,0.07)',
-  borderStrong: 'rgba(255,255,255,0.14)',
+  border: 'rgba(255,255,255,0.08)',
+  borderStrong: 'rgba(255,255,255,0.16)',
   line: 'rgba(0,212,170,0.35)',
+};
+
+// Soft, layered elevation for a premium "glass" surface feel — used on cards
+// that should sit above the background rather than blend flat into it.
+export const elevation = {
+  card: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  raised: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  glow: {
+    shadowColor: '#00D4AA',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 4,
+  },
 };
 
 export const spacing = {
@@ -25,13 +52,13 @@ export const spacing = {
   xxl: 48,
 };
 
-// Sharper, more technical corner system - no soft "bubbly" radii.
+// Soft, rounded corner system for a premium, modern card-based feel.
 export const radius = {
-  xs: 2,
-  sm: 4,
-  md: 6,
-  lg: 8,
-  xl: 12,
+  xs: 6,
+  sm: 10,
+  md: 14,
+  lg: 18,
+  xl: 24,
   full: 9999,
 };
 
