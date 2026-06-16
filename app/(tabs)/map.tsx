@@ -6,700 +6,249 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
-  Dimensions,
   TextInput,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { WORLD_SPOTS, WorldSpot } from '../../data/worldSpots';
 import { SpotCard } from '../../components/map/SpotCard';
-import { colors, radius, spacing, typography, fonts, elevation } from '../../constants/theme';
+import { colors, radius, spacing, elevation } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
 
-const { height } = Dimensions.get('window');
+const TYPE_FILTERS = ['All', 'Sea', 'Lake', 'River', 'Ocean', 'Reservoir'];
+const TAG_FILTERS = ['Carp', 'Predator', 'Beginner Friendly'];
 
-const CONTINENTS = ['All', 'Europe', 'Americas', 'Asia', 'Africa', 'Oceania'];
-const TYPES = ['All', 'River', 'Lake', 'Sea', 'Ocean', 'Reservoir', 'Estuary'];
-
-const typeIcons: Record<string, string> = {
-  river: 'waves',
-  lake: 'water',
-  sea: 'anchor',
-  reservoir: 'water-pump',
-  ocean: 'sail-boat',
-  estuary: 'water-outline',
-  private: 'lock',
+const SPOT_GRADIENTS: Record<string, [string, string]> = {
+  river:     ['#1a3a2a', '#0d1f16'],
+  lake:      ['#1a2a3a', '#0d1620'],
+  sea:       ['#132035', '#0a1525'],
+  reservoir: ['#1a2535', '#0f1928'],
+  ocean:     ['#0f1e30', '#0a1320'],
+  estuary:   ['#1a2a20', '#0f1a12'],
+  private:   ['#1a1a2a', '#0f0f1a'],
 };
 
-const difficultyColors = {
-  beginner: colors.success,
-  intermediate: colors.secondary,
-  expert: colors.danger,
+const TYPE_ICONS: Record<string, string> = {
+  river: 'waves', lake: 'water', sea: 'anchor',
+  reservoir: 'water-pump', ocean: 'sail-boat', estuary: 'water-outline', private: 'lock',
 };
 
-export default function MapScreen() {
+export default function SpotsScreen() {
   const router = useRouter();
   const { activeSession } = useSessionStore();
-  const [selectedContinent, setSelectedContinent] = useState('All');
-  const [selectedType, setSelectedType] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedType, setSelectedType] = useState('All');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedSpot, setSelectedSpot] = useState<WorldSpot | null>(null);
-  const [viewMode, setViewMode] = useState<'map' | 'list' | 'hotspots'>('map');
-  const [showAddSpot, setShowAddSpot] = useState(false);
-  const [newSpotName, setNewSpotName] = useState('');
-  const [newSpotCountry, setNewSpotCountry] = useState('');
-  const [newSpotDesc, setNewSpotDesc] = useState('');
-  const [userSpots, setUserSpots] = useState<WorldSpot[]>([]);
+  const [savedSpots, setSavedSpots] = useState<Set<string>>(new Set());
 
-  const allSpots = useMemo(() => [...WORLD_SPOTS, ...userSpots], [userSpots]);
-
-  const filtered = useMemo(() => allSpots.filter((s) => {
-    const matchContinent = selectedContinent === 'All' || s.continent === selectedContinent;
+  const filtered = useMemo(() => WORLD_SPOTS.filter((s) => {
     const matchType = selectedType === 'All' || s.type === selectedType.toLowerCase();
     const matchSearch = !searchQuery ||
       s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.country.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.region.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchContinent && matchType && matchSearch;
-  }), [allSpots, selectedContinent, selectedType, searchQuery]);
+      s.country.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchTag = !selectedTag ||
+      (selectedTag === 'Beginner Friendly' && s.difficulty === 'beginner') ||
+      (selectedTag === 'Carp' && s.species.some(sp => sp.toLowerCase().includes('carp'))) ||
+      (selectedTag === 'Predator' && s.species.some(sp => ['pike', 'perch', 'zander', 'bass', 'predator'].some(p => sp.toLowerCase().includes(p))));
+    return matchType && matchSearch && matchTag;
+  }), [selectedType, searchQuery, selectedTag]);
 
-  const hotspots = useMemo(() => [...filtered].sort((a, b) => b.rating - a.rating).slice(0, 20), [filtered]);
-
-  const handleAddSpot = () => {
-    if (!newSpotName.trim()) return;
-    const newSpot: WorldSpot = {
-      id: `user_${Date.now()}`,
-      name: newSpotName,
-      country: newSpotCountry || 'Unknown',
-      region: 'User Added',
-      continent: 'Europe',
-      type: 'river',
-      latitude: 51.5,
-      longitude: -0.1,
-      species: [],
-      bestBait: [],
-      bestSeason: ['Year-round'],
-      rating: 0,
-      permitRequired: false,
-      difficulty: 'beginner',
-      description: newSpotDesc,
-      tips: '',
-      facilities: [],
-    };
-    setUserSpots(prev => [newSpot, ...prev]);
-    setNewSpotName('');
-    setNewSpotCountry('');
-    setNewSpotDesc('');
-    setShowAddSpot(false);
+  const toggleSaved = (id: string) => {
+    setSavedSpots(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Fishing Spots</Text>
-        <Text style={styles.subtitle}>{allSpots.length} SPOTS WORLDWIDE</Text>
-      </View>
-
+    <SafeAreaView style={s.safe} edges={['top']}>
+      {/* Active session banner */}
       {activeSession && (
-        <TouchableOpacity style={styles.resumeBanner} onPress={() => router.push('/session')} activeOpacity={0.85}>
-          <View style={styles.resumeDot} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.resumeLabel}>SESSION IN PROGRESS</Text>
-            <Text style={styles.resumeSpot}>{activeSession.spotName}</Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color={colors.primary} />
+        <TouchableOpacity style={s.sessionBanner} onPress={() => router.push('/session' as any)} activeOpacity={0.85}>
+          <View style={s.sessionDot} />
+          <Text style={s.sessionText}>Session in progress · {activeSession.spotName}</Text>
+          <MaterialCommunityIcons name="chevron-right" size={18} color={colors.primary} />
         </TouchableOpacity>
       )}
 
       {/* Search bar */}
-      <View style={styles.searchContainer}>
-        <MaterialCommunityIcons name="magnify" size={18} color={colors.textSecondary} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search spots, countries, regions..."
-          placeholderTextColor={colors.textSecondary}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <MaterialCommunityIcons name="close-circle" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Continent filter */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filters}>
-        {CONTINENTS.map((c) => (
-          <TouchableOpacity key={c} style={[styles.chip, selectedContinent === c && styles.chipActive]} onPress={() => setSelectedContinent(c)}>
-            <Text style={[styles.chipText, selectedContinent === c && styles.chipTextActive]}>{c}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Type filter */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filters}>
-        {TYPES.map((t) => (
-          <TouchableOpacity key={t} style={[styles.chip, selectedType === t && styles.chipActive]} onPress={() => setSelectedType(t)}>
-            <Text style={[styles.chipText, selectedType === t && styles.chipTextActive]}>{t}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Segmented Map/List control */}
-      <View style={styles.segmentRow}>
-        <View style={styles.segmentTrack}>
-          {(['map', 'list', 'hotspots'] as const).map((mode) => (
-            <TouchableOpacity
-              key={mode}
-              style={[styles.segmentBtn, viewMode === mode && styles.segmentBtnActive]}
-              onPress={() => setViewMode(mode)}
-              activeOpacity={0.85}
-            >
-              <MaterialCommunityIcons
-                name={mode === 'map' ? 'map-outline' : mode === 'list' ? 'view-list-outline' : 'fire'}
-                size={15}
-                color={viewMode === mode ? colors.background : colors.textSecondary}
-              />
-              <Text style={[styles.segmentText, viewMode === mode && styles.segmentTextActive]}>
-                {mode === 'map' ? 'Map' : mode === 'list' ? 'List' : 'Hotspots'}
-              </Text>
+      <View style={s.searchRow}>
+        <View style={s.searchBar}>
+          <MaterialCommunityIcons name="magnify" size={18} color={colors.textSecondary} />
+          <TextInput
+            style={s.searchInput}
+            placeholder="Search spots..."
+            placeholderTextColor={colors.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <MaterialCommunityIcons name="close" size={16} color={colors.textSecondary} />
             </TouchableOpacity>
-          ))}
+          )}
         </View>
-        <TouchableOpacity style={styles.addSpotBtn} onPress={() => setShowAddSpot(true)}>
-          <MaterialCommunityIcons name="plus" size={16} color={colors.background} />
-          <Text style={styles.addSpotText}>Add Spot</Text>
+        <TouchableOpacity style={s.filterIconBtn}>
+          <MaterialCommunityIcons name="tune-variant" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
-      {viewMode === 'map' ? (
-        <View style={styles.mapView}>
-          <View style={styles.mapGridPanel}>
-            {/* contour-line texture */}
-            <View style={styles.contourLayer} pointerEvents="none">
-              {[0, 1, 2, 3].map((i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.contourRing,
-                    {
-                      width: 140 + i * 90,
-                      height: 140 + i * 90,
-                      borderRadius: (140 + i * 90) / 2,
-                      opacity: 0.5 - i * 0.1,
-                    },
-                  ]}
-                />
-              ))}
-            </View>
-            {/* grid texture */}
-            <View style={styles.gridLayer} pointerEvents="none">
-              {[1, 2, 3].map((i) => (
-                <View key={`v${i}`} style={[styles.gridLineV, { left: `${i * 25}%` }]} />
-              ))}
-              {[1, 2].map((i) => (
-                <View key={`h${i}`} style={[styles.gridLineH, { top: `${i * 33}%` }]} />
-              ))}
-            </View>
-            {filtered.slice(0, 8).map((spot, i) => {
-              const left = `${12 + (i % 4) * 24}%`;
-              const top = `${18 + Math.floor(i / 4) * 38}%`;
-              return (
-                <TouchableOpacity
-                  key={spot.id}
-                  style={[styles.mapPinMarker, { left, top } as any]}
-                  onPress={() => setSelectedSpot(spot)}
-                  activeOpacity={0.85}
-                >
-                  <View style={[styles.mapPinNum, { borderColor: difficultyColors[spot.difficulty] }]}>
-                    <Text style={styles.mapPinNumText}>{i + 1}</Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-            <View style={styles.mapHintRow}>
-              <MaterialCommunityIcons name="gesture-tap" size={12} color={colors.textTertiary} />
-              <Text style={styles.mapHint}>Tap a pin to view spot details</Text>
-            </View>
-          </View>
-          <Text style={styles.countText}>Showing {filtered.length} spots worldwide</Text>
-        </View>
-      ) : (
-      <>
-      {/* Result count */}
-      <View style={styles.countRow}>
-        <Text style={styles.countText}>
-          {viewMode === 'hotspots' ? `Top ${hotspots.length} rated spots` : `Showing ${filtered.length} spots worldwide`}
-        </Text>
-      </View>
-
-      {/* Spot list */}
-      <ScrollView style={styles.list} showsVerticalScrollIndicator={false} contentContainerStyle={styles.listContent}>
-        {(viewMode === 'hotspots' ? hotspots : filtered).map((spot, i) => (
+      {/* Type filter pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.pillsRow}>
+        {TYPE_FILTERS.map((t) => (
           <TouchableOpacity
-            key={spot.id}
-            style={styles.spotRow}
-            onPress={() => router.push({ pathname: '/spot-details', params: { id: spot.id } } as any)}
-            activeOpacity={0.85}
+            key={t}
+            style={[s.pill, selectedType === t && s.pillActive]}
+            onPress={() => setSelectedType(t)}
           >
-            {viewMode === 'hotspots' ? (
-              <View style={styles.hotspotRankBadge}>
-                <Text style={styles.hotspotRankText}>{i + 1}</Text>
-              </View>
-            ) : (
-              <View style={[styles.spotTypeIcon, { borderColor: difficultyColors[spot.difficulty] + '44' }]}>
-                <MaterialCommunityIcons
-                  name={typeIcons[spot.type] as any}
-                  size={20}
-                  color={difficultyColors[spot.difficulty]}
-                />
-              </View>
-            )}
-            <View style={styles.spotInfo}>
-              <Text style={styles.spotName} numberOfLines={1}>{spot.name}</Text>
-              <Text style={styles.spotCountry} numberOfLines={1}>{spot.country} · {spot.region}</Text>
-              <Text style={styles.spotSpecies} numberOfLines={1}>
-                {spot.species.slice(0, 3).join(' · ')}
-              </Text>
-            </View>
-            <View style={styles.spotMeta}>
-              <View style={styles.ratingRow}>
-                <MaterialCommunityIcons name="star" size={12} color={colors.secondary} />
-                <Text style={styles.rating}>{spot.rating}</Text>
-              </View>
-              {spot.permitRequired && (
-                <Text style={styles.permit}>Permit</Text>
-              )}
-            </View>
+            <Text style={[s.pillText, selectedType === t && s.pillTextActive]}>{t}</Text>
           </TouchableOpacity>
         ))}
-        <View style={{ height: 80 }} />
       </ScrollView>
-      </>
-      )}
 
-      {/* Spot detail bottom sheet */}
-      <Modal
-        visible={!!selectedSpot}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setSelectedSpot(null)}
-      >
-        <TouchableOpacity
-          style={styles.modalBackdrop}
-          activeOpacity={1}
-          onPress={() => setSelectedSpot(null)}
-        />
-        {selectedSpot && (
-          <SpotCard
-            spot={selectedSpot}
-            onClose={() => setSelectedSpot(null)}
-          />
-        )}
-      </Modal>
-
-      {/* Add Spot Modal */}
-      <Modal visible={showAddSpot} transparent animationType="slide" onRequestClose={() => setShowAddSpot(false)}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowAddSpot(false)} />
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.lg, paddingBottom: 40 }}>
-          <Text style={{ fontSize: 20, fontWeight: '800', color: colors.textPrimary, marginBottom: spacing.md }}>Add a Spot</Text>
-          <Text style={styles.inputLabel}>Spot Name *</Text>
-          <TextInput style={styles.textInput} placeholder="e.g. River Thames, London" placeholderTextColor={colors.textSecondary} value={newSpotName} onChangeText={setNewSpotName} />
-          <Text style={styles.inputLabel}>Country</Text>
-          <TextInput style={styles.textInput} placeholder="e.g. United Kingdom" placeholderTextColor={colors.textSecondary} value={newSpotCountry} onChangeText={setNewSpotCountry} />
-          <Text style={styles.inputLabel}>Description</Text>
-          <TextInput style={[styles.textInput, { height: 80, textAlignVertical: 'top' }]} placeholder="Describe this spot..." placeholderTextColor={colors.textSecondary} value={newSpotDesc} onChangeText={setNewSpotDesc} multiline />
-          <TouchableOpacity style={{ backgroundColor: colors.primary, borderRadius: radius.xl, padding: spacing.md, alignItems: 'center', marginTop: spacing.lg }} onPress={handleAddSpot}>
-            <Text style={{ fontSize: 16, fontWeight: '800', color: colors.background }}>Save Spot</Text>
+      {/* Tag filter pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.pillsRow}>
+        {TAG_FILTERS.map((t) => (
+          <TouchableOpacity
+            key={t}
+            style={[s.pill, selectedTag === t && s.pillActive]}
+            onPress={() => setSelectedTag(selectedTag === t ? null : t)}
+          >
+            <Text style={[s.pillText, selectedTag === t && s.pillTextActive]}>{t}</Text>
           </TouchableOpacity>
-        </View>
+        ))}
+      </ScrollView>
+
+      {/* Spot list */}
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        {filtered.map((spot) => {
+          const grad = SPOT_GRADIENTS[spot.type] || ['#1a2a3a', '#0f1924'];
+          const isSaved = savedSpots.has(spot.id);
+          return (
+            <TouchableOpacity
+              key={spot.id}
+              style={s.spotCard}
+              onPress={() => router.push({ pathname: '/spot-details', params: { id: spot.id } } as any)}
+              activeOpacity={0.85}
+            >
+              {/* Photo thumbnail */}
+              <LinearGradient colors={grad} style={s.spotPhoto}>
+                <MaterialCommunityIcons
+                  name={TYPE_ICONS[spot.type] as any}
+                  size={22} color="rgba(255,255,255,0.25)"
+                />
+              </LinearGradient>
+
+              {/* Info */}
+              <View style={s.spotInfo}>
+                <Text style={s.spotName} numberOfLines={1}>{spot.name}</Text>
+                <Text style={s.spotSub} numberOfLines={1}>
+                  {spot.type.charAt(0).toUpperCase() + spot.type.slice(1)} · {spot.country}
+                </Text>
+                <View style={s.speciesRow}>
+                  {spot.species.slice(0, 3).map((sp) => (
+                    <MaterialCommunityIcons key={sp} name="fish" size={13} color={colors.textTertiary} />
+                  ))}
+                  {spot.species.length > 3 && (
+                    <Text style={s.moreText}>+{spot.species.length - 3}</Text>
+                  )}
+                </View>
+              </View>
+
+              {/* Right: bookmark + rating */}
+              <View style={s.spotRight}>
+                <TouchableOpacity onPress={() => toggleSaved(spot.id)} style={s.bookmarkBtn}>
+                  <MaterialCommunityIcons
+                    name={isSaved ? 'bookmark' : 'bookmark-outline'}
+                    size={20} color={isSaved ? colors.secondary : colors.textSecondary}
+                  />
+                </TouchableOpacity>
+                <View style={s.ratingRow}>
+                  <MaterialCommunityIcons name="star" size={12} color={colors.secondary} />
+                  <Text style={s.ratingText}>{spot.rating}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {/* Spot detail modal */}
+      <Modal visible={!!selectedSpot} transparent animationType="slide" onRequestClose={() => setSelectedSpot(null)}>
+        <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={() => setSelectedSpot(null)} />
+        {selectedSpot && <SpotCard spot={selectedSpot} onClose={() => setSelectedSpot(null)} />}
       </Modal>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
+
+  sessionBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginHorizontal: spacing.lg, marginBottom: spacing.sm,
+    backgroundColor: 'rgba(0,212,170,0.08)',
+    borderRadius: radius.md, padding: spacing.sm,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
   },
-  header: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+  sessionDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary },
+  sessionText: { flex: 1, fontSize: 13, color: colors.primary, fontWeight: '600' },
+
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm,
   },
-  title: {
-    ...typography.h1,
+  searchBar: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: spacing.md, paddingVertical: 10,
   },
-  subtitle: {
-    ...typography.caption,
-    marginTop: 4,
+  searchInput: { flex: 1, fontSize: 14, color: colors.textPrimary },
+  filterIconBtn: {
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    padding: 10,
   },
-  resumeBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: 'rgba(0,212,170,0.06)',
-  },
-  resumeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
-  },
-  resumeLabel: {
-    ...typography.caption,
-    color: colors.primary,
-  },
-  resumeSpot: {
-    ...typography.label,
-    marginTop: 2,
-  },
-  mapContainer: {
-    margin: spacing.lg,
-    marginTop: spacing.sm,
-  },
-  mapPlaceholder: {
-    backgroundColor: 'rgba(0,212,170,0.06)',
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,170,0.2)',
-    padding: spacing.lg,
-    alignItems: 'center',
-  },
-  mapTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  mapSubtitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  mapGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  mapPin: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 3,
-  },
-  pinDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  pinLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    maxWidth: 80,
-    textAlign: 'center',
-  },
-  mapNote: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontStyle: 'italic',
-  },
-  filterScroll: {
-    flexGrow: 0,
-  },
-  filters: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.sm,
-    paddingBottom: spacing.sm,
-  },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+
+  pillsRow: { paddingHorizontal: spacing.lg, gap: 8, paddingBottom: spacing.sm },
+  pill: {
+    paddingHorizontal: 14, paddingVertical: 7,
     borderRadius: radius.full,
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1, borderColor: colors.border,
   },
-  chipActive: {
-    backgroundColor: 'rgba(0,212,170,0.15)',
-    borderColor: colors.primary,
-    ...elevation.raised,
-  },
-  chipText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  chipTextActive: {
-    color: colors.primary,
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    paddingHorizontal: spacing.lg,
-  },
-  spotRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.md,
-    ...elevation.raised,
-  },
-  spotTypeIcon: {
-    width: 44,
-    height: 44,
-    backgroundColor: colors.surface2,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  spotInfo: {
-    flex: 1,
-  },
-  spotName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  spotCountry: {
-    fontSize: 11,
-    color: colors.primary,
-    marginBottom: 2,
-    fontWeight: '600',
-  },
-  spotSpecies: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  pillText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  pillTextActive: { color: colors.background },
+
+  spotCard: {
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: spacing.lg, marginBottom: 10,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.sm,
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.textPrimary,
-    paddingVertical: spacing.sm + 2,
-    fontSize: 14,
-  },
-  countRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-  },
-  countText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  addSpotBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    gap: 4,
-  },
-  addSpotText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.background,
-  },
-  inputLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: 4,
-    marginTop: spacing.sm,
-    fontWeight: '600',
-  },
-  textInput: {
-    backgroundColor: colors.surface2,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    color: colors.textPrimary,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  spotMeta: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  rating: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.secondary,
-  },
-  permit: {
-    fontSize: 10,
-    color: colors.danger,
-    fontWeight: '600',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
-  segmentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-    gap: spacing.sm,
-  },
-  segmentTrack: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 3,
-  },
-  segmentBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radius.sm,
-  },
-  segmentBtnActive: {
-    backgroundColor: colors.primary,
-  },
-  segmentText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  segmentTextActive: {
-    color: colors.background,
-  },
-  mapView: {
-    paddingHorizontal: spacing.lg,
-    flex: 1,
-  },
-  mapGridPanel: {
-    flex: 1,
-    backgroundColor: colors.surface2,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.sm,
-    position: 'relative',
+    borderWidth: 1, borderColor: colors.border,
     overflow: 'hidden',
-    ...elevation.card,
-  },
-  contourLayer: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  contourRing: {
-    position: 'absolute',
-    borderWidth: 1,
-    borderColor: 'rgba(45,212,255,0.18)',
-  },
-  gridLayer: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-  },
-  gridLineV: {
-    position: 'absolute',
-    top: 0, bottom: 0, width: 1,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  gridLineH: {
-    position: 'absolute',
-    left: 0, right: 0, height: 1,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  mapPinMarker: {
-    position: 'absolute',
-  },
-  mapPinNum: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.full,
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
     ...elevation.raised,
   },
-  mapPinNumText: {
-    ...typography.mono,
-    fontSize: 12,
-    color: colors.textPrimary,
+  spotPhoto: {
+    width: 80, height: 80, alignItems: 'center', justifyContent: 'center',
   },
-  mapHintRow: {
-    position: 'absolute',
-    bottom: spacing.sm,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  mapHint: {
-    fontSize: 11,
-    color: colors.textTertiary,
-  },
-  hotspotRankBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(245,158,11,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  hotspotRankText: {
-    ...typography.mono,
-    fontSize: 14,
-    fontFamily: fonts.monoBold,
-    color: colors.secondary,
-  },
+  spotInfo: { flex: 1, paddingHorizontal: 12, paddingVertical: 10 },
+  spotName: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 3 },
+  spotSub: { fontSize: 12, color: colors.textSecondary, marginBottom: 6 },
+  speciesRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  moreText: { fontSize: 11, color: colors.textTertiary },
+
+  spotRight: { alignItems: 'center', paddingRight: 14, gap: 8 },
+  bookmarkBtn: { padding: 2 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  ratingText: { fontSize: 13, fontWeight: '700', color: colors.secondary },
+
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
 });

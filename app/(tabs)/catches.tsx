@@ -1,221 +1,191 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  SafeAreaView,
   FlatList,
+  TouchableOpacity,
+  TextInput,
+  Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCatchStore, Catch } from '../../store/catchStore';
-import { CatchCard } from '../../components/catches/CatchCard';
-import { CatchStats } from '../../components/catches/CatchStats';
-import { colors, radius, spacing, typography, fonts, elevation } from '../../constants/theme';
+import { colors, radius, spacing, elevation } from '../../constants/theme';
 
-const FILTERS = ['All', 'Today', 'This Week', 'This Month'];
+const { width } = Dimensions.get('window');
+const CARD_SIZE = (width - spacing.lg * 2 - 12) / 2;
+
+const FILTERS = ['All', 'Species', 'Date', 'Spot'];
+
+const CATCH_GRADIENTS: [string, string][] = [
+  ['#1a3a2a', '#0d1f16'],
+  ['#1a2a3a', '#0d1620'],
+  ['#2a1a1a', '#1a0d0d'],
+  ['#1a2a1a', '#0d1a0d'],
+  ['#2a2a1a', '#1a1a0d'],
+  ['#1a1a3a', '#0d0d20'],
+];
+
+function timeAgo(dateStr: string) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) {
+    return `Today, ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  }
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  const days = Math.floor((now.getTime() - d.getTime()) / 86400000);
+  return `${days} days ago`;
+}
 
 export default function CatchesScreen() {
-  const { catches, getStats } = useCatchStore();
-  const [filter, setFilter] = useState('All');
-  const [mode, setMode] = useState<'grid' | 'list'>('grid');
+  const { catches } = useCatchStore();
   const router = useRouter();
-  const stats = getStats();
+  const [filter, setFilter] = useState('All');
+  const [search, setSearch] = useState('');
 
-  const filteredCatches = catches.filter((c) => {
-    const date = new Date(c.date);
-    const now = new Date();
-    if (filter === 'Today') {
-      return date.toDateString() === now.toDateString();
-    }
-    if (filter === 'This Week') {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      return date >= weekAgo;
-    }
-    if (filter === 'This Month') {
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  const filtered = useMemo(() => catches.filter((c) => {
+    if (search) {
+      return c.species.toLowerCase().includes(search.toLowerCase()) ||
+        (c.location || '').toLowerCase().includes(search.toLowerCase());
     }
     return true;
-  });
+  }), [catches, search]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Catch Log</Text>
-            <Text style={styles.subtitle}>{stats.total} total catches</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => setMode(mode === 'grid' ? 'list' : 'grid')}
-            style={[styles.viewToggle, elevation.raised]}
-          >
-            <MaterialCommunityIcons
-              name={mode === 'grid' ? 'view-list' : 'view-grid'}
-              size={22}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-        </View>
+    <SafeAreaView style={s.safe} edges={['top']}>
+      {/* Start Fishing banner */}
+      <TouchableOpacity style={s.banner} onPress={() => router.push('/add-catch' as any)} activeOpacity={0.85}>
+        <LinearGradient colors={['#00D4AA', '#00B892']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.bannerGrad}>
+          <MaterialCommunityIcons name="fishbowl-outline" size={16} color="#0A0E1A" />
+          <Text style={s.bannerText}>START FISHING HERE</Text>
+        </LinearGradient>
+      </TouchableOpacity>
 
-        {/* Stats */}
-        <View style={styles.statsContainer}>
-          <CatchStats stats={stats} />
-        </View>
-
-        {/* Filters */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.filtersScroll}
-          contentContainerStyle={styles.filters}
-        >
-          {FILTERS.map((f) => (
-            <TouchableOpacity
-              key={f}
-              style={[styles.filterChip, filter === f && styles.filterChipActive]}
-              onPress={() => setFilter(f)}
-            >
-              <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Catches */}
-        {filteredCatches.length === 0 ? (
-          <View style={styles.empty}>
-            <MaterialCommunityIcons name="fish" size={56} color={colors.textTertiary} style={{ marginBottom: spacing.md }} />
-            <Text style={styles.emptyText}>No catches yet</Text>
-            <Text style={styles.emptySubtext}>Go fish and log your first catch!</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={filteredCatches}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              mode === 'list'
-                ? <CatchCard item={item} mode="list" />
-                : <View style={styles.gridItem}><CatchCard item={item} mode="grid" /></View>
-            )}
-            numColumns={mode === 'grid' ? 2 : 1}
-            key={mode}
-            contentContainerStyle={styles.list}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
-
-        {/* FAB */}
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => router.push('/add-catch')}
-          activeOpacity={0.85}
-        >
-          <MaterialCommunityIcons name="plus" size={28} color="#0A0E1A" />
-        </TouchableOpacity>
+      {/* Header */}
+      <View style={s.header}>
+        <Text style={s.title}>Catch Log</Text>
       </View>
+
+      {/* Search */}
+      <View style={s.searchRow}>
+        <MaterialCommunityIcons name="magnify" size={18} color={colors.textSecondary} />
+        <TextInput
+          style={s.searchInput}
+          placeholder="Search catches..."
+          placeholderTextColor={colors.textSecondary}
+          value={search}
+          onChangeText={setSearch}
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch('')}>
+            <MaterialCommunityIcons name="close" size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+        <MaterialCommunityIcons name="tune-variant" size={18} color={colors.textSecondary} />
+      </View>
+
+      {/* Filter pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.pillsRow}>
+        {FILTERS.map((f) => (
+          <TouchableOpacity
+            key={f}
+            style={[s.pill, filter === f && s.pillActive]}
+            onPress={() => setFilter(f)}
+          >
+            <Text style={[s.pillText, filter === f && s.pillTextActive]}>{f}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Grid */}
+      {filtered.length === 0 ? (
+        <View style={s.empty}>
+          <MaterialCommunityIcons name="fish" size={48} color={colors.textTertiary} />
+          <Text style={s.emptyText}>No catches yet</Text>
+          <Text style={s.emptySub}>Go fish and log your first catch!</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          contentContainerStyle={s.grid}
+          showsVerticalScrollIndicator={false}
+          columnWrapperStyle={{ gap: 12 }}
+          renderItem={({ item, index }) => {
+            const grad = CATCH_GRADIENTS[index % CATCH_GRADIENTS.length];
+            return (
+              <TouchableOpacity
+                style={s.card}
+                onPress={() => router.push({ pathname: '/catch-detail', params: { id: item.id } } as any)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={grad} style={s.cardPhoto}>
+                  <MaterialCommunityIcons name="fish" size={28} color="rgba(0,212,170,0.35)" />
+                </LinearGradient>
+                <View style={s.cardInfo}>
+                  <Text style={s.cardSpecies} numberOfLines={1}>{item.species}</Text>
+                  <Text style={s.cardWeight}>{item.weight ? `${item.weight} kg` : '—'}</Text>
+                  <Text style={s.cardMeta} numberOfLines={1}>{item.location || '—'}</Text>
+                  <Text style={s.cardTime}>{timeAgo(item.date)}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
+
+  banner: { marginHorizontal: spacing.lg, marginTop: spacing.md, borderRadius: radius.full, overflow: 'hidden', ...elevation.glow },
+  bannerGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13 },
+  bannerText: { fontSize: 13, fontWeight: '800', color: '#0A0E1A', letterSpacing: 1 },
+
+  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm },
+  title: { fontSize: 24, fontWeight: '700', color: colors.textPrimary },
+
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: spacing.lg, marginBottom: spacing.sm,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: spacing.md, paddingVertical: 10,
   },
-  container: {
-    flex: 1,
+  searchInput: { flex: 1, fontSize: 14, color: colors.textPrimary },
+
+  pillsRow: { paddingHorizontal: spacing.lg, gap: 8, paddingBottom: spacing.sm },
+  pill: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.full,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+  pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  pillText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  pillTextActive: { color: colors.background },
+
+  grid: { paddingHorizontal: spacing.lg, paddingBottom: 100, gap: 12 },
+  card: {
+    width: CARD_SIZE, backgroundColor: colors.surface,
+    borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
+    overflow: 'hidden', ...elevation.raised,
   },
-  title: {
-    ...typography.h1,
-  },
-  subtitle: {
-    ...typography.caption,
-    marginTop: 2,
-  },
-  viewToggle: {
-    padding: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statsContainer: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  filtersScroll: {
-    flexGrow: 0,
-  },
-  filters: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  filterChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterChipActive: {
-    backgroundColor: 'rgba(0,212,170,0.15)',
-    borderColor: colors.primary,
-  },
-  filterText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  filterTextActive: {
-    color: colors.primary,
-  },
-  list: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: 100,
-  },
-  gridItem: {
-    flex: 1,
-  },
-  empty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: 100,
-  },
-  emptyText: {
-    ...typography.h3,
-    marginBottom: spacing.xs,
-  },
-  emptySubtext: {
-    ...typography.caption,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: spacing.lg,
-    right: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: radius.full,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
-    elevation: 8,
-  },
+  cardPhoto: { height: 120, alignItems: 'center', justifyContent: 'center' },
+  cardInfo: { padding: 10 },
+  cardSpecies: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
+  cardWeight: { fontSize: 13, color: colors.primary, fontWeight: '700', marginBottom: 2 },
+  cardMeta: { fontSize: 11, color: colors.textSecondary },
+  cardTime: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10, paddingTop: 80 },
+  emptyText: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+  emptySub: { fontSize: 13, color: colors.textSecondary },
 });
