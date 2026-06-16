@@ -148,7 +148,11 @@ export default function ProfileScreen() {
           <View style={styles.badgesGrid}>
             {achievements.map(a => (
               <View key={a.id} style={[styles.badge, !a.unlocked && styles.badgeLocked]}>
-                <Text style={styles.badgeEmoji}>{a.unlocked ? a.emoji : '🔒'}</Text>
+                {a.unlocked ? (
+                  <MaterialCommunityIcons name="trophy" size={28} color={colors.secondary} />
+                ) : (
+                  <MaterialCommunityIcons name="lock" size={28} color={colors.textSecondary} />
+                )}
                 <Text style={styles.badgeName} numberOfLines={1}>{a.name}</Text>
               </View>
             ))}
@@ -292,7 +296,6 @@ const styles = StyleSheet.create({
   badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   badge: { width: '18%', alignItems: 'center', gap: 2 },
   badgeLocked: { opacity: 0.35 },
-  badgeEmoji: { fontSize: 28 },
   badgeName: { fontSize: 9, color: colors.textSecondary, textAlign: 'center' },
   card: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   emptyText: { padding: spacing.lg, color: colors.textSecondary, textAlign: 'center' },

@@ -22,13 +22,13 @@ import { colors, radius, spacing, typography, fonts } from '../constants/theme';
 
 type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
 
-const RARITY_CELEBRATION: Record<Rarity, { title: string; subtitle: string; color: string; xp: number; emoji: string } | null> = {
+const RARITY_CELEBRATION: Record<Rarity, { title: string; subtitle: string; color: string; xp: number; icon: string } | null> = {
   common: null,
   uncommon: null,
-  rare: { title: 'Rare Catch!', subtitle: 'Nice one! A rare fish on the line.', color: '#3B82F6', xp: 50, emoji: '🔵' },
-  epic: { title: 'Epic Catch!', subtitle: 'Incredible fish! Outstanding catch.', color: '#8B5CF6', xp: 150, emoji: '🟣' },
-  legendary: { title: 'LEGENDARY!', subtitle: 'An extraordinary catch. You\'ll be telling this story forever.', color: '#F59E0B', xp: 500, emoji: '🏆' },
-  mythic: { title: '🌟 MYTHIC CATCH! 🌟', subtitle: 'You\'ve caught something extraordinary. A fish most anglers will never see in their lifetime.', color: '#EC4899', xp: 1000, emoji: '✦' },
+  rare: { title: 'Rare Catch!', subtitle: 'Nice one! A rare fish on the line.', color: '#3B82F6', xp: 50, icon: 'circle' },
+  epic: { title: 'Epic Catch!', subtitle: 'Incredible fish! Outstanding catch.', color: '#8B5CF6', xp: 150, icon: 'hexagon' },
+  legendary: { title: 'LEGENDARY!', subtitle: 'An extraordinary catch. You\'ll be telling this story forever.', color: '#F59E0B', xp: 500, icon: 'trophy' },
+  mythic: { title: 'MYTHIC CATCH!', subtitle: 'You\'ve caught something extraordinary. A fish most anglers will never see in their lifetime.', color: '#EC4899', xp: 1000, icon: 'star-four-points' },
 };
 
 const SPECIES_OPTIONS = species.map((s) => ({ id: s.id, name: s.name, emoji: s.emoji }));
@@ -102,7 +102,7 @@ export default function AddCatchScreen() {
       bait: bait || undefined,
       notes: notes || undefined,
       photo: photo || undefined,
-      emoji: selectedSpeciesData?.emoji || '🐟',
+      emoji: selectedSpeciesData?.emoji || 'fish',
     });
     setSaving(false);
 
@@ -131,7 +131,12 @@ export default function AddCatchScreen() {
         backgroundColor: celebrationData ? celebrationData.color + '33' : 'transparent',
       }]}>
         <View style={[styles.celebrationCard, { borderColor: celebrationData?.color || colors.primary }]}>
-          <Text style={styles.celebrationEmoji}>{celebrationData?.emoji}</Text>
+          <MaterialCommunityIcons
+            name={(celebrationData?.icon as any) || 'trophy'}
+            size={64}
+            color={celebrationData?.color || colors.primary}
+            style={styles.celebrationIcon}
+          />
           <Text style={[styles.celebrationTitle, { color: celebrationData?.color || colors.primary }]}>
             {celebrationData?.title}
           </Text>
@@ -185,7 +190,7 @@ export default function AddCatchScreen() {
         >
           {selectedSpeciesData ? (
             <View style={styles.selectedSpecies}>
-              <Text style={styles.selectedEmoji}>{selectedSpeciesData.emoji}</Text>
+              <MaterialCommunityIcons name="fish" size={20} color={colors.primary} />
               <Text style={styles.selectedName}>{selectedSpeciesData.name}</Text>
             </View>
           ) : (
@@ -208,7 +213,7 @@ export default function AddCatchScreen() {
                   setShowSpeciesPicker(false);
                 }}
               >
-                <Text style={styles.pickerEmoji}>{s.emoji}</Text>
+                <MaterialCommunityIcons name="fish" size={20} color={selectedSpecies === s.id ? colors.primary : colors.textSecondary} />
                 <Text style={[styles.pickerName, selectedSpecies === s.id && { color: colors.primary }]}>
                   {s.name}
                 </Text>
@@ -383,9 +388,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  selectedEmoji: {
-    fontSize: 20,
-  },
   selectedName: {
     fontSize: 15,
     color: colors.textPrimary,
@@ -410,9 +412,6 @@ const styles = StyleSheet.create({
   },
   pickerItemActive: {
     backgroundColor: 'rgba(0,212,170,0.08)',
-  },
-  pickerEmoji: {
-    fontSize: 20,
   },
   pickerName: {
     flex: 1,
@@ -463,7 +462,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl, alignItems: 'center',
     borderWidth: 2, width: '100%',
   },
-  celebrationEmoji: { fontSize: 64, marginBottom: spacing.md },
+  celebrationIcon: { marginBottom: spacing.md },
   celebrationTitle: { fontSize: 28, fontWeight: '900', textAlign: 'center', marginBottom: spacing.sm },
   celebrationSubtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: spacing.lg },
   xpBadge: {

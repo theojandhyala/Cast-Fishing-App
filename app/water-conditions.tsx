@@ -75,12 +75,12 @@ const chartStyles = StyleSheet.create({
 });
 
 const SPECIES_TEMP_ADVICE = [
-  { name: 'Carp', emoji: '🐟', advice: 'Active above 12°C, peak 18–22°C', min: 12, peak1: 18, peak2: 22 },
-  { name: 'Pike', emoji: '🐠', advice: 'Active 4–16°C, prefer colder water', min: 4, peak1: 4, peak2: 12 },
-  { name: 'Trout', emoji: '🎣', advice: 'Peak 8–16°C', min: 8, peak1: 8, peak2: 16 },
-  { name: 'Tench', emoji: '🐡', advice: 'Active 15–22°C, summer species', min: 15, peak1: 18, peak2: 22 },
-  { name: 'Bream', emoji: '🐟', advice: 'Active 10–20°C', min: 10, peak1: 14, peak2: 20 },
-  { name: 'Perch', emoji: '🐠', advice: 'Active year-round, prefer 8–18°C', min: 8, peak1: 10, peak2: 18 },
+  { name: 'Carp', icon: 'fish', advice: 'Active above 12°C, peak 18–22°C', min: 12, peak1: 18, peak2: 22 },
+  { name: 'Pike', icon: 'fish', advice: 'Active 4–16°C, prefer colder water', min: 4, peak1: 4, peak2: 12 },
+  { name: 'Trout', icon: 'fish', advice: 'Peak 8–16°C', min: 8, peak1: 8, peak2: 16 },
+  { name: 'Tench', icon: 'fish', advice: 'Active 15–22°C, summer species', min: 15, peak1: 18, peak2: 22 },
+  { name: 'Bream', icon: 'fish', advice: 'Active 10–20°C', min: 10, peak1: 14, peak2: 20 },
+  { name: 'Perch', icon: 'fish', advice: 'Active year-round, prefer 8–18°C', min: 8, peak1: 10, peak2: 18 },
 ];
 
 const CLARITY_COLORS: Record<string, string> = { clear: colors.primary, coloured: colors.secondary, murky: '#8B5CF6' };
@@ -187,7 +187,7 @@ export default function WaterConditionsScreen() {
               const isPeak = region.waterTemp >= s.peak1 && region.waterTemp <= s.peak2;
               return (
                 <View key={s.name} style={[styles.riverRow, i < SPECIES_TEMP_ADVICE.length - 1 && styles.riverBorder]}>
-                  <Text style={{ fontSize: 18 }}>{s.emoji}</Text>
+                  <MaterialCommunityIcons name={s.icon as any} size={18} color={colors.textSecondary} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.riverName}>{s.name}</Text>
                     <Text style={[styles.riverChange, { fontSize: 12 }]}>{s.advice}</Text>

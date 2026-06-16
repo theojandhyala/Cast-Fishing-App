@@ -12,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius, spacing } from '../constants/theme';
 
 // Moon phase calculation (simplified)
-function getMoonPhase(date: Date): { phase: number; name: string; emoji: string; illumination: number } {
+function getMoonPhase(date: Date): { phase: number; name: string; icon: string; illumination: number } {
   const knownNewMoon = new Date('2024-01-11');
   const lunarCycle = 29.53059;
   const diffDays = (date.getTime() - knownNewMoon.getTime()) / (1000 * 60 * 60 * 24);
@@ -20,17 +20,17 @@ function getMoonPhase(date: Date): { phase: number; name: string; emoji: string;
   const illumination = Math.round(Math.abs(Math.cos((phase / lunarCycle) * 2 * Math.PI - Math.PI)) * 100);
 
   let name: string;
-  let emoji: string;
-  if (phase < 1.85) { name = 'New Moon'; emoji = '🌑'; }
-  else if (phase < 7.38) { name = 'Waxing Crescent'; emoji = '🌒'; }
-  else if (phase < 9.22) { name = 'First Quarter'; emoji = '🌓'; }
-  else if (phase < 14.77) { name = 'Waxing Gibbous'; emoji = '🌔'; }
-  else if (phase < 16.61) { name = 'Full Moon'; emoji = '🌕'; }
-  else if (phase < 22.15) { name = 'Waning Gibbous'; emoji = '🌖'; }
-  else if (phase < 23.99) { name = 'Last Quarter'; emoji = '🌗'; }
-  else { name = 'Waning Crescent'; emoji = '🌘'; }
+  let icon: string;
+  if (phase < 1.85) { name = 'New Moon'; icon = 'moon-new'; }
+  else if (phase < 7.38) { name = 'Waxing Crescent'; icon = 'moon-waxing-crescent'; }
+  else if (phase < 9.22) { name = 'First Quarter'; icon = 'moon-first-quarter'; }
+  else if (phase < 14.77) { name = 'Waxing Gibbous'; icon = 'moon-waxing-gibbous'; }
+  else if (phase < 16.61) { name = 'Full Moon'; icon = 'moon-full'; }
+  else if (phase < 22.15) { name = 'Waning Gibbous'; icon = 'moon-waning-gibbous'; }
+  else if (phase < 23.99) { name = 'Last Quarter'; icon = 'moon-last-quarter'; }
+  else { name = 'Waning Crescent'; icon = 'moon-waning-crescent'; }
 
-  return { phase, name, emoji, illumination };
+  return { phase, name, icon, illumination };
 }
 
 function getSolnarScore(phase: number): number {
@@ -53,26 +53,26 @@ function getFirstDayOfMonth(year: number, month: number) {
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 
-const SPECIES_BY_PHASE: Record<string, { species: string[]; emoji: string }> = {
-  'New Moon': { species: ['Carp', 'Tench', 'Bream'], emoji: '🌑' },
-  'Waxing Crescent': { species: ['Perch', 'Roach', 'Rudd'], emoji: '🌒' },
-  'First Quarter': { species: ['Pike', 'Perch', 'Zander'], emoji: '🌓' },
-  'Waxing Gibbous': { species: ['Bass', 'Salmon', 'Trout'], emoji: '🌔' },
-  'Full Moon': { species: ['Carp', 'Eel', 'Sea Bass', 'Bream'], emoji: '🌕' },
-  'Waning Gibbous': { species: ['Carp', 'Tench', 'Catfish'], emoji: '🌖' },
-  'Last Quarter': { species: ['Pike', 'Perch', 'Chub'], emoji: '🌗' },
-  'Waning Crescent': { species: ['Barbel', 'Chub', 'Dace'], emoji: '🌘' },
+const SPECIES_BY_PHASE: Record<string, { species: string[]; icon: string }> = {
+  'New Moon': { species: ['Carp', 'Tench', 'Bream'], icon: 'moon-new' },
+  'Waxing Crescent': { species: ['Perch', 'Roach', 'Rudd'], icon: 'moon-waxing-crescent' },
+  'First Quarter': { species: ['Pike', 'Perch', 'Zander'], icon: 'moon-first-quarter' },
+  'Waxing Gibbous': { species: ['Bass', 'Salmon', 'Trout'], icon: 'moon-waxing-gibbous' },
+  'Full Moon': { species: ['Carp', 'Eel', 'Sea Bass', 'Bream'], icon: 'moon-full' },
+  'Waning Gibbous': { species: ['Carp', 'Tench', 'Catfish'], icon: 'moon-waning-gibbous' },
+  'Last Quarter': { species: ['Pike', 'Perch', 'Chub'], icon: 'moon-last-quarter' },
+  'Waning Crescent': { species: ['Barbel', 'Chub', 'Dace'], icon: 'moon-waning-crescent' },
 };
 
 const PHASE_LEGEND = [
-  { emoji: '🌑', name: 'New Moon', tip: 'Great feeding window, 2 days either side.' },
-  { emoji: '🌒', name: 'Waxing Crescent', tip: 'Building to first quarter — decent daytime fishing.' },
-  { emoji: '🌓', name: 'First Quarter', tip: 'Moderate activity, dawn and dusk best.' },
-  { emoji: '🌔', name: 'Waxing Gibbous', tip: 'Improving towards full moon — evenings productive.' },
-  { emoji: '🌕', name: 'Full Moon', tip: 'Peak feeding — fish are active, especially at night.' },
-  { emoji: '🌖', name: 'Waning Gibbous', tip: 'Still good — early mornings particularly productive.' },
-  { emoji: '🌗', name: 'Last Quarter', tip: 'Moderate — predator fishing can be excellent.' },
-  { emoji: '🌘', name: 'Waning Crescent', tip: 'Quieter period — still worth fishing first light.' },
+  { icon: 'moon-new', name: 'New Moon', tip: 'Great feeding window, 2 days either side.' },
+  { icon: 'moon-waxing-crescent', name: 'Waxing Crescent', tip: 'Building to first quarter — decent daytime fishing.' },
+  { icon: 'moon-first-quarter', name: 'First Quarter', tip: 'Moderate activity, dawn and dusk best.' },
+  { icon: 'moon-waxing-gibbous', name: 'Waxing Gibbous', tip: 'Improving towards full moon — evenings productive.' },
+  { icon: 'moon-full', name: 'Full Moon', tip: 'Peak feeding — fish are active, especially at night.' },
+  { icon: 'moon-waning-gibbous', name: 'Waning Gibbous', tip: 'Still good — early mornings particularly productive.' },
+  { icon: 'moon-last-quarter', name: 'Last Quarter', tip: 'Moderate — predator fishing can be excellent.' },
+  { icon: 'moon-waning-crescent', name: 'Waning Crescent', tip: 'Quieter period — still worth fishing first light.' },
 ];
 
 function isBestDay(phase: number, lunarCycle = 29.53059): boolean {
@@ -118,7 +118,7 @@ export default function MoonCalendarScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <LinearGradient colors={['rgba(167,139,250,0.15)', 'transparent']} style={styles.hero}>
-          <Text style={styles.moonHero}>🌕</Text>
+          <MaterialCommunityIcons name="moon-full" size={52} color={colors.textPrimary} style={styles.moonHero} />
           <Text style={styles.heroTitle}>Moon Calendar</Text>
           <Text style={styles.heroSub}>Plan your sessions around lunar cycles</Text>
         </LinearGradient>
@@ -164,7 +164,7 @@ export default function MoonCalendarScreen() {
                   ]}
                   onPress={() => setSelectedDay(day)}
                 >
-                  <Text style={styles.moonEmoji}>{moon.emoji}</Text>
+                  <MaterialCommunityIcons name={moon.icon as any} size={18} color={colors.textPrimary} />
                   <Text style={[styles.dayNum, isSelected && styles.dayNumSelected, isToday && styles.dayNumToday]}>{day}</Text>
                 </TouchableOpacity>
               );
@@ -180,7 +180,7 @@ export default function MoonCalendarScreen() {
             </Text>
             <View style={styles.detailCard}>
               <View style={styles.detailRow}>
-                <Text style={styles.detailEmoji}>{selectedMoon.emoji}</Text>
+                <MaterialCommunityIcons name={selectedMoon.icon as any} size={44} color={colors.textPrimary} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.phaseName}>{selectedMoon.name}</Text>
                   <Text style={styles.illumination}>{selectedMoon.illumination}% illuminated</Text>
@@ -195,7 +195,10 @@ export default function MoonCalendarScreen() {
                 <View style={styles.speciesChips}>
                   {(SPECIES_BY_PHASE[selectedMoon.name]?.species || []).map(s => (
                     <View key={s} style={styles.speciesChip}>
-                      <Text style={styles.speciesChipText}>🐟 {s}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <MaterialCommunityIcons name="fish" size={12} color={colors.primary} />
+                        <Text style={styles.speciesChipText}>{s}</Text>
+                      </View>
                     </View>
                   ))}
                 </View>
@@ -225,7 +228,7 @@ export default function MoonCalendarScreen() {
                   const moon = getMoonPhase(new Date(year, month, d));
                   return (
                     <TouchableOpacity key={d} style={styles.bestDayRow} onPress={() => setSelectedDay(d)}>
-                      <Text style={styles.bestDayEmoji}>{moon.emoji}</Text>
+                      <MaterialCommunityIcons name={moon.icon as any} size={22} color={colors.textPrimary} />
                       <Text style={styles.bestDayDate}>{d} {MONTH_NAMES[month]}</Text>
                       <Text style={styles.bestDayPhase}>{moon.name}</Text>
                       <View style={styles.bestBadge}>
@@ -245,7 +248,7 @@ export default function MoonCalendarScreen() {
           <Text style={styles.sectionTitle}>MOON PHASE GUIDE</Text>
           {PHASE_LEGEND.map(p => (
             <View key={p.name} style={styles.legendRow}>
-              <Text style={styles.legendEmoji}>{p.emoji}</Text>
+              <MaterialCommunityIcons name={p.icon as any} size={26} color={colors.textPrimary} style={{ width: 36, textAlign: 'center' }} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.legendName}>{p.name}</Text>
                 <Text style={styles.legendTip}>{p.tip}</Text>
