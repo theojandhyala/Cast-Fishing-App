@@ -19,7 +19,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useCatchStore } from '../../store/catchStore';
 import { useLocationStore } from '../../store/locationStore';
 import { useWeather } from '../../hooks/useWeather';
-import { colors, spacing, radius, typography, fonts } from '../../constants/theme';
+import { colors, spacing, radius, typography, fonts, elevation } from '../../constants/theme';
 import { species } from '../../data/species';
 import { SPECIES_ACTIVITY_BY_HOUR, MONTHLY_ACTIVITY, getMoonPhase, getTimePeriodLabel } from '../../data/fishingTimes';
 
@@ -227,16 +227,18 @@ export default function HomeScreen() {
           )}
 
           {/* ── STATS ROW ── */}
-          <View style={s.statsRow}>
-            <StatCell label="LEVEL" value={`${level}`} />
-            <View style={s.statLine} />
-            <StatCell label="CATCHES" value={`${stats.total}`} />
-            <View style={s.statLine} />
-            <StatCell label="STREAK" value={`${user?.streak || 0}`} icon="fire" />
-            <View style={s.statLine} />
-            <StatCell label="XP" value={`${user?.xp || 0}`} />
+          <View style={s.statsCard}>
+            <View style={s.statsRow}>
+              <StatCell label="LEVEL" value={`${level}`} />
+              <View style={s.statLine} />
+              <StatCell label="CATCHES" value={`${stats.total}`} />
+              <View style={s.statLine} />
+              <StatCell label="STREAK" value={`${user?.streak || 0}`} icon="fire" hot={(user?.streak || 0) > 0} />
+              <View style={s.statLine} />
+              <StatCell label="XP" value={`${user?.xp || 0}`} />
+            </View>
+            <View style={s.xpTrack}><View style={[s.xpFill, { width: `${xpPct * 100}%` }]} /></View>
           </View>
-          <View style={s.xpTrack}><View style={[s.xpFill, { width: `${xpPct * 100}%` }]} /></View>
 
           <View style={s.divider} />
 
@@ -276,6 +278,7 @@ export default function HomeScreen() {
               <MaterialCommunityIcons name={(PERIOD_ICONS[timePeriod.label] ?? 'weather-night') as any} size={12} color={colors.textSecondary} />
               <Text style={s.sectionSub}>{timePeriod.description}</Text>
             </View>
+            <View style={s.bitingCard}>
             {top5.map((fish, i) => {
               const pct = Math.min(100, Math.round((fish.score / 20) * 100));
               const ac  = pct >= 80 ? colors.primary : pct >= 60 ? colors.success : pct >= 40 ? colors.secondary : colors.textSecondary;
@@ -290,10 +293,16 @@ export default function HomeScreen() {
                     </View>
                   </View>
                   <Text style={[s.bitingStatus, { color: ac }]}>{lbl}</Text>
-                  {i === 0 && <View style={s.hotTag}><Text style={s.hotText}>HOT</Text></View>}
+                  {i === 0 && (
+                    <View style={s.hotTag}>
+                      <MaterialCommunityIcons name="fire" size={9} color={colors.secondary} />
+                      <Text style={s.hotText}>HOT</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             })}
+            </View>
           </View>
 
           <View style={s.divider} />
@@ -388,12 +397,12 @@ export default function HomeScreen() {
   );
 }
 
-function StatCell({ label, value, icon }: { label: string; value: string; icon?: string }) {
+function StatCell({ label, value, icon, hot }: { label: string; value: string; icon?: string; hot?: boolean }) {
   return (
     <View style={s.statCell}>
       <View style={s.statValRow}>
-        <Text style={s.statVal}>{value}</Text>
-        {icon && <MaterialCommunityIcons name={icon as any} size={13} color={colors.secondary} />}
+        <Text style={[s.statVal, hot && { color: colors.secondary }]}>{value}</Text>
+        {icon && <MaterialCommunityIcons name={icon as any} size={13} color={hot ? colors.secondary : colors.textTertiary} />}
       </View>
       <Text style={s.statLbl}>{label}</Text>
     </View>
@@ -453,12 +462,13 @@ const s = StyleSheet.create({
   // Conditions panel (location set)
   condPanel: {
     marginHorizontal: spacing.lg,
-    backgroundColor: '#0D1620',
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
     marginBottom: spacing.lg,
+    ...elevation.card,
   },
   condTopRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   condLocation: {
@@ -480,14 +490,25 @@ const s = StyleSheet.create({
   condStatDivider: { width: 1, height: 28, backgroundColor: colors.border, marginHorizontal: spacing.md },
 
   // Stats
-  statsRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, paddingVertical: 14 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: 14 },
   statCell: { flex: 1, alignItems: 'center' },
   statValRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   statVal: { ...typography.mono, fontSize: 18, fontFamily: fonts.monoBold, color: colors.textPrimary },
   statLbl: { fontSize: 9, color: colors.textSecondary, fontWeight: '700', letterSpacing: 1, marginTop: 2 },
   statLine: { width: 1, height: 24, backgroundColor: colors.border },
-  xpTrack: { height: 2, backgroundColor: colors.surface2, marginHorizontal: spacing.lg, marginBottom: spacing.lg },
-  xpFill: { height: 2, backgroundColor: colors.primary },
+  xpTrack: { height: 3, backgroundColor: colors.surface, marginHorizontal: spacing.md, marginBottom: spacing.sm, borderRadius: radius.full, overflow: 'hidden' },
+  xpFill: { height: 3, backgroundColor: colors.primary, borderRadius: radius.full },
+
+  statsCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 4,
+    ...elevation.raised,
+  },
 
   divider: { height: 1, backgroundColor: colors.border, marginHorizontal: spacing.lg },
 
@@ -511,6 +532,15 @@ const s = StyleSheet.create({
   qaLabel: { fontSize: 10, color: colors.textSecondary, fontWeight: '600', textAlign: 'center' },
 
   // Biting
+  bitingCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    marginTop: 4,
+    ...elevation.raised,
+  },
   bitingRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, gap: 12 },
   bitingBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   bitingRank: { ...typography.mono, fontSize: 12, fontFamily: fonts.monoBold, color: colors.textSecondary, width: 20, textAlign: 'center' },
@@ -519,8 +549,8 @@ const s = StyleSheet.create({
   bitingBarTrack: { height: 3, backgroundColor: colors.surface2, borderRadius: radius.xs },
   bitingBarFill: { height: 3, borderRadius: radius.xs },
   bitingStatus: { fontSize: 12, fontWeight: '700', width: 36, textAlign: 'right' },
-  hotTag: { backgroundColor: 'rgba(239,68,68,0.15)', borderRadius: radius.xs, paddingHorizontal: 5, paddingVertical: 2 },
-  hotText: { fontSize: 8, fontWeight: '800', color: '#EF4444', letterSpacing: 0.5 },
+  hotTag: { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: 'rgba(245,158,11,0.15)', borderRadius: radius.xs, paddingHorizontal: 5, paddingVertical: 2 },
+  hotText: { fontSize: 8, fontWeight: '800', color: colors.secondary, letterSpacing: 0.5 },
 
   // Spotlight
   fowBlock: { flexDirection: 'row', paddingVertical: 28 },
@@ -533,8 +563,12 @@ const s = StyleSheet.create({
 
   // Explore
   exploreGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 14 },
-  exploreItem: { width: (width - spacing.lg * 2 - 20) / 3, gap: 4 },
-  exploreIcon: { borderRadius: radius.lg, height: 56, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  exploreItem: {
+    width: (width - spacing.lg * 2 - 20) / 3, gap: 4,
+    backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
+    padding: spacing.sm, paddingBottom: spacing.sm,
+  },
+  exploreIcon: { borderRadius: radius.md, height: 48, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   exploreTitle: { fontSize: 12, fontWeight: '700', color: colors.textPrimary },
   exploreSub: { fontSize: 10, color: colors.textSecondary },
 
@@ -546,6 +580,7 @@ const s = StyleSheet.create({
   recentCatchCard: {
     width: 140, backgroundColor: colors.surface, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: 4,
+    ...elevation.raised,
   },
   recentCatchIcon: {
     width: 40, height: 40, borderRadius: radius.full,

@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { WORLD_SPOTS } from '../data/worldSpots';
-import { colors, radius, spacing, typography, fonts } from '../constants/theme';
+import { colors, radius, spacing, typography, fonts, elevation } from '../constants/theme';
 import { CastButton } from '../components/ui/CastButton';
 import { useSessionStore } from '../store/sessionStore';
 import { useLocationStore } from '../store/locationStore';
@@ -80,7 +80,26 @@ export default function SpotDetailsScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Hero image area */}
         <View style={styles.heroArea}>
-          <MaterialCommunityIcons name={typeIcons[spot.type] as any} size={56} color={colors.primary} />
+          <View style={styles.heroContourLayer} pointerEvents="none">
+            {[0, 1, 2].map((i) => (
+              <View
+                key={i}
+                style={[
+                  styles.heroContourRing,
+                  { width: 90 + i * 56, height: 90 + i * 56, borderRadius: (90 + i * 56) / 2, opacity: 0.45 - i * 0.12 },
+                ]}
+              />
+            ))}
+          </View>
+          <View style={styles.heroIconGlow}>
+            <View style={styles.heroIconCircle}>
+              <MaterialCommunityIcons name={typeIcons[spot.type] as any} size={44} color={colors.primary} />
+            </View>
+          </View>
+          <View style={styles.heroTypeChip}>
+            <MaterialCommunityIcons name={typeIcons[spot.type] as any} size={11} color={colors.accentBlue} />
+            <Text style={styles.heroTypeText}>{spot.type.toUpperCase()}</Text>
+          </View>
           <View style={styles.ratingBadge}>
             <MaterialCommunityIcons name="star" size={13} color={colors.secondary} />
             <Text style={styles.ratingText}>{spot.rating.toFixed(1)} ({reviewCount})</Text>
@@ -188,15 +207,67 @@ const styles = StyleSheet.create({
   headerTitle: { ...typography.label, flex: 1, textAlign: 'center', marginHorizontal: spacing.sm },
   content: { paddingHorizontal: spacing.lg },
   heroArea: {
-    height: 160,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(0,212,170,0.08)',
+    height: 172,
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,170,0.2)',
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
     position: 'relative',
+    overflow: 'hidden',
+    ...elevation.card,
+  },
+  heroContourLayer: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroContourRing: {
+    position: 'absolute',
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,170,0.18)',
+  },
+  heroIconGlow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  heroIconCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,170,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTypeChip: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(45,212,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(45,212,255,0.3)',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  heroTypeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.accentBlue,
+    letterSpacing: 0.6,
   },
   ratingBadge: {
     position: 'absolute',
@@ -233,18 +304,22 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+    ...elevation.raised,
   },
   tabBtn: { flex: 1, paddingVertical: spacing.xs + 2, alignItems: 'center', borderRadius: radius.sm },
-  tabBtnActive: { backgroundColor: colors.primary },
+  tabBtnActive: { backgroundColor: colors.primary, borderRadius: radius.sm, ...elevation.glow },
   tabText: { fontSize: 12, fontWeight: '700', color: colors.textSecondary },
   tabTextActive: { color: colors.background },
   section: { gap: spacing.sm, marginBottom: spacing.md },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
     gap: spacing.sm,
   },
   infoLabel: { ...typography.caption, flex: 1, textTransform: 'none' },
@@ -261,8 +336,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245,158,11,0.06)',
     borderWidth: 1,
     borderColor: 'rgba(245,158,11,0.2)',
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: spacing.md,
+    ...elevation.raised,
   },
   tipText: { flex: 1, fontSize: 13, color: colors.secondary, lineHeight: 19 },
   actions: { marginTop: spacing.sm },
@@ -272,10 +348,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.xs,
     paddingVertical: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
+    ...elevation.raised,
   },
   directionsText: { fontSize: 14, fontWeight: '700', color: colors.primary },
   notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },

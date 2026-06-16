@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { WORLD_SPOTS, WorldSpot } from '../../data/worldSpots';
 import { SpotCard } from '../../components/map/SpotCard';
-import { colors, radius, spacing, typography, fonts } from '../../constants/theme';
+import { colors, radius, spacing, typography, fonts, elevation } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
 
 const { height } = Dimensions.get('window');
@@ -178,6 +178,32 @@ export default function MapScreen() {
       {viewMode === 'map' ? (
         <View style={styles.mapView}>
           <View style={styles.mapGridPanel}>
+            {/* contour-line texture */}
+            <View style={styles.contourLayer} pointerEvents="none">
+              {[0, 1, 2, 3].map((i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.contourRing,
+                    {
+                      width: 140 + i * 90,
+                      height: 140 + i * 90,
+                      borderRadius: (140 + i * 90) / 2,
+                      opacity: 0.5 - i * 0.1,
+                    },
+                  ]}
+                />
+              ))}
+            </View>
+            {/* grid texture */}
+            <View style={styles.gridLayer} pointerEvents="none">
+              {[1, 2, 3].map((i) => (
+                <View key={`v${i}`} style={[styles.gridLineV, { left: `${i * 25}%` }]} />
+              ))}
+              {[1, 2].map((i) => (
+                <View key={`h${i}`} style={[styles.gridLineH, { top: `${i * 33}%` }]} />
+              ))}
+            </View>
             {filtered.slice(0, 8).map((spot, i) => {
               const left = `${12 + (i % 4) * 24}%`;
               const top = `${18 + Math.floor(i / 4) * 38}%`;
@@ -194,7 +220,10 @@ export default function MapScreen() {
                 </TouchableOpacity>
               );
             })}
-            <Text style={styles.mapHint}>Tap a pin to view spot details</Text>
+            <View style={styles.mapHintRow}>
+              <MaterialCommunityIcons name="gesture-tap" size={12} color={colors.textTertiary} />
+              <Text style={styles.mapHint}>Tap a pin to view spot details</Text>
+            </View>
           </View>
           <Text style={styles.countText}>Showing {filtered.length} spots worldwide</Text>
         </View>
@@ -411,6 +440,7 @@ const styles = StyleSheet.create({
   chipActive: {
     backgroundColor: 'rgba(0,212,170,0.15)',
     borderColor: colors.primary,
+    ...elevation.raised,
   },
   chipText: {
     fontSize: 14,
@@ -436,6 +466,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     gap: spacing.md,
+    ...elevation.raised,
   },
   spotTypeIcon: {
     width: 44,
@@ -589,13 +620,39 @@ const styles = StyleSheet.create({
   },
   mapGridPanel: {
     flex: 1,
-    backgroundColor: 'rgba(0,212,170,0.05)',
+    backgroundColor: colors.surface2,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,170,0.18)',
+    borderColor: colors.border,
     marginBottom: spacing.sm,
     position: 'relative',
     overflow: 'hidden',
+    ...elevation.card,
+  },
+  contourLayer: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contourRing: {
+    position: 'absolute',
+    borderWidth: 1,
+    borderColor: 'rgba(45,212,255,0.18)',
+  },
+  gridLayer: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+  },
+  gridLineV: {
+    position: 'absolute',
+    top: 0, bottom: 0, width: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  gridLineH: {
+    position: 'absolute',
+    left: 0, right: 0, height: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
   },
   mapPinMarker: {
     position: 'absolute',
@@ -608,18 +665,24 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    ...elevation.raised,
   },
   mapPinNumText: {
     ...typography.mono,
     fontSize: 12,
     color: colors.textPrimary,
   },
-  mapHint: {
+  mapHintRow: {
     position: 'absolute',
     bottom: spacing.sm,
     left: 0,
     right: 0,
-    textAlign: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  mapHint: {
     fontSize: 11,
     color: colors.textTertiary,
   },

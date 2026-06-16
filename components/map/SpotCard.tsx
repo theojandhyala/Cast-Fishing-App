@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'rea
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { WorldSpot } from '../../data/worldSpots';
-import { colors, radius, spacing, typography, fonts } from '../../constants/theme';
+import { colors, radius, spacing, typography, fonts, elevation } from '../../constants/theme';
 import { CastButton } from '../ui/CastButton';
 import { useSessionStore } from '../../store/sessionStore';
 import { useLocationStore } from '../../store/locationStore';
@@ -149,6 +149,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: spacing.lg,
     paddingTop: spacing.sm,
+    ...elevation.card,
   },
   handle: {
     width: 32,
@@ -176,8 +177,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
+    backgroundColor: colors.surface2,
     alignItems: 'center',
     justifyContent: 'center',
+    ...elevation.raised,
   },
   headerText: {
     flex: 1,
