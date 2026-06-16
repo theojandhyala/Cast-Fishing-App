@@ -11,7 +11,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCatchStore, Catch } from '../store/catchStore';
 import { useAuthStore } from '../store/authStore';
-import { colors, radius, spacing } from '../constants/theme';
+import { colors, radius, spacing, fonts } from '../constants/theme';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -182,7 +182,7 @@ export default function MyStatsScreen() {
     return years < 1 ? '< 1 year' : `${years} year${years > 1 ? 's' : ''}`;
   })();
 
-  const trendArrow = stats.thisMonth > stats.lastMonth ? '↑' : stats.thisMonth < stats.lastMonth ? '↓' : '→';
+  const trendIcon = stats.thisMonth > stats.lastMonth ? 'arrow-up-bold' : stats.thisMonth < stats.lastMonth ? 'arrow-down-bold' : 'arrow-right-bold';
   const trendColor = stats.thisMonth > stats.lastMonth ? colors.success : stats.thisMonth < stats.lastMonth ? colors.danger : colors.textSecondary;
 
   const speciesPieData = Object.entries(stats.speciesCounts).map(([label, value], i) => ({
@@ -236,7 +236,7 @@ export default function MyStatsScreen() {
                 <Text style={styles.monthLabel}>This Month</Text>
               </View>
               <View style={styles.trendArrow}>
-                <Text style={[styles.trendText, { color: trendColor }]}>{trendArrow}</Text>
+                <MaterialCommunityIcons name={trendIcon as any} size={32} color={trendColor} />
               </View>
               <View style={styles.monthBox}>
                 <Text style={styles.monthValue}>{stats.lastMonth}</Text>
@@ -265,13 +265,13 @@ export default function MyStatsScreen() {
           <View style={styles.row}>
             <View style={[styles.card, styles.halfCard]}>
               <Text style={styles.cardTitle}>Best Day</Text>
-              <Text style={styles.bigEmoji}>📅</Text>
+              <MaterialCommunityIcons name="calendar-star" size={32} color={colors.primary} style={{ marginBottom: spacing.xs }} />
               <Text style={styles.bigValue}>{stats.total > 0 ? DAY_NAMES[bestDayIdx] : '-'}</Text>
               <Text style={styles.smallSub}>Most catches</Text>
             </View>
             <View style={[styles.card, styles.halfCard]}>
               <Text style={styles.cardTitle}>Best Time</Text>
-              <Text style={styles.bigEmoji}>🌅</Text>
+              <MaterialCommunityIcons name="weather-sunset-up" size={32} color={colors.primary} style={{ marginBottom: spacing.xs }} />
               <Text style={styles.bigValue}>{stats.total > 0 ? bestTimeLabel : '-'}</Text>
               <Text style={styles.smallSub}>Time of day</Text>
             </View>
@@ -300,14 +300,22 @@ export default function MyStatsScreen() {
           {/* Heaviest Catch */}
           {stats.heaviest && (
             <View style={[styles.card, styles.pbCard]}>
-              <Text style={styles.cardTitle}>Heaviest Catch Ever 🏆</Text>
+              <View style={styles.pbTitleRow}>
+                <Text style={styles.cardTitle}>Heaviest Catch Ever</Text>
+                <MaterialCommunityIcons name="trophy" size={16} color={colors.secondary} />
+              </View>
               <View style={styles.pbRow}>
-                <Text style={styles.pbEmoji}>{stats.heaviest.emoji || '🐟'}</Text>
+                <View style={styles.pbIconBox}>
+                  <MaterialCommunityIcons name="fish" size={32} color={colors.secondary} />
+                </View>
                 <View style={styles.pbInfo}>
                   <Text style={styles.pbSpecies}>{stats.heaviest.species}</Text>
                   <Text style={styles.pbWeight}>{stats.heaviest.weight}kg</Text>
                   {stats.heaviest.location && (
-                    <Text style={styles.pbLocation}>📍 {stats.heaviest.location}</Text>
+                    <View style={styles.pbLocationRow}>
+                      <MaterialCommunityIcons name="map-marker" size={12} color={colors.textSecondary} />
+                      <Text style={styles.pbLocation}>{stats.heaviest.location}</Text>
+                    </View>
                   )}
                   <Text style={styles.pbDate}>
                     {new Date(stats.heaviest.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -391,8 +399,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerStatValue: {
+    fontFamily: fonts.monoBold,
     fontSize: 24,
-    fontWeight: '800',
     color: colors.primary,
   },
   headerStatLabel: {
@@ -439,8 +447,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   monthValue: {
+    fontFamily: fonts.monoBold,
     fontSize: 36,
-    fontWeight: '900',
     color: colors.textPrimary,
   },
   monthLabel: {
@@ -449,14 +457,6 @@ const styles = StyleSheet.create({
   },
   trendArrow: {
     alignItems: 'center',
-  },
-  trendText: {
-    fontSize: 32,
-    fontWeight: '900',
-  },
-  bigEmoji: {
-    fontSize: 36,
-    marginBottom: spacing.xs,
   },
   bigValue: {
     fontSize: 22,
@@ -502,13 +502,24 @@ const styles = StyleSheet.create({
   pbCard: {
     borderLeftColor: colors.secondary,
   },
+  pbTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: spacing.md,
+  },
   pbRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
   },
-  pbEmoji: {
-    fontSize: 52,
+  pbIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.lg,
+    backgroundColor: 'rgba(245,158,11,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   pbInfo: {
     flex: 1,
@@ -520,9 +531,14 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   pbWeight: {
+    fontFamily: fonts.monoBold,
     fontSize: 28,
-    fontWeight: '900',
     color: colors.secondary,
+  },
+  pbLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   pbLocation: {
     fontSize: 12,
