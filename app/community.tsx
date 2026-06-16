@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { COMMUNITY_POSTS, LEADERBOARD_DATA, TOP_SPOTS_WEEK, CommunityPost } from '../data/communityData';
-import { colors, spacing, radius } from '../constants/theme';
+import { colors, spacing, radius, typography, fonts } from '../constants/theme';
 
 function timeAgo(isoString: string): string {
   const diff = (Date.now() - new Date(isoString).getTime()) / 1000;
@@ -45,8 +45,13 @@ export default function CommunityScreen() {
       <View style={styles.tabs}>
         {(['feed', 'leaderboard', 'spots'] as const).map(t => (
           <TouchableOpacity key={t} style={[styles.tab, tab === t && styles.activeTab]} onPress={() => setTab(t)}>
+            <MaterialCommunityIcons
+              name={t === 'feed' ? 'image-multiple-outline' : t === 'leaderboard' ? 'trophy-outline' : 'map-marker-radius-outline'}
+              size={15}
+              color={tab === t ? '#0A0E1A' : colors.textSecondary}
+            />
             <Text style={[styles.tabText, tab === t && styles.activeTabText]}>
-              {t === 'feed' ? '📸 Feed' : t === 'leaderboard' ? '🏆 Leaders' : '📍 Hot Spots'}
+              {t === 'feed' ? 'Feed' : t === 'leaderboard' ? 'Leaders' : 'Hot Spots'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -58,11 +63,11 @@ export default function CommunityScreen() {
             {/* Nearby section */}
             {nearbyPosts.length > 0 && (
               <View style={styles.nearbySection}>
-                <Text style={styles.nearbyTitle}>🗺 Caught Near You</Text>
+                <Text style={styles.nearbyTitle}>Caught Near You</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {nearbyPosts.map(post => (
                     <View key={post.id + 'nearby'} style={styles.nearbyCard}>
-                      <Text style={styles.nearbyEmoji}>{post.photoEmoji}</Text>
+                      <MaterialCommunityIcons name="fish" size={28} color={colors.primary} style={{ marginBottom: 4 }} />
                       <Text style={styles.nearbyUser}>{post.username}</Text>
                       <Text style={styles.nearbySpecies}>{post.species}</Text>
                       <Text style={styles.nearbyWeight}>{post.weightDisplay}</Text>
@@ -83,13 +88,22 @@ export default function CommunityScreen() {
 
         {tab === 'leaderboard' && (
           <View style={styles.leaderContent}>
-            <Text style={styles.leaderTitle}>🏆 This Week's Top Anglers</Text>
+            <Text style={styles.leaderTitle}>This Week's Top Anglers</Text>
             {LEADERBOARD_DATA.map(entry => (
               <View key={entry.rank} style={[styles.leaderCard, entry.rank === 1 && styles.leaderCardGold]}>
-                <Text style={[styles.leaderRankEmoji, entry.rank === 1 ? { fontSize: 28 } : {}]}>
-                  {entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : `#${entry.rank}`}
-                </Text>
-                <Text style={styles.leaderEmoji}>{entry.emoji}</Text>
+                {entry.rank <= 3 ? (
+                  <MaterialCommunityIcons
+                    name="medal"
+                    size={entry.rank === 1 ? 26 : 22}
+                    color={entry.rank === 1 ? '#F59E0B' : entry.rank === 2 ? '#C0C0C0' : '#B08D57'}
+                    style={{ width: 36, textAlign: 'center' }}
+                  />
+                ) : (
+                  <Text style={styles.leaderRank}>#{entry.rank}</Text>
+                )}
+                <View style={styles.leaderAvatar}>
+                  <MaterialCommunityIcons name="fish" size={20} color={colors.primary} />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.leaderUsername}>{entry.username}</Text>
                   <Text style={styles.leaderBigFish}>Best: {entry.biggestFish}</Text>
@@ -105,11 +119,13 @@ export default function CommunityScreen() {
 
         {tab === 'spots' && (
           <View style={styles.spotsContent}>
-            <Text style={styles.spotsTitle}>🔥 Hot Spots This Week</Text>
+            <Text style={styles.spotsTitle}>Hot Spots This Week</Text>
             <Text style={styles.spotsSubTitle}>Based on community catches in the last 7 days</Text>
             {TOP_SPOTS_WEEK.map((spot, i) => (
               <View key={i} style={styles.spotCard}>
-                <Text style={styles.spotRank}>{spot.emoji}</Text>
+                <View style={styles.spotRankBadge}>
+                  <Text style={styles.spotRankText}>{i + 1}</Text>
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.spotName}>{spot.name}</Text>
                   <Text style={styles.spotSpecies}>Main species: {spot.species}</Text>
@@ -142,7 +158,7 @@ function PostCard({ post, onLike }: { post: CommunityPost; onLike: () => void })
     <View style={styles.postCard}>
       <View style={styles.postHeader}>
         <View style={styles.postAvatar}>
-          <Text style={styles.postAvatarEmoji}>{post.userEmoji}</Text>
+          <MaterialCommunityIcons name="account-circle" size={24} color={colors.primary} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.postUsername}>{post.username}</Text>
@@ -154,7 +170,7 @@ function PostCard({ post, onLike }: { post: CommunityPost; onLike: () => void })
       </View>
 
       <View style={styles.postPhotoArea}>
-        <Text style={styles.postPhotoEmoji}>{post.photoEmoji}</Text>
+        <MaterialCommunityIcons name="fish" size={64} color={colors.textTertiary} />
         <View style={styles.postWeightBadge}>
           <Text style={styles.postWeight}>{post.weightDisplay}</Text>
         </View>
@@ -165,7 +181,8 @@ function PostCard({ post, onLike }: { post: CommunityPost; onLike: () => void })
         <View style={styles.postMeta}>
           <MaterialCommunityIcons name="map-marker" size={13} color={colors.textSecondary} />
           <Text style={styles.postLocation}>{post.location}</Text>
-          <Text style={styles.postBait}>🐛 {post.bait}</Text>
+          <MaterialCommunityIcons name="hook" size={13} color={colors.textSecondary} />
+          <Text style={styles.postBait}>{post.bait}</Text>
         </View>
       </View>
 
@@ -194,30 +211,27 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
   reportBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-end' },
   tabs: { flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.lg, padding: 4 },
-  tab: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center', borderRadius: radius.md },
+  tab: { flex: 1, flexDirection: 'row', gap: 4, paddingVertical: spacing.sm, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
   activeTab: { backgroundColor: colors.primary },
   tabText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
   activeTabText: { color: '#0A0E1A' },
   nearbySection: { paddingLeft: spacing.lg, marginBottom: spacing.md },
   nearbyTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.sm },
   nearbyCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginRight: spacing.sm, alignItems: 'center', minWidth: 90, borderWidth: 1, borderColor: colors.border },
-  nearbyEmoji: { fontSize: 32, marginBottom: 4 },
   nearbyUser: { fontSize: 10, color: colors.textSecondary },
   nearbySpecies: { fontSize: 12, fontWeight: '700', color: colors.textPrimary },
   nearbyWeight: { fontSize: 11, color: colors.primary },
   feedList: { paddingHorizontal: spacing.lg },
   postCard: { backgroundColor: colors.surface, borderRadius: radius.xl, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12 },
   postHeader: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.sm },
-  postAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,212,170,0.15)', alignItems: 'center', justifyContent: 'center' },
-  postAvatarEmoji: { fontSize: 20 },
+  postAvatar: { width: 40, height: 40, borderRadius: radius.full, backgroundColor: 'rgba(0,212,170,0.15)', alignItems: 'center', justifyContent: 'center' },
   postUsername: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   postTime: { fontSize: 12, color: colors.textSecondary },
   postSpeciesBadge: { backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)' },
   postSpeciesText: { fontSize: 12, color: colors.primary, fontWeight: '600' },
   postPhotoArea: { height: 160, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  postPhotoEmoji: { fontSize: 72 },
   postWeightBadge: { position: 'absolute', bottom: spacing.sm, right: spacing.sm, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: 3 },
-  postWeight: { fontSize: 14, fontWeight: '800', color: colors.primary },
+  postWeight: { fontFamily: fonts.monoBold, fontSize: 14, color: colors.primary },
   postBody: { padding: spacing.md },
   postDescription: { fontSize: 14, color: colors.textPrimary, lineHeight: 20, marginBottom: spacing.xs },
   postMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
@@ -232,22 +246,23 @@ const styles = StyleSheet.create({
   leaderTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.sm, marginTop: spacing.sm },
   leaderCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
   leaderCardGold: { backgroundColor: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.3)' },
-  leaderRankEmoji: { fontSize: 20, width: 36, textAlign: 'center' },
-  leaderEmoji: { fontSize: 24 },
+  leaderRank: { fontFamily: fonts.monoBold, fontSize: 16, color: colors.textSecondary, width: 36, textAlign: 'center' },
+  leaderAvatar: { width: 36, height: 36, borderRadius: radius.full, backgroundColor: 'rgba(0,212,170,0.12)', alignItems: 'center', justifyContent: 'center' },
   leaderUsername: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   leaderBigFish: { fontSize: 12, color: colors.textSecondary },
   leaderCatches: { alignItems: 'center' },
-  leaderCatchNum: { fontSize: 22, fontWeight: '800', color: colors.primary },
+  leaderCatchNum: { fontFamily: fonts.monoBold, fontSize: 22, color: colors.primary },
   leaderCatchLabel: { fontSize: 10, color: colors.textSecondary },
   spotsContent: { paddingHorizontal: spacing.lg },
   spotsTitle: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, marginBottom: 4, marginTop: spacing.sm },
   spotsSubTitle: { fontSize: 13, color: colors.textSecondary, marginBottom: spacing.md },
   spotCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.border },
-  spotRank: { fontSize: 24, width: 36, textAlign: 'center' },
+  spotRankBadge: { width: 32, height: 32, borderRadius: radius.full, backgroundColor: 'rgba(0,212,170,0.12)', alignItems: 'center', justifyContent: 'center' },
+  spotRankText: { fontFamily: fonts.monoBold, fontSize: 14, color: colors.primary },
   spotName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   spotSpecies: { fontSize: 12, color: colors.textSecondary },
   spotCatchBubble: { alignItems: 'center', backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: radius.md, padding: spacing.sm },
-  spotCatchNum: { fontSize: 18, fontWeight: '800', color: colors.primary },
+  spotCatchNum: { fontFamily: fonts.monoBold, fontSize: 18, color: colors.primary },
   spotCatchLabel: { fontSize: 10, color: colors.textSecondary },
   pollutionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: 'rgba(245,158,11,0.1)', borderRadius: radius.lg, padding: spacing.md, marginTop: spacing.md, borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)' },
   pollutionBtnText: { fontSize: 14, fontWeight: '600', color: colors.warning },
