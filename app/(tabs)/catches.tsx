@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { useCatchStore, Catch } from '../../store/catchStore';
 import { CatchCard } from '../../components/catches/CatchCard';
 import { CatchStats } from '../../components/catches/CatchStats';
-import { colors, radius, spacing, typography, fonts } from '../../constants/theme';
+import { colors, radius, spacing, typography, fonts, elevation } from '../../constants/theme';
 
 const FILTERS = ['All', 'Today', 'This Week', 'This Month'];
 
@@ -51,7 +51,7 @@ export default function CatchesScreen() {
           </View>
           <TouchableOpacity
             onPress={() => setMode(mode === 'grid' ? 'list' : 'grid')}
-            style={styles.viewToggle}
+            style={[styles.viewToggle, elevation.raised]}
           >
             <MaterialCommunityIcons
               name={mode === 'grid' ? 'view-list' : 'view-grid'}
@@ -214,8 +214,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
     elevation: 8,
   },
 });

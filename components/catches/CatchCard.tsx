@@ -9,7 +9,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Catch } from '../../store/catchStore';
-import { colors, radius, spacing, fonts } from '../../constants/theme';
+import { colors, radius, spacing, fonts, elevation } from '../../constants/theme';
 
 interface CatchCardProps {
   item: Catch;
@@ -30,7 +30,7 @@ export function CatchCard({ item, mode = 'grid' }: CatchCardProps) {
 
   if (mode === 'list') {
     return (
-      <TouchableOpacity style={styles.listCard} onPress={handlePress} activeOpacity={0.85}>
+      <TouchableOpacity style={[styles.listCard, elevation.raised]} onPress={handlePress} activeOpacity={0.85}>
         <View style={styles.listEmoji}>
           <MaterialCommunityIcons name="fish" size={22} color={colors.primary} />
         </View>
@@ -59,7 +59,7 @@ export function CatchCard({ item, mode = 'grid' }: CatchCardProps) {
   }
 
   return (
-    <TouchableOpacity style={styles.gridCard} onPress={handlePress} activeOpacity={0.85}>
+    <TouchableOpacity style={[styles.gridCard, elevation.raised]} onPress={handlePress} activeOpacity={0.85}>
       {item.photo ? (
         <Image source={{ uri: item.photo }} style={styles.photo} />
       ) : (

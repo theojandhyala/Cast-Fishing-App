@@ -17,7 +17,7 @@ import {
   getMoonPhase,
   getTimePeriodLabel,
 } from '../data/fishingTimes';
-import { colors, radius, spacing } from '../constants/theme';
+import { colors, radius, spacing, elevation } from '../constants/theme';
 
 const TABS = ['By Species', 'Right Now'];
 
@@ -158,11 +158,13 @@ export default function FishTipsScreen() {
               return (
                 <TouchableOpacity
                   key={fish.id}
-                  style={styles.speciesCard}
+                  style={[styles.speciesCard, elevation.raised]}
                   onPress={() => router.push({ pathname: '/species-detail', params: { id: fish.id } })}
                   activeOpacity={0.75}
                 >
-                  <MaterialCommunityIcons name="fish" size={28} color={colors.primary} style={styles.speciesEmoji} />
+                  <View style={styles.speciesIconBadge}>
+                    <MaterialCommunityIcons name="fish" size={22} color={colors.primary} />
+                  </View>
                   <View style={styles.speciesInfo}>
                     <Text style={styles.speciesName}>{fish.commonName}</Text>
                     <Text style={styles.speciesTimeOfDay} numberOfLines={1}>
@@ -187,8 +189,10 @@ export default function FishTipsScreen() {
       ) : (
         <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Time period banner */}
-          <View style={styles.timeBanner}>
-            <MaterialCommunityIcons name={(TIME_PERIOD_ICONS[timePeriod.label] || 'weather-sunny') as any} size={32} color={colors.primary} />
+          <View style={[styles.timeBanner, elevation.glow]}>
+            <View style={styles.timeBannerIconBadge}>
+              <MaterialCommunityIcons name={(TIME_PERIOD_ICONS[timePeriod.label] || 'weather-sunny') as any} size={28} color={colors.primary} />
+            </View>
             <View style={styles.timeBannerText}>
               <Text style={styles.timeBannerLabel}>{timePeriod.label} Session</Text>
               <Text style={styles.timeBannerDesc}>{periodDescriptions[periodLabel]}</Text>
@@ -196,9 +200,11 @@ export default function FishTipsScreen() {
           </View>
 
           {/* Moon phase card */}
-          <View style={styles.condCard}>
+          <View style={[styles.condCard, elevation.raised]}>
             <View style={styles.condCardRow}>
-              <MaterialCommunityIcons name={(MOON_PHASE_ICONS[moon.name] || 'moon-full') as any} size={24} color={colors.textPrimary} style={styles.condEmoji} />
+              <View style={styles.condIconBadge}>
+                <MaterialCommunityIcons name={(MOON_PHASE_ICONS[moon.name] || 'moon-full') as any} size={22} color={colors.primary} />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.condTitle}>{moon.name}</Text>
                 <Text style={styles.condBody}>{moon.tip}</Text>
@@ -207,9 +213,11 @@ export default function FishTipsScreen() {
           </View>
 
           {/* Barometric tip card */}
-          <View style={[styles.condCard, { borderColor: 'rgba(245,158,11,0.25)' }]}>
+          <View style={[styles.condCard, elevation.raised, { borderColor: 'rgba(245,158,11,0.25)' }]}>
             <View style={styles.condCardRow}>
-              <MaterialCommunityIcons name="chart-line" size={24} color={colors.textPrimary} style={styles.condEmoji} />
+              <View style={[styles.condIconBadge, styles.condIconBadgeAmber]}>
+                <MaterialCommunityIcons name="chart-line" size={22} color={colors.secondary} />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.condTitle}>Barometric Tip</Text>
                 <Text style={styles.condBody}>
@@ -225,15 +233,18 @@ export default function FishTipsScreen() {
             const activityNow = getActivityLevel(fish.id, hour);
             const monthActivity = getMonthActivity(fish.id);
             const combined = activityNow + monthActivity;
+            const isTop = idx === 0;
             return (
               <TouchableOpacity
                 key={fish.id}
-                style={styles.topFishCard}
+                style={[styles.topFishCard, isTop && styles.topFishCardBest, isTop && elevation.glow]}
                 onPress={() => router.push({ pathname: '/species-detail', params: { id: fish.id } })}
                 activeOpacity={0.75}
               >
-                <Text style={styles.rankNum}>#{idx + 1}</Text>
-                <MaterialCommunityIcons name="fish" size={26} color={colors.primary} style={styles.topFishEmoji} />
+                <Text style={[styles.rankNum, isTop && { color: colors.secondary }]}>#{idx + 1}</Text>
+                <View style={[styles.topFishIconBadge, isTop && styles.topFishIconBadgeBest]}>
+                  <MaterialCommunityIcons name="fish" size={20} color={colors.primary} />
+                </View>
                 <View style={styles.topFishInfo}>
                   <Text style={styles.topFishName}>{fish.commonName}</Text>
                   <Text style={styles.topFishTime} numberOfLines={1}>
@@ -260,7 +271,9 @@ export default function FishTipsScreen() {
                 onPress={() => router.push({ pathname: '/species-detail', params: { id: fish.id } })}
                 activeOpacity={0.75}
               >
-                <MaterialCommunityIcons name="fish" size={28} color={colors.primary} style={styles.speciesEmoji} />
+                <View style={styles.speciesIconBadge}>
+                  <MaterialCommunityIcons name="fish" size={22} color={colors.primary} />
+                </View>
                 <View style={styles.speciesInfo}>
                   <Text style={styles.speciesName}>{fish.commonName}</Text>
                   <Text style={styles.speciesTimeOfDay} numberOfLines={1}>
@@ -364,9 +377,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  speciesEmoji: {
-    width: 36,
-    textAlign: 'center',
+  speciesIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(0,212,170,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   speciesInfo: {
     flex: 1,
@@ -415,6 +432,14 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,212,170,0.25)',
     marginBottom: spacing.md,
   },
+  timeBannerIconBadge: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(0,212,170,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   timeBannerText: {
     flex: 1,
   },
@@ -442,8 +467,16 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     alignItems: 'flex-start',
   },
-  condEmoji: {
-    marginTop: 2,
+  condIconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(0,212,170,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  condIconBadgeAmber: {
+    backgroundColor: 'rgba(245,158,11,0.14)',
   },
   condTitle: {
     fontSize: 14,
@@ -482,9 +515,20 @@ const styles = StyleSheet.create({
     color: colors.primary,
     width: 28,
   },
-  topFishEmoji: {
-    width: 32,
-    textAlign: 'center',
+  topFishCardBest: {
+    borderColor: 'rgba(245,158,11,0.4)',
+    backgroundColor: colors.surface2,
+  },
+  topFishIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(0,212,170,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topFishIconBadgeBest: {
+    backgroundColor: 'rgba(245,158,11,0.16)',
   },
   topFishInfo: {
     flex: 1,
