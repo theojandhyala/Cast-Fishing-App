@@ -9,13 +9,14 @@ import {
   Alert,
   Image,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFishIdentifier } from '../hooks/useFishIdentifier';
 import { CastButton } from '../components/ui/CastButton';
-import { colors, radius, spacing } from '../constants/theme';
+import { colors, radius, spacing, typography, fonts } from '../constants/theme';
 
 const HISTORY_KEY = '@cast_fish_id_history';
 
@@ -24,15 +25,10 @@ interface HistoryItem {
   species: string;
   confidence: number;
   date: string;
-  emoji: string;
 }
 
-const FISH_EMOJIS: Record<string, string> = {
-  'Carp': '🐟', 'Pike': '🐠', 'Trout': '🎣', 'Perch': '🐡', 'Bream': '🐟',
-  'Tench': '🐟', 'Roach': '🐡', 'Barbel': '🐠', 'Bass': '🐠', 'default': '🐟',
-};
-
 export default function IdentifierScreen() {
+  const router = useRouter();
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -56,7 +52,6 @@ export default function IdentifierScreen() {
       species: r.species,
       confidence: r.confidence,
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-      emoji: FISH_EMOJIS[r.species] || FISH_EMOJIS.default,
     };
     const updated = [item, ...(await getHistory())].slice(0, 5);
     setHistory(updated);
@@ -91,30 +86,15 @@ export default function IdentifierScreen() {
     }
 
     const res = fromCamera
-      ? await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          quality: 0.7,
-          base64: true,
-        })
-      : await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          quality: 0.7,
-          base64: true,
-        });
+      ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, base64: true })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, base64: true });
 
     if (!res.canceled && res.assets[0]) {
       setImageUri(res.assets[0].uri);
       setImageBase64(res.assets[0].base64 || null);
       reset();
+      await identify(res.assets[0].base64 || '');
     }
-  };
-
-  const handleIdentify = async () => {
-    if (!imageBase64) {
-      Alert.alert('No image', 'Please take or select a photo first');
-      return;
-    }
-    await identify(imageBase64);
   };
 
   const handleReset = () => {
@@ -123,437 +103,209 @@ export default function IdentifierScreen() {
     reset();
   };
 
+  const handleSaveCatch = () => {
+    if (!result) return;
+    router.push({ pathname: '/add-catch', params: { species: result.commonName, weight: result.estimatedWeight } } as any);
+  };
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Hero */}
-      <LinearGradient
-        colors={['rgba(245,158,11,0.12)', 'transparent']}
-        style={styles.hero}
-      >
-        <MaterialCommunityIcons name="camera-iris" size={48} color={colors.secondary} />
-        <Text style={styles.heroTitle}>Fish Identifier</Text>
-        <Text style={styles.heroSubtitle}>
-          Take or upload a photo of any fish and our AI will identify it instantly
-        </Text>
-      </LinearGradient>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
+          <MaterialCommunityIcons name="chevron-left" size={26} color={colors.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Fish ID</Text>
+        <View style={{ width: 26 }} />
+      </View>
 
-      {/* Image area */}
-      {!imageUri ? (
-        <View style={styles.imagePlaceholder}>
-          <View style={styles.imagePlaceholderInner}>
-            <MaterialCommunityIcons name="image-area" size={48} color={colors.textSecondary} />
-            <Text style={styles.placeholderText}>No image selected</Text>
-            <Text style={styles.placeholderSubtext}>Take a photo or upload from gallery</Text>
-          </View>
-        </View>
-      ) : (
-        <View style={styles.imageContainer}>
-          <Image source={{ uri: imageUri }} style={styles.image} />
-          {!loading && !result && (
-            <TouchableOpacity style={styles.removeImage} onPress={handleReset}>
-              <MaterialCommunityIcons name="close-circle" size={28} color={colors.textPrimary} />
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
-      {/* Actions */}
-      <View style={styles.actions}>
-        {!result && !loading && (
-          <>
-            <View style={styles.pickButtons}>
-              <CastButton
-                title="Camera"
-                onPress={() => pickImage(true)}
-                variant="ghost"
-                style={{ flex: 1 }}
-              />
-              <CastButton
-                title="Gallery"
-                onPress={() => pickImage(false)}
-                variant="ghost"
-                style={{ flex: 1 }}
-              />
-            </View>
-            {imageUri && (
-              <CastButton
-                title="Identify Fish"
-                onPress={handleIdentify}
-                loading={loading}
-                fullWidth
-                size="lg"
-                style={{ marginTop: spacing.sm }}
-              />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        {/* Scan frame */}
+        {!imageUri ? (
+          <TouchableOpacity style={styles.scanFrame} onPress={() => pickImage(true)} activeOpacity={0.85}>
+            <MaterialCommunityIcons name="camera-outline" size={44} color={colors.textSecondary} />
+            <Text style={styles.scanPlaceholderTitle}>Identify Any Fish</Text>
+            <Text style={styles.scanPlaceholderSub}>Snap a photo and AI does the rest</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.scanFrame}>
+            <Image source={{ uri: imageUri }} style={styles.scanImage} />
+            {loading && (
+              <View style={styles.scanBadge}>
+                <View style={styles.scanDot} />
+                <Text style={styles.scanBadgeText}>AI SCANNING</Text>
+              </View>
             )}
-          </>
+            <View style={[styles.corner, styles.cornerTL]} />
+            <View style={[styles.corner, styles.cornerTR]} />
+            <View style={[styles.corner, styles.cornerBL]} />
+            <View style={[styles.corner, styles.cornerBR]} />
+            {!loading && !result && (
+              <TouchableOpacity style={styles.removeImage} onPress={handleReset}>
+                <MaterialCommunityIcons name="close-circle" size={26} color={colors.textPrimary} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {!imageUri && (
+          <View style={styles.pickRow}>
+            <TouchableOpacity style={styles.pickBtn} onPress={() => pickImage(true)}>
+              <MaterialCommunityIcons name="camera" size={18} color={colors.primary} />
+              <Text style={styles.pickBtnText}>Camera</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.pickBtn} onPress={() => pickImage(false)}>
+              <MaterialCommunityIcons name="image-outline" size={18} color={colors.primary} />
+              <Text style={styles.pickBtnText}>Gallery</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
         {loading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+          <View style={styles.loadingRow}>
+            <ActivityIndicator size="small" color={colors.primary} />
             <Text style={styles.loadingText}>Identifying your fish...</Text>
-            <Text style={styles.loadingSubtext}>This takes a few seconds</Text>
           </View>
         )}
-      </View>
 
-      {/* Result */}
-      {result && (
-        <View style={styles.result}>
-          <View style={styles.resultHeader}>
-            <View>
-              <Text style={styles.resultSpecies}>{result.species}</Text>
-              <Text style={styles.resultLatin}>{result.latinName}</Text>
+        {/* Result */}
+        {result && (
+          <View style={styles.resultCard}>
+            <Text style={styles.idTag}>Identified</Text>
+            <View style={styles.resultHeader}>
+              <Text style={styles.resultSpecies}>{result.commonName}</Text>
+              <View style={styles.matchBadge}>
+                <Text style={styles.matchBadgeText}>{result.confidence}% Match</Text>
+              </View>
             </View>
-            <View style={styles.confidenceBadge}>
-              <Text style={styles.confidenceText}>{result.confidence}%</Text>
-              <Text style={styles.confidenceLabel}>match</Text>
-            </View>
-          </View>
+            <Text style={styles.resultLatin}>{result.latinName}</Text>
 
-          <View style={styles.resultStats}>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{result.legalSize}cm</Text>
-              <Text style={styles.statLabel}>Legal Size</Text>
+            <View style={styles.idRows}>
+              <View style={styles.idRow}><Text style={styles.idRowLabel}>Length</Text><Text style={styles.idRowValue}>{result.estimatedLength}</Text></View>
+              <View style={styles.idRow}><Text style={styles.idRowLabel}>Weight</Text><Text style={styles.idRowValue}>{result.estimatedWeight}</Text></View>
+              <View style={styles.idRow}><Text style={styles.idRowLabel}>Legal Size</Text><Text style={styles.idRowValue}>{result.legalSize}cm</Text></View>
+              <View style={styles.idRow}>
+                <Text style={styles.idRowLabel}>Status</Text>
+                <Text style={[styles.idRowValue, { color: result.isLegal ? colors.primary : colors.danger }]}>
+                  {result.isLegal ? 'Legal to keep' : 'Check regulations'}
+                </Text>
+              </View>
             </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{result.estimatedWeight}</Text>
-              <Text style={styles.statLabel}>Est. Weight</Text>
-            </View>
-            <View style={styles.statBox}>
-              <Text style={styles.statValue}>{result.estimatedLength}</Text>
-              <Text style={styles.statLabel}>Est. Length</Text>
-            </View>
-            <View style={[styles.statBox, { borderColor: result.isLegal ? colors.success + '44' : colors.danger + '44' }]}>
-              <Text style={[styles.statValue, { color: result.isLegal ? colors.success : colors.danger }]}>
-                {result.isLegal ? '✓' : '✗'}
-              </Text>
-              <Text style={styles.statLabel}>Legal</Text>
-            </View>
-          </View>
 
-          <View style={styles.resultNotes}>
-            <Text style={styles.notesTitle}>Identification Notes</Text>
-            <Text style={styles.notesText}>{result.notes}</Text>
-          </View>
+            <Text style={styles.aboutLabel}>About</Text>
+            <Text style={styles.aboutText}>{result.notes}</Text>
 
-          <View style={styles.resultTip}>
-            <MaterialCommunityIcons name="lightbulb" size={14} color={colors.secondary} />
-            <Text style={styles.tipText}>{result.tips}</Text>
-          </View>
+            <View style={styles.tipRow}>
+              <MaterialCommunityIcons name="lightbulb-outline" size={14} color={colors.secondary} />
+              <Text style={styles.tipText}>{result.tips}</Text>
+            </View>
 
-          {result.alternatives.length > 0 && (
-            <View style={styles.alternatives}>
-              <Text style={styles.altTitle}>Could also be:</Text>
+            {result.alternatives.length > 0 && (
               <View style={styles.altChips}>
                 {result.alternatives.map((alt) => (
-                  <View key={alt} style={styles.altChip}>
-                    <Text style={styles.altChipText}>{alt}</Text>
-                  </View>
+                  <View key={alt} style={styles.altChip}><Text style={styles.altChipText}>{alt}</Text></View>
                 ))}
               </View>
+            )}
+
+            <View style={styles.resultActions}>
+              <CastButton title="Scan Again" onPress={handleReset} variant="ghost" style={{ flex: 1 }} />
+              <CastButton title="Save Catch" onPress={handleSaveCatch} style={{ flex: 1 }} />
             </View>
-          )}
-
-          <CastButton
-            title="Identify Another Fish"
-            onPress={handleReset}
-            variant="ghost"
-            fullWidth
-            style={{ marginTop: spacing.md }}
-          />
-        </View>
-      )}
-
-      {/* Recent identifications history */}
-      {history.length > 0 && (
-        <View style={styles.historySection}>
-          <View style={styles.historyHeader}>
-            <Text style={styles.historySectionTitle}>Recent Identifications</Text>
-            <TouchableOpacity onPress={clearHistory}>
-              <Text style={styles.clearHistoryText}>Clear</Text>
-            </TouchableOpacity>
           </View>
-          {history.map(item => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.historyItem}
-              onPress={() => Alert.alert(item.species, `Identified as ${item.species}\nConfidence: ${item.confidence}%\nDate: ${item.date}`)}
-            >
-              <Text style={styles.historyEmoji}>{item.emoji}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.historySpecies}>{item.species}</Text>
-                <Text style={styles.historyDate}>{item.date}</Text>
-              </View>
-              <View style={styles.historyConfidence}>
-                <Text style={styles.historyConfidenceText}>{item.confidence}%</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
+        )}
 
-      <View style={{ height: spacing.xxl }} />
-    </ScrollView>
+        {/* History */}
+        {history.length > 0 && (
+          <View style={styles.historySection}>
+            <View style={styles.historyHeader}>
+              <Text style={styles.cardLabel}>Recent Identifications</Text>
+              <TouchableOpacity onPress={clearHistory}><Text style={styles.clearText}>Clear</Text></TouchableOpacity>
+            </View>
+            {history.map(item => (
+              <View key={item.id} style={styles.historyItem}>
+                <View style={styles.historyIcon}><MaterialCommunityIcons name="fish" size={16} color={colors.primary} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.historySpecies}>{item.species}</Text>
+                  <Text style={styles.historyDate}>{item.date}</Text>
+                </View>
+                <Text style={styles.historyConfidence}>{item.confidence}%</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <View style={{ height: spacing.xxl }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+  container: { flex: 1, backgroundColor: colors.background },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
   },
-  hero: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.lg,
+  headerTitle: { ...typography.label, fontSize: 15 },
+  content: { padding: spacing.lg, paddingTop: spacing.sm },
+
+  scanFrame: {
+    height: 280, backgroundColor: colors.surface, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden', position: 'relative', marginBottom: spacing.md,
   },
-  heroTitle: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
+  scanPlaceholderTitle: { ...typography.h3, marginTop: spacing.md },
+  scanPlaceholderSub: { ...typography.bodySmall, marginTop: 4 },
+  scanImage: { width: '100%', height: '100%' },
+  corner: { position: 'absolute', width: 22, height: 22, borderColor: colors.primary },
+  cornerTL: { top: 12, left: 12, borderTopWidth: 2, borderLeftWidth: 2 },
+  cornerTR: { top: 12, right: 12, borderTopWidth: 2, borderRightWidth: 2 },
+  cornerBL: { bottom: 12, left: 12, borderBottomWidth: 2, borderLeftWidth: 2 },
+  cornerBR: { bottom: 12, right: 12, borderBottomWidth: 2, borderRightWidth: 2 },
+  scanBadge: {
+    position: 'absolute', top: 14, left: 14, flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(10,14,26,0.85)', borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: colors.borderStrong,
   },
-  heroSubtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
+  scanDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
+  scanBadgeText: { fontSize: 9, fontWeight: '800', color: colors.primary, letterSpacing: 1 },
+  removeImage: { position: 'absolute', top: spacing.sm, right: spacing.sm },
+  pickRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  pickBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 12, borderRadius: radius.md, borderWidth: 1, borderColor: colors.borderStrong,
   },
-  imagePlaceholder: {
-    marginHorizontal: spacing.lg,
-    height: 220,
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    borderWidth: 2,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-  },
-  imagePlaceholderInner: {
-    alignItems: 'center',
-  },
-  placeholderText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-  },
-  placeholderSubtext: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  imageContainer: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    position: 'relative',
-  },
-  image: {
-    width: '100%',
-    height: 250,
-    borderRadius: radius.xl,
-  },
-  removeImage: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: radius.full,
-  },
-  actions: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-  },
-  pickButtons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-  },
-  loadingText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginTop: spacing.md,
-  },
-  loadingSubtext: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  result: {
-    marginHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,170,0.3)',
-  },
-  resultHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  resultSpecies: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-  resultLatin: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontStyle: 'italic',
-    marginTop: 3,
-  },
-  confidenceBadge: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,212,170,0.15)',
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,170,0.3)',
-  },
-  confidenceText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.primary,
-  },
-  confidenceLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  resultStats: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  statBox: {
-    flex: 1,
-    backgroundColor: colors.surface2,
-    borderRadius: radius.md,
-    padding: spacing.sm,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  statLabel: {
-    fontSize: 10,
-    color: colors.textSecondary,
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  resultNotes: {
-    marginBottom: spacing.md,
-  },
-  notesTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: spacing.xs,
-  },
-  notesText: {
-    fontSize: 15,
-    color: colors.textPrimary,
-    lineHeight: 22,
-  },
-  resultTip: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(245,158,11,0.08)',
-    borderRadius: radius.md,
-    padding: spacing.md,
-    gap: spacing.sm,
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  tipText: {
-    flex: 1,
-    fontSize: 14,
-    color: colors.secondary,
-    lineHeight: 20,
-  },
-  alternatives: {
-    marginBottom: spacing.sm,
-  },
-  altTitle: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  altChips: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    flexWrap: 'wrap',
-  },
-  altChip: {
-    backgroundColor: colors.surface2,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-  },
-  altChipText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  historySection: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  historySectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  clearHistoryText: {
-    fontSize: 13,
-    color: colors.danger,
-    fontWeight: '600',
-  },
-  historyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    gap: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  historyEmoji: { fontSize: 26 },
-  historySpecies: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  historyDate: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-  historyConfidence: {
-    backgroundColor: 'rgba(0,212,170,0.12)',
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-  },
-  historyConfidenceText: { fontSize: 13, fontWeight: '800', color: colors.primary },
+  pickBtnText: { ...typography.label, color: colors.primary },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.lg },
+  loadingText: { ...typography.bodySmall },
+
+  resultCard: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg },
+  idTag: { ...typography.caption, marginBottom: 6 },
+  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  resultSpecies: { ...typography.h3, fontSize: 20 },
+  resultLatin: { ...typography.bodySmall, fontStyle: 'italic', marginTop: 2, marginBottom: spacing.md },
+  matchBadge: { backgroundColor: 'rgba(0,212,170,0.12)', borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)' },
+  matchBadgeText: { fontSize: 11, fontWeight: '800', color: colors.primary },
+  idRows: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, marginBottom: spacing.md },
+  idRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7 },
+  idRowLabel: { fontSize: 13, color: colors.textSecondary },
+  idRowValue: { ...typography.mono, fontSize: 13 },
+  aboutLabel: { ...typography.caption, marginBottom: 4 },
+  aboutText: { ...typography.bodySmall, lineHeight: 19, marginBottom: spacing.md },
+  tipRow: { flexDirection: 'row', gap: spacing.sm, backgroundColor: 'rgba(245,158,11,0.06)', borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md, alignItems: 'flex-start' },
+  tipText: { flex: 1, fontSize: 12, color: colors.secondary, lineHeight: 17 },
+  altChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
+  altChip: { backgroundColor: colors.surface2, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 3 },
+  altChipText: { fontSize: 12, color: colors.textSecondary },
+  resultActions: { flexDirection: 'row', gap: spacing.sm },
+
+  historySection: { marginTop: spacing.lg, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  historyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  cardLabel: { ...typography.caption },
+  clearText: { fontSize: 12, color: colors.danger, fontWeight: '700' },
+  historyItem: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  historyIcon: { width: 32, height: 32, borderRadius: radius.md, backgroundColor: 'rgba(0,212,170,0.1)', alignItems: 'center', justifyContent: 'center' },
+  historySpecies: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  historyDate: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+  historyConfidence: { ...typography.mono, fontSize: 13, color: colors.primary },
 });
