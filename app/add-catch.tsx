@@ -13,12 +13,12 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useCatchStore } from '../store/catchStore';
 import { useLocationStore } from '../store/locationStore';
 import { species } from '../data/species';
 import { CastButton } from '../components/ui/CastButton';
-import { colors, radius, spacing } from '../constants/theme';
+import { colors, radius, spacing, typography, fonts } from '../constants/theme';
 
 type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
 
@@ -34,8 +34,12 @@ const RARITY_CELEBRATION: Record<Rarity, { title: string; subtitle: string; colo
 const SPECIES_OPTIONS = species.map((s) => ({ id: s.id, name: s.name, emoji: s.emoji }));
 
 export default function AddCatchScreen() {
-  const [selectedSpecies, setSelectedSpecies] = useState('');
-  const [weight, setWeight] = useState('');
+  const params = useLocalSearchParams<{ species?: string; weight?: string }>();
+  const prefillSpecies = params.species
+    ? SPECIES_OPTIONS.find((s) => s.name.toLowerCase() === params.species!.toLowerCase())?.id || ''
+    : '';
+  const [selectedSpecies, setSelectedSpecies] = useState(prefillSpecies);
+  const [weight, setWeight] = useState(params.weight ? String(params.weight) : '');
   const [length, setLength] = useState('');
   const [bait, setBait] = useState('');
   const [notes, setNotes] = useState('');
@@ -222,7 +226,7 @@ export default function AddCatchScreen() {
         <View style={[styles.section, { flex: 1 }]}>
           <Text style={styles.sectionTitle}>Weight (kg) *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.inputMono]}
             value={weight}
             onChangeText={setWeight}
             placeholder="e.g. 3.5"
@@ -233,7 +237,7 @@ export default function AddCatchScreen() {
         <View style={[styles.section, { flex: 1, marginLeft: spacing.sm }]}>
           <Text style={styles.sectionTitle}>Length (cm)</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, styles.inputMono]}
             value={length}
             onChangeText={setLength}
             placeholder="e.g. 45"
@@ -424,6 +428,9 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  inputMono: {
+    fontFamily: fonts.mono,
   },
   textArea: {
     height: 100,
