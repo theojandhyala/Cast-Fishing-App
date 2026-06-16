@@ -10,12 +10,11 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { useCatchStore } from '../store/catchStore';
 import { useAchievementStore } from '../store/achievementStore';
-import { colors, radius, spacing } from '../constants/theme';
+import { colors, radius, spacing, elevation } from '../constants/theme';
 
 const LEVEL_NAMES: Record<number, string> = {
   1: 'Beginner Angler',
@@ -94,17 +93,20 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Hero */}
-        <LinearGradient colors={['rgba(0,212,170,0.15)', 'transparent']} style={styles.hero}>
-          <TouchableOpacity style={[styles.avatar, { backgroundColor: avatarColor + '33', borderColor: avatarColor }]}>
-            <Text style={[styles.avatarText, { color: avatarColor }]}>{initials}</Text>
-          </TouchableOpacity>
+        <View style={styles.hero}>
+          <View style={styles.avatarGlowWrap}>
+            <View style={[styles.avatarGlow, { backgroundColor: avatarColor + '1A' }]} pointerEvents="none" />
+            <TouchableOpacity style={[styles.avatar, elevation.glow, { backgroundColor: avatarColor + '33', borderColor: avatarColor }]}>
+              <Text style={[styles.avatarText, { color: avatarColor }]}>{initials}</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={styles.name}>{user?.name || 'Angler'}</Text>
           <View style={styles.levelBadge}>
             <MaterialCommunityIcons name="star" size={14} color={colors.secondary} />
             <Text style={styles.levelBadgeText}>Level {level} — {levelName}</Text>
           </View>
           <Text style={styles.memberSince}>Member since {user?.joinedAt ? new Date(user.joinedAt).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : 'Recently'}</Text>
-        </LinearGradient>
+        </View>
 
         {/* XP Progress */}
         <View style={styles.section}>
@@ -133,10 +135,10 @@ export default function ProfileScreen() {
         {/* Personality */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Fishing Personality</Text>
-          <LinearGradient colors={['rgba(0,212,170,0.08)', 'rgba(0,212,170,0.02)']} style={styles.personalityCard}>
+          <View style={styles.personalityCard}>
             <Text style={styles.personalityTitle}>{personality.title}</Text>
             <Text style={styles.personalityDesc}>{personality.desc}</Text>
-          </LinearGradient>
+          </View>
         </View>
 
         {/* Achievements */}
@@ -147,13 +149,20 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.badgesGrid}>
             {achievements.map(a => (
-              <View key={a.id} style={[styles.badge, !a.unlocked && styles.badgeLocked]}>
-                {a.unlocked ? (
-                  <MaterialCommunityIcons name="trophy" size={28} color={colors.secondary} />
-                ) : (
-                  <MaterialCommunityIcons name="lock" size={28} color={colors.textSecondary} />
-                )}
-                <Text style={styles.badgeName} numberOfLines={1}>{a.name}</Text>
+              <View key={a.id} style={styles.badge}>
+                <View style={[
+                  styles.badgeIconCircle,
+                  a.unlocked
+                    ? { backgroundColor: colors.secondary + '22', borderColor: colors.secondary + '55' }
+                    : { backgroundColor: colors.surface2, borderColor: colors.border },
+                ]}>
+                  {a.unlocked ? (
+                    <MaterialCommunityIcons name="trophy" size={22} color={colors.secondary} />
+                  ) : (
+                    <MaterialCommunityIcons name="lock" size={20} color={colors.textTertiary} />
+                  )}
+                </View>
+                <Text style={[styles.badgeName, !a.unlocked && styles.badgeNameLocked]} numberOfLines={1}>{a.name}</Text>
               </View>
             ))}
           </View>
@@ -268,8 +277,10 @@ function StatBox({ icon, label, value, color }: { icon: string; label: string; v
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  hero: { alignItems: 'center', paddingVertical: spacing.xl, paddingHorizontal: spacing.lg },
-  avatar: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 2, marginBottom: spacing.md },
+  hero: { alignItems: 'center', paddingVertical: spacing.xl, paddingHorizontal: spacing.lg, backgroundColor: colors.surface },
+  avatarGlowWrap: { alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
+  avatarGlow: { position: 'absolute', width: 140, height: 140, borderRadius: 70 },
+  avatar: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
   avatarText: { fontSize: 32, fontWeight: '700' },
   name: { fontSize: 24, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 },
   levelBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(245,158,11,0.15)', borderRadius: radius.full, paddingHorizontal: 12, paddingVertical: 4, marginBottom: 6 },
@@ -284,20 +295,21 @@ const styles = StyleSheet.create({
   progressFill: { height: 8, backgroundColor: colors.primary, borderRadius: 4 },
   progressHint: { fontSize: 11, color: colors.textSecondary, marginTop: 4, textAlign: 'center' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  statBox: { flex: 1, minWidth: '45%', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center', gap: 4 },
+  statBox: { flex: 1, minWidth: '45%', backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.border, alignItems: 'center', gap: 4, ...elevation.raised },
   statIcon: { width: 40, height: 40, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   statValue: { fontSize: 22, fontWeight: '800', color: colors.textPrimary },
   statLabel: { fontSize: 11, color: colors.textSecondary, textAlign: 'center' },
-  personalityCard: { borderRadius: radius.xl, padding: spacing.lg, borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)' },
+  personalityCard: { borderRadius: radius.xl, padding: spacing.lg, borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)', backgroundColor: colors.surface, ...elevation.raised },
   personalityTitle: { fontSize: 18, fontWeight: '700', color: colors.primary, marginBottom: 4 },
   personalityDesc: { fontSize: 14, color: colors.textSecondary },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
   achieveCount: { fontSize: 13, color: colors.primary, fontWeight: '600' },
   badgesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  badge: { width: '18%', alignItems: 'center', gap: 2 },
-  badgeLocked: { opacity: 0.35 },
+  badge: { width: '18%', alignItems: 'center', gap: 4 },
+  badgeIconCircle: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1, ...elevation.raised },
   badgeName: { fontSize: 9, color: colors.textSecondary, textAlign: 'center' },
-  card: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  badgeNameLocked: { color: colors.textTertiary },
+  card: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', ...elevation.card },
   emptyText: { padding: spacing.lg, color: colors.textSecondary, textAlign: 'center' },
   activityRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.sm },
   activityBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -306,7 +318,7 @@ const styles = StyleSheet.create({
   activityLabel: { fontSize: 14, color: colors.textPrimary, fontWeight: '500' },
   activitySub: { fontSize: 12, color: colors.textSecondary },
   activityDate: { fontSize: 11, color: colors.textSecondary },
-  menuCard: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  menuCard: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', ...elevation.card },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: 14 },
   menuRowBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   menuLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.textPrimary },

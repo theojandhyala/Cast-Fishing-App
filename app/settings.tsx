@@ -13,7 +13,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
-import { colors, radius, spacing } from '../constants/theme';
+import { colors, radius, spacing, elevation } from '../constants/theme';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -118,7 +118,7 @@ export default function SettingsScreen() {
                 <Text style={styles.rowLabel}>Public Profile</Text>
                 <Text style={styles.rowSub}>Others can view your profile and stats</Text>
               </View>
-              <Switch value={publicProfile} onValueChange={v => { setPublicProfile(v); savePrefs({ isPublicProfile: v }); }} trackColor={{ true: colors.primary }} thumbColor={colors.textPrimary} />
+              <Switch value={publicProfile} onValueChange={v => { setPublicProfile(v); savePrefs({ isPublicProfile: v }); }} trackColor={{ false: colors.surface2, true: colors.primary }} thumbColor={colors.textPrimary} />
             </View>
             <View style={styles.row}>
               <View style={[styles.iconBox, { backgroundColor: 'rgba(0,212,170,0.1)' }]}>
@@ -128,7 +128,7 @@ export default function SettingsScreen() {
                 <Text style={styles.rowLabel}>Share Catches Publicly</Text>
                 <Text style={styles.rowSub}>Catches visible in community feed</Text>
               </View>
-              <Switch value={sharesCatches} onValueChange={v => { setSharesCatches(v); savePrefs({ sharesCatchesPublicly: v }); }} trackColor={{ true: colors.primary }} thumbColor={colors.textPrimary} />
+              <Switch value={sharesCatches} onValueChange={v => { setSharesCatches(v); savePrefs({ sharesCatchesPublicly: v }); }} trackColor={{ false: colors.surface2, true: colors.primary }} thumbColor={colors.textPrimary} />
             </View>
           </View>
         </View>
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   section: { paddingHorizontal: spacing.lg, marginTop: spacing.lg },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: spacing.sm },
-  card: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  card: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', ...elevation.card },
   row: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.md },
   rowBorder: { borderTopWidth: 1, borderTopColor: colors.border },
   rowInfo: { flex: 1 },
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   rowRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   rowValue: { fontSize: 14, color: colors.textSecondary },
   changeLink: { fontSize: 13, color: colors.primary, fontWeight: '600' },
-  iconBox: { width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  iconBox: { width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', ...elevation.raised },
   unitToggle: { flexDirection: 'row', gap: 4 },
   unitOption: { paddingHorizontal: 12, paddingVertical: 5, backgroundColor: colors.surface2, borderRadius: radius.md },
   unitOptionActive: { backgroundColor: colors.primary },
