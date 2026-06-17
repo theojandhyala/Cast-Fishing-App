@@ -1,10 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
+  View, Text, ScrollView, StyleSheet,
+  TouchableOpacity, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -14,22 +11,13 @@ import { useAuthStore } from '../../store/authStore';
 import { useCatchStore } from '../../store/catchStore';
 import { useLocationStore } from '../../store/locationStore';
 import { useWeather } from '../../hooks/useWeather';
+import { useLocation } from '../../hooks/useLocation';
 import { colors, spacing, radius, elevation } from '../../constants/theme';
 import { WORLD_SPOTS } from '../../data/worldSpots';
+import { haversineKm, formatDistance } from '../../utils/distance';
+import { getSpotImage } from '../../constants/spotImages';
 
-const SPOT_GRADIENTS: Record<string, readonly [string, string]> = {
-  river:     ['#1a3a2a', '#0d1f16'],
-  lake:      ['#1a2a3a', '#0d1620'],
-  sea:       ['#132035', '#0a1525'],
-  reservoir: ['#1a2535', '#0f1928'],
-  ocean:     ['#0f1e30', '#0a1320'],
-  estuary:   ['#1a2a20', '#0f1a12'],
-};
-
-const SPOT_ICONS: Record<string, string> = {
-  river: 'waves', lake: 'water', sea: 'anchor',
-  reservoir: 'water-pump', ocean: 'sail-boat', estuary: 'water-outline',
-};
+type SpotWithDist = typeof WORLD_SPOTS[0] & { _distKm?: number };
 
 function timeAgo(dateStr: string) {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
@@ -43,164 +31,283 @@ function getGreeting() {
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 }
 
+function getBestWindow() {
+  const h = new Date().getHours();
+  if (h < 10) return { time: '05:30 – 08:00', label: 'Dawn — fish are most active', icon: 'weather-sunset-up' as const };
+  if (h < 15) return { time: '12:00 – 14:00', label: 'Midday activity window', icon: 'weather-sunny' as const };
+  if (h < 20) return { time: '18:30 – 20:30', label: 'Evening — prime feeding time', icon: 'weather-sunset-down' as const };
+  return { time: '21:00 – 23:00', label: 'Night session opportunity', icon: 'weather-night' as const };
+}
+
+function getFishingScore(temp: number, pressure: number, wind: number): number {
+  let score = 60;
+  if (temp >= 12 && temp <= 22) score += 15;
+  else if (temp < 6 || temp > 28) score -= 15;
+  if (pressure >= 1010 && pressure <= 1025) score += 15;
+  else if (pressure < 990) score -= 10;
+  if (wind < 15) score += 10;
+  else if (wind > 30) score -= 10;
+  return Math.min(100, Math.max(20, score));
+}
+
+function getScoreLabel(score: number) {
+  if (score >= 80) return { label: 'Excellent', color: '#00D4AA' };
+  if (score >= 60) return { label: 'Good', color: '#10B981' };
+  if (score >= 40) return { label: 'Fair', color: '#F59E0B' };
+  return { label: 'Tough', color: '#EF4444' };
+}
+
+const FISHING_TIPS = [
+  'Fish move into shallow margins at dawn — this is your best chance for specimen fish.',
+  'A rising barometer signals improved feeding activity across most freshwater species.',
+  'Wind from the west or south-west brings insects onto the water, triggering surface feeding.',
+  'After rain, rivers carry extra colour and food — fish the inside of bends where current slows.',
+  'Full moon nights improve tidal patterns for sea fishing — plan sessions around it.',
+  'In cold water, slow your retrieve to a crawl. Fish are lethargic and won\'t chase fast lures.',
+  'Pre-baiting a swim for two days before fishing can dramatically increase your catch rate.',
+  'Overcast days reduce light penetration — fish feel safer feeding in open water.',
+];
+
+function getTipOfDay(): string {
+  const day = new Date().getDate();
+  return FISHING_TIPS[day % FISHING_TIPS.length];
+}
+
 export default function HomeScreen() {
   const { user } = useAuthStore();
   const { catches } = useCatchStore();
   const { location } = useLocationStore();
   const router = useRouter();
   const { weather } = useWeather(location?.query);
+  const { location: gpsLocation } = useLocation();
 
   const firstName = user?.name?.split(' ')[0] || 'Angler';
-  const w = weather ?? { temp: 18, wind: 12, pressure: 1016, description: 'Partly Cloudy', fishingScore: 72 };
+  const bestWindow = getBestWindow();
+  const w = weather ?? { temp: 16, wind: 10, pressure: 1015, description: 'Partly Cloudy', fishingScore: 72 };
   const recentCatches = catches.slice(0, 3);
-  const recommendedSpots = WORLD_SPOTS.slice(0, 4);
+  const fishingScore = getFishingScore(w.temp, w.pressure, w.wind);
+  const scoreInfo = getScoreLabel(fishingScore);
+  const tip = getTipOfDay();
+
+  const spots: SpotWithDist[] = useMemo(() => {
+    if (!gpsLocation) return WORLD_SPOTS.slice(0, 6);
+    return [...WORLD_SPOTS]
+      .map(s => ({ ...s, _distKm: haversineKm(gpsLocation.latitude, gpsLocation.longitude, s.latitude, s.longitude) }))
+      .sort((a, b) => a._distKm! - b._distKm!)
+      .slice(0, 6);
+  }, [gpsLocation]);
+
+  const nearMe = !!gpsLocation;
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
-        {/* Header */}
+        {/* ── Header ── */}
         <View style={s.header}>
-          <Text style={s.logo}>CAST</Text>
+          <View>
+            <Text style={s.logo}>CAST</Text>
+            <View style={s.logoUnderline} />
+          </View>
           <TouchableOpacity
-            style={s.bellBtn}
+            style={s.bellWrap}
             onPress={() => router.push('/notifications' as any)}
-            accessibilityRole="button"
-            accessibilityLabel="Notifications"
+            accessibilityRole="button" accessibilityLabel="Notifications"
           >
-            <MaterialCommunityIcons name="bell-outline" size={22} color={colors.textSecondary} />
+            <MaterialCommunityIcons name="bell-outline" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
-        {/* Greeting */}
-        <View style={s.greetSection}>
-          <Text style={s.greetName}>{getGreeting()}, {firstName}.</Text>
-          <Text style={s.greetSub}>Ready for a great day on the water?</Text>
+        {/* ── Greeting ── */}
+        <View style={s.greet}>
+          <Text style={s.greetLine}>{getGreeting()},</Text>
+          <Text style={s.greetName}>{firstName}.</Text>
+          <Text style={s.greetSub}>Here's what the water looks like today.</Text>
         </View>
 
-        {/* START FISHING button */}
+        {/* ── START FISHING CTA ── */}
         <TouchableOpacity
-          style={s.startBtn}
+          style={s.ctaWrap}
           onPress={() => router.push('/(tabs)/session' as any)}
-          activeOpacity={0.85}
-          accessibilityRole="button"
-          accessibilityLabel="Start fishing session"
+          activeOpacity={0.88}
+          accessibilityRole="button" accessibilityLabel="Start fishing session"
         >
-          <LinearGradient
-            colors={['#00D4AA', '#00B891']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            style={s.startBtnGrad}
-          >
-            <MaterialCommunityIcons name="fish" size={20} color="#051410" />
-            <Text style={s.startBtnText}>START FISHING</Text>
+          <LinearGradient colors={['#00D4AA', '#00B88A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.ctaGrad}>
+            <MaterialCommunityIcons name="fish" size={19} color="#031A12" />
+            <Text style={s.ctaText}>START FISHING</Text>
+            <MaterialCommunityIcons name="arrow-right" size={16} color="#031A12" />
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Recommended Spots */}
-        <View style={s.sectionRow}>
-          <Text style={s.sectionTitle}>Recommended Spots</Text>
-          <TouchableOpacity
-            onPress={() => router.push('/(tabs)/map' as any)}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <Text style={s.seeAll}>See all</Text>
+        {/* ── Today's Conditions ── */}
+        <View style={s.condCard}>
+          <View style={s.condHeader}>
+            <View>
+              <Text style={s.condLabel}>TODAY'S CONDITIONS</Text>
+              <Text style={s.condSub}>Based on current weather data</Text>
+            </View>
+            <TouchableOpacity onPress={() => router.push('/weather-detail' as any)}>
+              <Text style={s.condLink}>Full report</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Score row */}
+          <View style={s.scoreRow}>
+            <View style={s.scoreLeft}>
+              <Text style={[s.scoreNum, { color: scoreInfo.color }]}>{fishingScore}</Text>
+              <Text style={[s.scoreLabel, { color: scoreInfo.color }]}>{scoreInfo.label} conditions</Text>
+              <Text style={s.scoreDesc}>Fishing score out of 100</Text>
+            </View>
+            <View style={s.scoreRight}>
+              {[
+                { icon: 'thermometer', label: 'Air Temp', value: `${w.temp}°C` },
+                { icon: 'weather-windy', label: 'Wind', value: `${w.wind} km/h` },
+                { icon: 'gauge', label: 'Pressure', value: `${w.pressure} hPa` },
+              ].map(item => (
+                <View key={item.label} style={s.condItem}>
+                  <MaterialCommunityIcons name={item.icon as any} size={13} color={colors.textTertiary} />
+                  <View>
+                    <Text style={s.condItemVal}>{item.value}</Text>
+                    <Text style={s.condItemLabel}>{item.label}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Best window */}
+          <View style={s.bestWindow}>
+            <MaterialCommunityIcons name={bestWindow.icon} size={16} color={colors.secondary} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.bestWindowTitle}>Best window today: {bestWindow.time}</Text>
+              <Text style={s.bestWindowSub}>{bestWindow.label}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Spots Near Me / Recommended ── */}
+        <View style={s.sectionHead}>
+          <View style={s.sectionBar} />
+          <View style={s.sectionTitleRow}>
+            <Text style={s.sectionTitle}>{nearMe ? 'Spots Near You' : 'Recommended Spots'}</Text>
+            {nearMe && (
+              <View style={s.nearBadge}>
+                <MaterialCommunityIcons name="map-marker" size={10} color={colors.primary} />
+                <Text style={s.nearBadgeText}>GPS</Text>
+              </View>
+            )}
+          </View>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/map' as any)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Text style={s.seeAll}>See all →</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.spotsScroll}>
-          {recommendedSpots.map((spot) => {
-            const grad = (SPOT_GRADIENTS[spot.type] || ['#1a2a3a', '#0f1924']) as [string, string];
-            const icon = SPOT_ICONS[spot.type] || 'water';
-            return (
-              <TouchableOpacity
-                key={spot.id}
-                style={s.spotCard}
-                onPress={() => router.push({ pathname: '/spot-details', params: { id: spot.id } } as any)}
-                activeOpacity={0.85}
-              >
-                <LinearGradient colors={grad} style={s.spotPhoto}>
-                  <MaterialCommunityIcons name={icon as any} size={24} color="rgba(255,255,255,0.18)" />
-                </LinearGradient>
-                <View style={s.spotInfo}>
+          {spots.map((spot) => (
+            <TouchableOpacity
+              key={spot.id}
+              style={s.spotCard}
+              onPress={() => router.push({ pathname: '/spot-details', params: { id: spot.id } } as any)}
+              activeOpacity={0.85}
+            >
+              <View style={s.spotPhoto}>
+                <LinearGradient colors={['#0F1E2E', '#060E18']} style={StyleSheet.absoluteFillObject} />
+                <Image
+                  source={{ uri: getSpotImage(spot) }}
+                  style={[StyleSheet.absoluteFillObject, { opacity: 0.82 }]}
+                  resizeMode="cover"
+                />
+                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={s.spotPhotoOverlay}>
                   <Text style={s.spotName} numberOfLines={1}>{spot.name.split(',')[0]}</Text>
-                  <View style={s.spotMeta}>
+                  <View style={s.spotMetaRow}>
                     <Text style={s.spotType}>{spot.type}</Text>
-                    <View style={s.spotRating}>
+                    <View style={s.spotRatingRow}>
                       <MaterialCommunityIcons name="star" size={9} color={colors.secondary} />
-                      <Text style={s.spotRatingText}>{spot.rating}</Text>
+                      <Text style={s.spotRating}>{spot.rating}</Text>
                     </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+                  {spot._distKm !== undefined && (
+                    <Text style={s.spotDist}>{formatDistance(spot._distKm)} away</Text>
+                  )}
+                </LinearGradient>
+              </View>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
 
-        {/* Best Time Today */}
-        <View style={s.bestTimeCard}>
-          <MaterialCommunityIcons name="weather-sunny" size={32} color={colors.secondary} />
-          <View style={s.bestTimeInfo}>
-            <Text style={s.bestTimeLabel}>Best Time Today</Text>
-            <Text style={s.bestTimeValue}>18:30 – 20:00</Text>
-            <Text style={s.bestTimeSub}>Great bite window</Text>
+        {/* ── Tip of the Day ── */}
+        <View style={s.tipCard}>
+          <View style={s.tipIconWrap}>
+            <MaterialCommunityIcons name="lightbulb-on" size={20} color={colors.secondary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.tipLabel}>TIP OF THE DAY</Text>
+            <Text style={s.tipText}>{tip}</Text>
           </View>
         </View>
 
-        {/* Weather + Conditions 2-col */}
-        <View style={s.weatherRow}>
-          <View style={[s.weatherCard, s.weatherLeft]}>
-            <MaterialCommunityIcons name="weather-partly-cloudy" size={26} color="#93C5FD" />
-            <Text style={s.weatherTemp}>{w.temp}°C</Text>
-            <Text style={s.weatherDesc}>{w.description}</Text>
-          </View>
-          <View style={[s.weatherCard, s.weatherRight]}>
-            <MaterialCommunityIcons name="waves" size={26} color={colors.primary} />
-            <Text style={s.weatherTemp}>Good</Text>
-            <Text style={s.weatherDesc}>{w.pressure} hPa</Text>
-          </View>
-        </View>
-
-        {/* Recent Catches */}
-        <View style={s.sectionRow}>
+        {/* ── Recent Catches ── */}
+        <View style={s.sectionHead}>
+          <View style={s.sectionBar} />
           <Text style={s.sectionTitle}>Recent Catches</Text>
           <TouchableOpacity onPress={() => router.push('/(tabs)/catches' as any)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={s.seeAll}>See all</Text>
+            <Text style={s.seeAll}>See all →</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={s.catchesList}>
-          {recentCatches.length === 0 ? (
+        {recentCatches.length === 0 ? (
+          <View style={s.emptyCatches}>
+            <LinearGradient colors={['rgba(0,212,170,0.06)', 'transparent']} style={s.emptyCatchesGrad}>
+              <MaterialCommunityIcons name="fish" size={40} color="rgba(0,212,170,0.25)" />
+              <Text style={s.emptyTitle}>No catches logged yet</Text>
+              <Text style={s.emptySub}>Every great fishing story starts with the first cast. Get out there and log your first catch.</Text>
+              <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/add-catch' as any)}>
+                <Text style={s.emptyBtnText}>Log a Catch</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+        ) : (
+          <View style={s.catchList}>
+            {recentCatches.map((c, i) => (
+              <TouchableOpacity
+                key={c.id}
+                style={[s.catchRow, i > 0 && s.catchDivider]}
+                onPress={() => router.push({ pathname: '/catch-detail', params: { id: c.id } } as any)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={['#0F2A1A', '#081610']} style={s.catchThumb}>
+                  <MaterialCommunityIcons name="fish" size={18} color="rgba(0,212,170,0.6)" />
+                </LinearGradient>
+                <View style={s.catchInfo}>
+                  <Text style={s.catchSpecies}>{c.species}</Text>
+                  <Text style={s.catchMeta}>
+                    {[c.weight ? `${c.weight} kg` : null, c.location].filter(Boolean).join(' · ')}
+                  </Text>
+                </View>
+                <Text style={s.catchTime}>{timeAgo(c.date)}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* ── Quick Links ── */}
+        <View style={s.quickLinksRow}>
+          {[
+            { icon: 'fish', label: 'Species Guide', route: '/(tabs)/tips' },
+            { icon: 'rope', label: 'Knots', route: '/knots' },
+            { icon: 'food-drumstick', label: 'Bait Guide', route: '/bait-guide' },
+            { icon: 'weather-partly-cloudy', label: 'Weather', route: '/weather-detail' },
+          ].map(item => (
             <TouchableOpacity
-              style={s.emptyRow}
-              onPress={() => router.push('/add-catch' as any)}
+              key={item.label}
+              style={s.quickLink}
+              onPress={() => router.push(item.route as any)}
               activeOpacity={0.85}
             >
-              <View style={s.catchThumb}>
-                <MaterialCommunityIcons name="fish" size={20} color={colors.primary} />
+              <View style={s.quickLinkIcon}>
+                <MaterialCommunityIcons name={item.icon as any} size={20} color={colors.primary} />
               </View>
-              <View style={s.catchInfo}>
-                <Text style={s.catchSpecies}>No catches yet</Text>
-                <Text style={s.catchMeta}>Log your first catch!</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textTertiary} />
-            </TouchableOpacity>
-          ) : recentCatches.map((c, i) => (
-            <TouchableOpacity
-              key={c.id}
-              style={[s.catchRow, i > 0 && s.catchBorder]}
-              onPress={() => router.push({ pathname: '/catch-detail', params: { id: c.id } } as any)}
-              activeOpacity={0.85}
-            >
-              <LinearGradient colors={['#1a3a2a', '#0d1f16']} style={s.catchThumb}>
-                <MaterialCommunityIcons name="fish" size={18} color="rgba(0,212,170,0.55)" />
-              </LinearGradient>
-              <View style={s.catchInfo}>
-                <Text style={s.catchSpecies}>{c.species}</Text>
-                <Text style={s.catchMeta}>
-                  {[c.weight ? `${c.weight} kg` : null, c.location].filter(Boolean).join(' · ')}
-                </Text>
-              </View>
-              <Text style={s.catchTime}>{timeAgo(c.date)}</Text>
+              <Text style={s.quickLinkLabel}>{item.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -214,108 +321,156 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 4,
   },
-  logo: { fontSize: 22, fontWeight: '900', color: colors.primary, letterSpacing: 3 },
-  bellBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-
-  greetSection: {
-    paddingHorizontal: spacing.lg, paddingTop: 6, paddingBottom: spacing.md,
+  logo: { fontSize: 22, fontWeight: '900', color: colors.primary, letterSpacing: 4 },
+  logoUnderline: { width: 28, height: 2, backgroundColor: colors.primary, borderRadius: 1, marginTop: 3 },
+  bellWrap: {
+    width: 40, height: 40, borderRadius: radius.sm,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
   },
-  greetName: { fontSize: 22, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.3 },
-  greetSub: { fontSize: 13, color: colors.textSecondary, marginTop: 3 },
 
-  startBtn: {
-    marginHorizontal: spacing.lg, marginBottom: spacing.lg,
+  greet: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.lg },
+  greetLine: { fontSize: 13, color: colors.textSecondary, fontWeight: '500', letterSpacing: 0.3 },
+  greetName: { fontSize: 30, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.8, marginTop: 1 },
+  greetSub: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
+
+  ctaWrap: {
+    marginHorizontal: spacing.lg, marginBottom: 24,
     borderRadius: radius.lg, overflow: 'hidden',
-    ...elevation.glow,
+    shadowColor: colors.primary, shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
   },
-  startBtnGrad: {
+  ctaGrad: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 10, paddingVertical: 16,
+    gap: 10, paddingVertical: 18,
   },
-  startBtnText: { fontSize: 15, fontWeight: '800', color: '#051410', letterSpacing: 1.5 },
+  ctaText: { fontSize: 14, fontWeight: '800', color: '#031A12', letterSpacing: 2 },
 
-  sectionRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, marginBottom: 12,
+  // ── Conditions card
+  condCard: {
+    marginHorizontal: spacing.lg, marginBottom: 28,
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.border,
+    padding: spacing.lg, gap: 16,
+    ...elevation.raised,
   },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
+  condHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  condLabel: { fontSize: 10, fontWeight: '800', color: colors.textTertiary, letterSpacing: 1.5, textTransform: 'uppercase' },
+  condSub: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
+  condLink: { fontSize: 12, color: colors.primary, fontWeight: '700' },
+  scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  scoreLeft: { gap: 3 },
+  scoreNum: { fontSize: 48, fontWeight: '900', letterSpacing: -2, lineHeight: 52 },
+  scoreLabel: { fontSize: 14, fontWeight: '800', letterSpacing: -0.3 },
+  scoreDesc: { fontSize: 11, color: colors.textTertiary },
+  scoreRight: { flex: 1, gap: 10 },
+  condItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  condItemVal: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+  condItemLabel: { fontSize: 10, color: colors.textTertiary },
+  bestWindow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: 'rgba(245,158,11,0.07)', borderRadius: radius.sm,
+    borderWidth: 1, borderColor: 'rgba(245,158,11,0.15)', padding: 12,
+  },
+  bestWindowTitle: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
+  bestWindowSub: { fontSize: 12, color: colors.textSecondary },
+
+  sectionHead: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: spacing.lg, marginBottom: 14,
+  },
+  sectionBar: { width: 3, height: 18, borderRadius: 2, backgroundColor: colors.primary },
+  sectionTitleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.2 },
+  nearBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: radius.full,
+    paddingHorizontal: 7, paddingVertical: 3,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
+  },
+  nearBadgeText: { fontSize: 9, color: colors.primary, fontWeight: '700' },
   seeAll: { fontSize: 13, color: colors.primary, fontWeight: '600' },
 
-  spotsScroll: { paddingHorizontal: spacing.lg, gap: 10, paddingBottom: 4, marginBottom: spacing.lg },
+  spotsScroll: { paddingHorizontal: spacing.lg, gap: 10, paddingBottom: 4, marginBottom: 28 },
   spotCard: {
-    width: 110,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    overflow: 'hidden',
+    width: 140, borderRadius: radius.md, overflow: 'hidden',
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)',
     ...elevation.raised,
   },
-  spotPhoto: {
-    height: 88, alignItems: 'center', justifyContent: 'center',
-  },
-  spotInfo: { padding: 8 },
-  spotName: { fontSize: 12, fontWeight: '700', color: colors.textPrimary, marginBottom: 5 },
-  spotMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  spotType: { fontSize: 10, color: colors.textSecondary, textTransform: 'capitalize' },
-  spotRating: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  spotRatingText: { fontSize: 10, fontWeight: '700', color: colors.secondary },
+  spotPhoto: { height: 165, justifyContent: 'flex-end' },
+  spotPhotoOverlay: { padding: 10 },
+  spotName: { fontSize: 13, fontWeight: '700', color: '#fff', marginBottom: 4 },
+  spotMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  spotType: { fontSize: 10, color: 'rgba(255,255,255,0.5)', textTransform: 'capitalize' },
+  spotRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  spotRating: { fontSize: 10, fontWeight: '700', color: colors.secondary },
+  spotDist: { fontSize: 9, color: colors.primary, marginTop: 3 },
 
-  bestTimeCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 16,
-    marginHorizontal: spacing.lg, marginBottom: 12,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md,
-    ...elevation.raised,
+  tipCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+    marginHorizontal: spacing.lg, marginBottom: 28,
+    backgroundColor: 'rgba(245,158,11,0.06)', borderRadius: radius.md,
+    borderWidth: 1, borderColor: 'rgba(245,158,11,0.15)', padding: spacing.md,
   },
-  bestTimeInfo: {},
-  bestTimeLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '600', marginBottom: 3 },
-  bestTimeValue: { fontSize: 20, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.5 },
-  bestTimeSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  tipIconWrap: {
+    width: 36, height: 36, borderRadius: radius.sm,
+    backgroundColor: 'rgba(245,158,11,0.12)', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)',
+  },
+  tipLabel: { fontSize: 9, fontWeight: '800', color: colors.secondary, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 5 },
+  tipText: { fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
 
-  weatherRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg, marginBottom: spacing.lg, gap: 10,
+  emptyCatches: {
+    marginHorizontal: spacing.lg, marginBottom: 28,
+    borderRadius: radius.lg, overflow: 'hidden',
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)',
   },
-  weatherCard: {
-    flex: 1, backgroundColor: colors.surface,
-    borderRadius: radius.md, borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md, alignItems: 'flex-start', gap: 4,
-    ...elevation.raised,
+  emptyCatchesGrad: { alignItems: 'center', padding: 32, gap: 10 },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: colors.textPrimary },
+  emptySub: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, maxWidth: 260 },
+  emptyBtn: {
+    marginTop: 8, borderRadius: radius.full,
+    borderWidth: 1, borderColor: colors.primary,
+    paddingHorizontal: 24, paddingVertical: 11,
   },
-  weatherLeft: {},
-  weatherRight: {},
-  weatherTemp: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
-  weatherDesc: { fontSize: 12, color: colors.textSecondary },
+  emptyBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
 
-  catchesList: {
-    marginHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    overflow: 'hidden',
-    ...elevation.raised,
+  catchList: {
+    marginHorizontal: spacing.lg, marginBottom: 28,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)',
+    overflow: 'hidden', ...elevation.raised,
   },
   catchRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingHorizontal: spacing.md, paddingVertical: 13,
+    paddingHorizontal: spacing.md, paddingVertical: 15,
   },
-  emptyRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingHorizontal: spacing.md, paddingVertical: 13,
-  },
-  catchBorder: { borderTopWidth: 1, borderTopColor: colors.border },
+  catchDivider: { borderTopWidth: 1, borderTopColor: colors.border },
   catchThumb: {
     width: 44, height: 44, borderRadius: radius.sm,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,212,170,0.08)',
   },
   catchInfo: { flex: 1 },
-  catchSpecies: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
+  catchSpecies: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 3 },
   catchMeta: { fontSize: 12, color: colors.textSecondary },
   catchTime: { fontSize: 12, color: colors.textTertiary },
+
+  quickLinksRow: {
+    flexDirection: 'row', paddingHorizontal: spacing.lg, gap: 10,
+  },
+  quickLink: {
+    flex: 1, alignItems: 'center', gap: 8,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border, paddingVertical: 14,
+    ...elevation.raised,
+  },
+  quickLinkIcon: {
+    width: 38, height: 38, borderRadius: radius.sm,
+    backgroundColor: 'rgba(0,212,170,0.08)', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.15)',
+  },
+  quickLinkLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, textAlign: 'center' },
 });
