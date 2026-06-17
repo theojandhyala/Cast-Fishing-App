@@ -103,9 +103,22 @@ export default function IdentifierScreen() {
     reset();
   };
 
+  const parseMidpoint = (str: string): string => {
+    const nums = str.match(/\d+\.?\d*/g);
+    if (!nums || nums.length === 0) return '';
+    if (nums.length === 1) return nums[0];
+    const a = parseFloat(nums[0]);
+    const b = parseFloat(nums[1]);
+    const mid = (a + b) / 2;
+    // If both numbers are integers and mid is whole, return no decimals
+    return Number.isInteger(mid) ? mid.toFixed(0) : mid.toFixed(1);
+  };
+
   const handleSaveCatch = () => {
     if (!result) return;
-    router.push({ pathname: '/add-catch', params: { species: result.commonName, weight: result.estimatedWeight } } as any);
+    const weight = parseMidpoint(result.estimatedWeight);
+    const length = parseMidpoint(result.estimatedLength);
+    router.push({ pathname: '/add-catch', params: { species: result.commonName, weight, length } } as any);
   };
 
   return (
@@ -218,7 +231,7 @@ export default function IdentifierScreen() {
 
             <View style={styles.resultActions}>
               <CastButton title="Scan Again" onPress={handleReset} variant="ghost" style={{ flex: 1 }} />
-              <CastButton title="Save Catch" onPress={handleSaveCatch} style={{ flex: 1 }} />
+              <CastButton title="Log as Catch →" onPress={handleSaveCatch} style={{ flex: 1 }} />
             </View>
           </View>
         )}

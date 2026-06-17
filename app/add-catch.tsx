@@ -24,7 +24,7 @@ import { colors, radius, spacing, elevation } from '../constants/theme';
 const SPECIES_OPTIONS = SPECIES_LIST.map((s) => ({ id: s.id, name: s.name || s.commonName }));
 
 export default function AddCatchScreen() {
-  const params = useLocalSearchParams<{ species?: string; weight?: string }>();
+  const params = useLocalSearchParams<{ species?: string; weight?: string; length?: string }>();
   const router = useRouter();
   const { addCatch } = useCatchStore();
   const { location } = useLocationStore();
@@ -35,7 +35,7 @@ export default function AddCatchScreen() {
 
   const [selectedSpecies, setSelectedSpecies] = useState(prefill?.name || '');
   const [weight, setWeight] = useState(params.weight || '');
-  const [length, setLength] = useState('');
+  const [length, setLength] = useState(params.length || '');
   const [bait, setBait] = useState('');
   const [notes, setNotes] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);

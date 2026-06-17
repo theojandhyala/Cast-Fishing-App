@@ -81,6 +81,7 @@ export default function RootLayout() {
         <Stack.Screen name="pro" options={{ title: 'CAST Pro', presentation: 'modal' }} />
         <Stack.Screen name="fish-tips" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ title: 'My Profile' }} />
+        <Stack.Screen name="friends" options={{ title: 'Friends' }} />
         <Stack.Screen name="leaderboards" options={{ title: 'Leaderboards' }} />
         <Stack.Screen name="clubs" options={{ title: 'Fishing Clubs' }} />
         <Stack.Screen name="challenges" options={{ title: 'Challenges' }} />
