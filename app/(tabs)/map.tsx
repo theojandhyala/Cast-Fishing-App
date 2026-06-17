@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, TextInput, FlatList,
+  TouchableOpacity, TextInput, FlatList, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,6 +11,52 @@ import { WORLD_SPOTS, WorldSpot } from '../../data/worldSpots';
 import { SpotCard } from '../../components/map/SpotCard';
 import { Modal } from 'react-native';
 import { colors, radius, spacing, elevation } from '../../constants/theme';
+
+const SPOT_IMAGES: Record<string, string[]> = {
+  river: [
+    'https://images.unsplash.com/photo-1500043788826-2e6d08ce4dc0?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1497290756760-23ac55edf36f?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1548484088-a0b80bc52c47?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1504221507732-5d217f9e5e63?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1543269665-7eef42226a21?w=400&h=200&fit=crop&auto=format',
+  ],
+  lake: [
+    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1471513671800-b09c87e1497c?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1519451241324-20b4ea2c4220?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1562769084-28ab1e70f36e?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1439118702823-09ec1c4543d4?w=400&h=200&fit=crop&auto=format',
+  ],
+  sea: [
+    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1455264745730-cb3b76250de8?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1542662565-7e4b66bae529?w=400&h=200&fit=crop&auto=format',
+  ],
+  reservoir: [
+    'https://images.unsplash.com/photo-1574068468668-a05a11f871da?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1482938289607-e9573fc25ebb?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1439918079498-71dc47a0ea13?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1476673160081-cf065607f449?w=400&h=200&fit=crop&auto=format',
+  ],
+  ocean: [
+    'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1476673160081-cf065607f449?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1559825481-12a05cc00344?w=400&h=200&fit=crop&auto=format',
+  ],
+  estuary: [
+    'https://images.unsplash.com/photo-1449182325215-d517de72c42d?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1500043788826-2e6d08ce4dc0?w=400&h=200&fit=crop&auto=format',
+    'https://images.unsplash.com/photo-1497290756760-23ac55edf36f?w=400&h=200&fit=crop&auto=format',
+  ],
+};
+
+function getSpotImage(spot: WorldSpot): string {
+  const images = SPOT_IMAGES[spot.type] || SPOT_IMAGES.lake;
+  const hash = spot.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return images[hash % images.length];
+}
 import { useSessionStore } from '../../store/sessionStore';
 
 const DIFF_COLORS: Record<string, string> = {
@@ -67,9 +113,18 @@ export default function SpotsScreen() {
       >
         {/* Difficulty stripe */}
         <View style={[s.diffStripe, { backgroundColor: diffColor }]} />
-        <LinearGradient colors={grad} style={s.spotThumb}>
-          <MaterialCommunityIcons name={(TYPE_ICONS[spot.type] || 'water') as any} size={22} color="rgba(255,255,255,0.2)" />
-        </LinearGradient>
+        <View style={s.spotThumb}>
+          <LinearGradient colors={grad} style={StyleSheet.absoluteFillObject} />
+          <Image
+            source={{ uri: getSpotImage(spot) }}
+            style={[StyleSheet.absoluteFillObject, { opacity: 0.8 }]}
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.45)']}
+            style={StyleSheet.absoluteFillObject}
+          />
+        </View>
         <View style={s.spotBody}>
           <View style={s.spotTopRow}>
             <Text style={s.spotName} numberOfLines={1}>{spot.name.split(',')[0]}</Text>
@@ -170,6 +225,11 @@ export default function SpotsScreen() {
             <LinearGradient
               colors={[...(SPOT_GRAD[featured.type] || ['#1a2a3a', '#0f1924'])] as [string, string]}
               style={StyleSheet.absoluteFillObject}
+            />
+            <Image
+              source={{ uri: getSpotImage(featured) }}
+              style={[StyleSheet.absoluteFillObject, { opacity: 0.55 }]}
+              resizeMode="cover"
             />
             <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={s.featuredOverlay}>
               <View style={s.featuredTopRow}>
