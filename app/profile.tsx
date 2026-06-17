@@ -1,12 +1,9 @@
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
@@ -14,23 +11,21 @@ import { useCatchStore } from '../store/catchStore';
 import { useAchievementStore } from '../store/achievementStore';
 import { colors, radius, spacing, elevation } from '../constants/theme';
 
-const BADGE_ICONS = [
-  { name: 'fish', color: colors.secondary },
-  { name: 'star', color: colors.secondary },
-  { name: 'trophy', color: colors.secondary },
-  { name: 'medal', color: colors.secondary },
+const BADGE_DEFS = [
+  { icon: 'fish', label: 'First Catch', color: colors.primary },
+  { icon: 'star', label: 'Top Angler', color: colors.secondary },
+  { icon: 'trophy', label: 'PB Chaser', color: '#F472B6' },
+  { icon: 'medal', label: 'Species Pro', color: '#60A5FA' },
 ];
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const { catches, getStats } = useCatchStore();
   const { achievements } = useAchievementStore();
   const stats = getStats();
 
   const displayName = user?.name || 'Angler';
-  const bio = 'Passionate about fishing';
-
   const heaviest = stats.heaviest;
   const longestCatch = catches.reduce<typeof catches[0] | null>((best, c) => {
     if (!best) return c;
@@ -38,113 +33,120 @@ export default function ProfileScreen() {
   }, null);
 
   const unlockedAchievements = achievements?.filter(a => a.unlocked) ?? [];
-  const displayBadges = unlockedAchievements.slice(0, 4);
-  const extraBadgeCount = Math.max(0, unlockedAchievements.length - 4);
+  const displayBadges = unlockedAchievements.length > 0
+    ? unlockedAchievements.slice(0, 4).map((a, i) => ({ ...BADGE_DEFS[i % BADGE_DEFS.length], label: a.title || BADGE_DEFS[i % BADGE_DEFS.length].label }))
+    : BADGE_DEFS;
+  const extraCount = Math.max(0, unlockedAchievements.length - 4);
 
   const sessions = (user as any)?.sessions ?? 28;
-  const totalCatches = stats.total || 156;
-  const speciesCount = Object.keys(stats.speciesCounts || {}).length || 23;
+  const totalCatches = stats.total || 0;
+  const speciesCount = Object.keys(stats.speciesCounts || {}).length || 0;
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
 
-        {/* Profile header card */}
-        <View style={s.profileCard}>
-          <View style={s.avatarCircle}>
-            <MaterialCommunityIcons name="account" size={36} color={colors.primary} />
-          </View>
-          <View style={s.profileInfo}>
-            <Text style={s.profileName}>{displayName}</Text>
-            <Text style={s.profileBio}>{bio}</Text>
-            <TouchableOpacity>
-              <Text style={s.editLink}>Edit Profile</Text>
+        {/* Hero profile header */}
+        <LinearGradient colors={['#0D1E2E', '#0A0E1A']} style={s.heroGrad}>
+          <View style={s.heroTop}>
+            <View style={s.avatarWrap}>
+              <LinearGradient colors={['rgba(0,212,170,0.25)', 'rgba(0,212,170,0.05)']} style={s.avatarGrad}>
+                <MaterialCommunityIcons name="account" size={40} color={colors.primary} />
+              </LinearGradient>
+              <View style={s.avatarRing} />
+            </View>
+            <TouchableOpacity onPress={() => router.push('/settings' as any)} style={s.gearBtn}>
+              <MaterialCommunityIcons name="cog-outline" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={() => router.push('/settings' as any)} style={s.gearBtn}>
-            <MaterialCommunityIcons name="cog-outline" size={22} color={colors.textSecondary} />
+          <Text style={s.heroName}>{displayName}</Text>
+          <Text style={s.heroBio}>Passionate angler · Catch log active</Text>
+          <TouchableOpacity style={s.editPill}>
+            <Text style={s.editPillText}>Edit Profile</Text>
           </TouchableOpacity>
-        </View>
+        </LinearGradient>
 
         {/* Stats row */}
         <View style={s.statsRow}>
-          <View style={s.statItem}>
-            <Text style={s.statValue}>{sessions}</Text>
-            <Text style={s.statLabel}>Sessions</Text>
-          </View>
-          <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={s.statValue}>{totalCatches}</Text>
-            <Text style={s.statLabel}>Catches</Text>
-          </View>
-          <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={s.statValue}>{speciesCount}</Text>
-            <Text style={s.statLabel}>Species</Text>
-          </View>
+          {[
+            { val: sessions, label: 'Sessions' },
+            { val: totalCatches, label: 'Catches' },
+            { val: speciesCount, label: 'Species' },
+          ].map((item, i) => (
+            <React.Fragment key={item.label}>
+              {i > 0 && <View style={s.statDiv} />}
+              <View style={s.statItem}>
+                <Text style={s.statVal}>{item.val}</Text>
+                <Text style={s.statLabel}>{item.label}</Text>
+              </View>
+            </React.Fragment>
+          ))}
         </View>
 
         {/* Biggest Catch */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Biggest Catch</Text>
-          {heaviest ? (
-            <View style={s.biggestCard}>
-              <View style={s.biggestPhoto}>
-                <MaterialCommunityIcons name="fish" size={32} color="rgba(0,212,170,0.4)" />
-              </View>
-              <View style={s.biggestInfo}>
-                <Text style={s.biggestSpecies}>{heaviest.species}</Text>
-                <Text style={s.biggestWeight}>{heaviest.weight} kg</Text>
-                <Text style={s.biggestLocation}>{heaviest.location || 'Pine Lake'}</Text>
-              </View>
-            </View>
-          ) : (
-            <View style={s.biggestCard}>
-              <View style={s.biggestPhoto}>
-                <MaterialCommunityIcons name="fish" size={32} color="rgba(0,212,170,0.3)" />
-              </View>
-              <View style={s.biggestInfo}>
-                <Text style={s.biggestSpecies}>Common Carp</Text>
-                <Text style={s.biggestWeight}>12.4 kg</Text>
-                <Text style={s.biggestLocation}>Pine Lake</Text>
+          <View style={s.sectionHead}>
+            <View style={s.sectionBar} />
+            <Text style={s.sectionTitle}>Biggest Catch</Text>
+          </View>
+          <View style={s.bigCard}>
+            <LinearGradient colors={['#0D2416', '#060E0A']} style={s.bigPhoto}>
+              <MaterialCommunityIcons name="fish" size={36} color="rgba(0,212,170,0.3)" />
+            </LinearGradient>
+            <View style={s.bigInfo}>
+              <Text style={s.bigSpecies}>{heaviest?.species || 'Common Carp'}</Text>
+              <Text style={s.bigWeight}>{heaviest ? `${heaviest.weight} kg` : '12.4 kg'}</Text>
+              <Text style={s.bigLoc}>{heaviest?.location || 'Pine Lake'}</Text>
+              <View style={s.pbPill}>
+                <Text style={s.pbPillText}>PB</Text>
               </View>
             </View>
-          )}
+          </View>
         </View>
 
         {/* Personal Bests */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Personal Bests</Text>
+          <View style={s.sectionHead}>
+            <View style={s.sectionBar} />
+            <Text style={s.sectionTitle}>Personal Bests</Text>
+          </View>
           <View style={s.pbRow}>
             <View style={s.pbCard}>
-              <Text style={s.pbLabel}>Heaviest Fish</Text>
-              <Text style={s.pbValue}>{heaviest ? `${heaviest.weight} kg` : '12.4 kg'}</Text>
-              <Text style={s.pbSpecies}>{heaviest?.species || 'Common Carp'}</Text>
+              <MaterialCommunityIcons name="weight" size={16} color={colors.primary} style={{ marginBottom: 8 }} />
+              <Text style={s.pbVal}>{heaviest ? `${heaviest.weight} kg` : '12.4 kg'}</Text>
+              <Text style={s.pbType}>Heaviest Fish</Text>
+              <Text style={s.pbSp}>{heaviest?.species || 'Common Carp'}</Text>
             </View>
             <View style={s.pbCard}>
-              <Text style={s.pbLabel}>Longest Fish</Text>
-              <Text style={s.pbValue}>{longestCatch?.length ? `${longestCatch.length} cm` : '88 cm'}</Text>
-              <Text style={s.pbSpecies}>{longestCatch?.species || 'Northern Pike'}</Text>
+              <MaterialCommunityIcons name="ruler" size={16} color={colors.accentBlue} style={{ marginBottom: 8 }} />
+              <Text style={[s.pbVal, { color: colors.accentBlue }]}>{longestCatch?.length ? `${longestCatch.length} cm` : '88 cm'}</Text>
+              <Text style={s.pbType}>Longest Fish</Text>
+              <Text style={s.pbSp}>{longestCatch?.species || 'Northern Pike'}</Text>
             </View>
           </View>
         </View>
 
         {/* Badges */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Badges</Text>
-          <View style={s.badgesRow}>
-            {displayBadges.length > 0 ? displayBadges.map((a, i) => (
-              <View key={a.id} style={s.badgeCircle}>
-                <MaterialCommunityIcons name={BADGE_ICONS[i % BADGE_ICONS.length].name as any} size={22} color={colors.secondary} />
-              </View>
-            )) : BADGE_ICONS.map((b, i) => (
-              <View key={i} style={s.badgeCircle}>
-                <MaterialCommunityIcons name={b.name as any} size={22} color={colors.secondary} />
+          <View style={s.sectionHead}>
+            <View style={s.sectionBar} />
+            <Text style={s.sectionTitle}>Badges</Text>
+          </View>
+          <View style={s.badgeRow}>
+            {displayBadges.map((b, i) => (
+              <View key={i} style={s.badgeItem}>
+                <LinearGradient colors={[b.color + '28', b.color + '08']} style={s.badgeCircle}>
+                  <MaterialCommunityIcons name={b.icon as any} size={22} color={b.color} />
+                </LinearGradient>
+                <Text style={s.badgeLabel}>{b.label}</Text>
               </View>
             ))}
-            {extraBadgeCount > 0 && (
-              <View style={[s.badgeCircle, s.badgeExtra]}>
-                <Text style={s.badgeExtraText}>+{extraBadgeCount}</Text>
+            {extraCount > 0 && (
+              <View style={s.badgeItem}>
+                <View style={[s.badgeCircle, s.badgeExtra]}>
+                  <Text style={s.badgeExtraText}>+{extraCount}</Text>
+                </View>
+                <Text style={s.badgeLabel}>More</Text>
               </View>
             )}
           </View>
@@ -158,73 +160,86 @@ export default function ProfileScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
-  profileCard: {
-    flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: spacing.lg, marginTop: spacing.lg, marginBottom: spacing.md,
-    backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    padding: spacing.md,
-    ...elevation.raised,
-  },
-  avatarCircle: {
-    width: 56, height: 56, borderRadius: radius.full,
-    backgroundColor: 'rgba(0,212,170,0.12)',
+  heroGrad: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: 28 },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+  avatarWrap: { position: 'relative' },
+  avatarGrad: {
+    width: 72, height: 72, borderRadius: radius.full,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: 'rgba(0,212,170,0.3)',
-    marginRight: spacing.md,
   },
-  profileInfo: { flex: 1 },
-  profileName: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
-  profileBio: { fontSize: 12, color: colors.textSecondary, marginBottom: 6 },
-  editLink: { fontSize: 12, color: colors.primary, fontWeight: '700' },
-  gearBtn: { padding: 4 },
+  avatarRing: {
+    position: 'absolute', top: -2, left: -2, right: -2, bottom: -2,
+    borderRadius: radius.full, borderWidth: 2, borderColor: 'rgba(0,212,170,0.4)',
+  },
+  gearBtn: {
+    width: 40, height: 40, borderRadius: radius.sm,
+    backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  heroName: { fontSize: 28, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.7, marginBottom: 4 },
+  heroBio: { fontSize: 13, color: colors.textSecondary, marginBottom: 16 },
+  editPill: {
+    alignSelf: 'flex-start', borderRadius: radius.full,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.4)',
+    paddingHorizontal: 16, paddingVertical: 7,
+  },
+  editPillText: { fontSize: 12, fontWeight: '700', color: colors.primary },
 
   statsRow: {
     flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: spacing.lg, marginBottom: spacing.lg,
-    paddingVertical: spacing.md + 4,
-    borderBottomWidth: 1, borderTopWidth: 1, borderColor: colors.border,
-  },
-  statItem: { flex: 1, alignItems: 'center', gap: 4 },
-  statValue: { fontSize: 28, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.5 },
-  statLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  statDivider: { width: 1, height: 36, backgroundColor: colors.border },
-
-  section: { paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 12 },
-
-  biggestCard: {
-    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: spacing.lg, marginVertical: spacing.lg,
     backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border, overflow: 'hidden',
+    borderWidth: 1, borderColor: colors.border,
+    paddingVertical: spacing.lg,
     ...elevation.raised,
   },
-  biggestPhoto: {
-    width: 100, height: 80,
-    backgroundColor: '#1a2a1a', alignItems: 'center', justifyContent: 'center',
+  statItem: { flex: 1, alignItems: 'center', gap: 4 },
+  statVal: { fontSize: 30, fontWeight: '900', color: colors.textPrimary, letterSpacing: -1 },
+  statLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 },
+  statDiv: { width: 1, height: 40, backgroundColor: colors.border },
+
+  section: { paddingHorizontal: spacing.lg, marginBottom: spacing.xl },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  sectionBar: { width: 3, height: 16, backgroundColor: colors.primary, borderRadius: 2 },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.3 },
+
+  bigCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)', overflow: 'hidden',
+    ...elevation.raised,
   },
-  biggestInfo: { flex: 1, paddingHorizontal: spacing.md },
-  biggestSpecies: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 },
-  biggestWeight: { fontSize: 22, fontWeight: '800', color: colors.primary, marginBottom: 2 },
-  biggestLocation: { fontSize: 12, color: colors.textSecondary },
+  bigPhoto: { width: 100, height: 90, alignItems: 'center', justifyContent: 'center' },
+  bigInfo: { flex: 1, paddingHorizontal: spacing.md, paddingVertical: 12, position: 'relative' },
+  bigSpecies: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 },
+  bigWeight: { fontSize: 24, fontWeight: '900', color: colors.primary, letterSpacing: -0.8, marginBottom: 2 },
+  bigLoc: { fontSize: 11, color: colors.textSecondary },
+  pbPill: {
+    position: 'absolute', top: 10, right: 12,
+    backgroundColor: colors.secondary, borderRadius: radius.xs,
+    paddingHorizontal: 7, paddingVertical: 3,
+    shadowColor: colors.secondary, shadowOpacity: 0.5, shadowRadius: 6, elevation: 4,
+  },
+  pbPillText: { fontSize: 9, fontWeight: '900', color: '#0A0E1A', letterSpacing: 0.5 },
 
   pbRow: { flexDirection: 'row', gap: 12 },
   pbCard: {
     flex: 1, backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border, padding: spacing.md,
-    ...elevation.raised,
+    borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md, ...elevation.raised,
   },
-  pbLabel: { fontSize: 11, color: colors.textSecondary, marginBottom: 8 },
-  pbValue: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
-  pbSpecies: { fontSize: 11, color: colors.textSecondary },
+  pbVal: { fontSize: 22, fontWeight: '900', color: colors.primary, letterSpacing: -0.5, marginBottom: 2 },
+  pbType: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+  pbSp: { fontSize: 11, color: colors.textTertiary },
 
-  badgesRow: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  badgeRow: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
+  badgeItem: { alignItems: 'center', gap: 6, width: 64 },
   badgeCircle: {
-    width: 52, height: 52, borderRadius: radius.full,
-    backgroundColor: 'rgba(245,158,11,0.12)',
+    width: 56, height: 56, borderRadius: radius.full,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)',
+    borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)',
   },
-  badgeExtra: { backgroundColor: colors.surface2, borderColor: colors.border },
-  badgeExtraText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  badgeExtra: { backgroundColor: colors.surface, borderColor: colors.border },
+  badgeExtraText: { fontSize: 14, fontWeight: '800', color: colors.textSecondary },
+  badgeLabel: { fontSize: 9, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3, textAlign: 'center' },
 });
