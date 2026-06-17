@@ -12,51 +12,9 @@ import { SpotCard } from '../../components/map/SpotCard';
 import { Modal } from 'react-native';
 import { colors, radius, spacing, elevation } from '../../constants/theme';
 
-const SPOT_IMAGES: Record<string, string[]> = {
-  river: [
-    'https://images.unsplash.com/photo-1500043788826-2e6d08ce4dc0?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1497290756760-23ac55edf36f?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1548484088-a0b80bc52c47?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1504221507732-5d217f9e5e63?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1543269665-7eef42226a21?w=400&h=200&fit=crop&auto=format',
-  ],
-  lake: [
-    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1471513671800-b09c87e1497c?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1519451241324-20b4ea2c4220?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1562769084-28ab1e70f36e?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1439118702823-09ec1c4543d4?w=400&h=200&fit=crop&auto=format',
-  ],
-  sea: [
-    'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1455264745730-cb3b76250de8?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1542662565-7e4b66bae529?w=400&h=200&fit=crop&auto=format',
-  ],
-  reservoir: [
-    'https://images.unsplash.com/photo-1574068468668-a05a11f871da?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1482938289607-e9573fc25ebb?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1439918079498-71dc47a0ea13?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1476673160081-cf065607f449?w=400&h=200&fit=crop&auto=format',
-  ],
-  ocean: [
-    'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1476673160081-cf065607f449?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1559825481-12a05cc00344?w=400&h=200&fit=crop&auto=format',
-  ],
-  estuary: [
-    'https://images.unsplash.com/photo-1449182325215-d517de72c42d?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1500043788826-2e6d08ce4dc0?w=400&h=200&fit=crop&auto=format',
-    'https://images.unsplash.com/photo-1497290756760-23ac55edf36f?w=400&h=200&fit=crop&auto=format',
-  ],
-};
-
-function getSpotImage(spot: WorldSpot): string {
-  const images = SPOT_IMAGES[spot.type] || SPOT_IMAGES.lake;
-  const hash = spot.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  return images[hash % images.length];
-}
+import { getSpotImage } from '../../constants/spotImages';
+import { useLocation } from '../../hooks/useLocation';
+import { haversineKm, formatDistance } from '../../utils/distance';
 import { useSessionStore } from '../../store/sessionStore';
 
 const DIFF_COLORS: Record<string, string> = {
@@ -82,18 +40,29 @@ export default function SpotsScreen() {
   const [tag, setTag] = useState<string | null>(null);
   const [selected, setSelected] = useState<WorldSpot | null>(null);
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  const [sortByDistance, setSortByDistance] = useState(false);
+  const { location: gpsLocation } = useLocation();
 
-  const filtered = useMemo(() => WORLD_SPOTS.filter(s => {
-    const matchType = type === 'All' || s.type === type.toLowerCase();
-    const matchSearch = !search ||
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.country.toLowerCase().includes(search.toLowerCase());
-    const matchTag = !tag ||
-      (tag === 'Beginner' && s.difficulty === 'beginner') ||
-      (tag === 'Carp' && s.species.some(sp => sp.toLowerCase().includes('carp'))) ||
-      (tag === 'Predator' && s.species.some(sp => ['pike','perch','zander','bass'].some(p => sp.toLowerCase().includes(p))));
-    return matchType && matchSearch && matchTag;
-  }), [type, search, tag]);
+  const filtered = useMemo(() => {
+    let result = WORLD_SPOTS.filter(s => {
+      const matchType = type === 'All' || s.type === type.toLowerCase();
+      const matchSearch = !search ||
+        s.name.toLowerCase().includes(search.toLowerCase()) ||
+        s.country.toLowerCase().includes(search.toLowerCase());
+      const matchTag = !tag ||
+        (tag === 'Beginner' && s.difficulty === 'beginner') ||
+        (tag === 'Carp' && s.species.some(sp => sp.toLowerCase().includes('carp'))) ||
+        (tag === 'Predator' && s.species.some(sp => ['pike','perch','zander','bass'].some(p => sp.toLowerCase().includes(p))));
+      return matchType && matchSearch && matchTag;
+    });
+    if (sortByDistance && gpsLocation) {
+      result = [...result].sort((a, b) =>
+        haversineKm(gpsLocation.latitude, gpsLocation.longitude, a.latitude, a.longitude) -
+        haversineKm(gpsLocation.latitude, gpsLocation.longitude, b.latitude, b.longitude)
+      );
+    }
+    return result;
+  }, [type, search, tag, sortByDistance, gpsLocation]);
 
   const featured = WORLD_SPOTS.reduce((b, s) => s.rating > b.rating ? s : b, WORLD_SPOTS[0]);
 
@@ -139,7 +108,10 @@ export default function SpotsScreen() {
               />
             </TouchableOpacity>
           </View>
-          <Text style={s.spotMeta}>{spot.type.charAt(0).toUpperCase() + spot.type.slice(1)} · {spot.country}</Text>
+          <Text style={s.spotMeta}>
+            {spot.type.charAt(0).toUpperCase() + spot.type.slice(1)} · {spot.country}
+            {sortByDistance && gpsLocation ? `  ·  ${formatDistance(haversineKm(gpsLocation.latitude, gpsLocation.longitude, spot.latitude, spot.longitude))}` : ''}
+          </Text>
           <View style={s.spotBottom}>
             <View style={s.speciesRow}>
               {spot.species.slice(0, 2).map(sp => (
@@ -204,6 +176,17 @@ export default function SpotsScreen() {
       </ScrollView>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.pillsRow, { paddingBottom: 14 }]}>
+        <TouchableOpacity
+          style={[s.tagPill, s.nearPill, sortByDistance && s.nearPillActive]}
+          onPress={() => setSortByDistance(v => !v)}
+        >
+          <MaterialCommunityIcons
+            name="map-marker-radius"
+            size={12}
+            color={sortByDistance ? colors.primary : colors.textSecondary}
+          />
+          <Text style={[s.tagText, sortByDistance && s.tagTextActive]}>Near Me</Text>
+        </TouchableOpacity>
         {TAG_FILTERS.map(t => (
           <TouchableOpacity key={t} style={[s.tagPill, tag === t && s.tagPillActive]} onPress={() => setTag(tag === t ? null : t)}>
             <Text style={[s.tagText, tag === t && s.tagTextActive]}>{t}</Text>
@@ -342,6 +325,8 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: colors.border,
   },
   tagPillActive: { borderColor: colors.secondary, backgroundColor: 'rgba(245,158,11,0.1)' },
+  nearPill: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  nearPillActive: { borderColor: colors.primary, backgroundColor: 'rgba(0,212,170,0.1)' },
   tagText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
   tagTextActive: { color: colors.secondary },
 

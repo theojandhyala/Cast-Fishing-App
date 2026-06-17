@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, Dimensions,
+  TouchableOpacity, Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,17 +11,14 @@ import { useAuthStore } from '../../store/authStore';
 import { useCatchStore } from '../../store/catchStore';
 import { useLocationStore } from '../../store/locationStore';
 import { useWeather } from '../../hooks/useWeather';
+import { useLocation } from '../../hooks/useLocation';
 import { colors, spacing, radius, elevation } from '../../constants/theme';
 import { WORLD_SPOTS } from '../../data/worldSpots';
+import { haversineKm, formatDistance } from '../../utils/distance';
+import { getSpotImage } from '../../constants/spotImages';
 
-const SPOT_GRADIENTS: Record<string, readonly [string, string]> = {
-  river:     ['#0F2E1C', '#061410'],
-  lake:      ['#0F1E2E', '#060E18'],
-  sea:       ['#0A1828', '#050C14'],
-  reservoir: ['#0F1C28', '#061018'],
-  ocean:     ['#0A1628', '#050C14'],
-  estuary:   ['#0F241C', '#061010'],
-};
+type SpotWithDist = typeof WORLD_SPOTS[0] & { _distKm?: number };
+
 const SPOT_ICONS: Record<string, string> = {
   river: 'waves', lake: 'water', sea: 'anchor',
   reservoir: 'water-pump', ocean: 'sail-boat', estuary: 'water-outline',
@@ -44,11 +41,21 @@ export default function HomeScreen() {
   const { location } = useLocationStore();
   const router = useRouter();
   const { weather } = useWeather(location?.query);
+  const { location: gpsLocation } = useLocation();
 
   const firstName = user?.name?.split(' ')[0] || 'Angler';
   const w = weather ?? { temp: 18, wind: 12, pressure: 1016, description: 'Partly Cloudy', fishingScore: 72 };
   const recentCatches = catches.slice(0, 3);
-  const spots = WORLD_SPOTS.slice(0, 4);
+
+  const spots: SpotWithDist[] = useMemo(() => {
+    if (!gpsLocation) return WORLD_SPOTS.slice(0, 6);
+    return [...WORLD_SPOTS]
+      .map(s => ({ ...s, _distKm: haversineKm(gpsLocation.latitude, gpsLocation.longitude, s.latitude, s.longitude) }))
+      .sort((a, b) => a._distKm! - b._distKm!)
+      .slice(0, 6);
+  }, [gpsLocation]);
+
+  const nearMe = !!gpsLocation;
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -89,48 +96,57 @@ export default function HomeScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* ── Recommended Spots ── */}
+        {/* ── Spots Near Me / Recommended ── */}
         <View style={s.sectionHead}>
           <View style={s.sectionBar} />
-          <Text style={s.sectionTitle}>Recommended Spots</Text>
+          <View style={s.sectionTitleRow}>
+            <Text style={s.sectionTitle}>{nearMe ? 'Near Me' : 'Recommended Spots'}</Text>
+            {nearMe && (
+              <View style={s.nearBadge}>
+                <MaterialCommunityIcons name="map-marker" size={10} color={colors.primary} />
+                <Text style={s.nearBadgeText}>Using your location</Text>
+              </View>
+            )}
+          </View>
           <TouchableOpacity onPress={() => router.push('/(tabs)/map' as any)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Text style={s.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.spotsScroll}>
-          {spots.map((spot) => {
-            const grad = (SPOT_GRADIENTS[spot.type] || ['#0F1E2E', '#060E18']) as [string, string];
-            return (
-              <TouchableOpacity
-                key={spot.id}
-                style={s.spotCard}
-                onPress={() => router.push({ pathname: '/spot-details', params: { id: spot.id } } as any)}
-                activeOpacity={0.85}
-              >
-                <LinearGradient colors={grad} style={s.spotPhoto}>
-                  <MaterialCommunityIcons
-                    name={(SPOT_ICONS[spot.type] || 'water') as any}
-                    size={28} color="rgba(0,212,170,0.18)"
-                    style={{ position: 'absolute', right: 8, top: 8 }}
-                  />
-                  <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.7)']}
-                    style={s.spotPhotoOverlay}
-                  >
-                    <Text style={s.spotName} numberOfLines={1}>{spot.name.split(',')[0]}</Text>
-                    <View style={s.spotMetaRow}>
-                      <Text style={s.spotType}>{spot.type}</Text>
-                      <View style={s.spotRatingRow}>
-                        <MaterialCommunityIcons name="star" size={9} color={colors.secondary} />
-                        <Text style={s.spotRating}>{spot.rating}</Text>
-                      </View>
+          {spots.map((spot) => (
+            <TouchableOpacity
+              key={spot.id}
+              style={s.spotCard}
+              onPress={() => router.push({ pathname: '/spot-details', params: { id: spot.id } } as any)}
+              activeOpacity={0.85}
+            >
+              <View style={s.spotPhoto}>
+                <LinearGradient colors={['#0F1E2E', '#060E18']} style={StyleSheet.absoluteFillObject} />
+                <Image
+                  source={{ uri: getSpotImage(spot) }}
+                  style={[StyleSheet.absoluteFillObject, { opacity: 0.8 }]}
+                  resizeMode="cover"
+                />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.75)']}
+                  style={s.spotPhotoOverlay}
+                >
+                  <Text style={s.spotName} numberOfLines={1}>{spot.name.split(',')[0]}</Text>
+                  <View style={s.spotMetaRow}>
+                    <Text style={s.spotType}>{spot.type}</Text>
+                    <View style={s.spotRatingRow}>
+                      <MaterialCommunityIcons name="star" size={9} color={colors.secondary} />
+                      <Text style={s.spotRating}>{spot.rating}</Text>
                     </View>
-                  </LinearGradient>
+                  </View>
+                  {spot._distKm !== undefined && (
+                    <Text style={s.spotDist}>{formatDistance(spot._distKm)}</Text>
+                  )}
                 </LinearGradient>
-              </TouchableOpacity>
-            );
-          })}
+              </View>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
 
         {/* ── Best Time Today ── */}
@@ -245,22 +261,31 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.lg, marginBottom: 14,
   },
   sectionBar: { width: 3, height: 18, borderRadius: 2, backgroundColor: colors.primary },
-  sectionTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.2 },
+  sectionTitleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.2 },
+  nearBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: radius.full,
+    paddingHorizontal: 7, paddingVertical: 3,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
+  },
+  nearBadgeText: { fontSize: 9, color: colors.primary, fontWeight: '700' },
   seeAll: { fontSize: 13, color: colors.primary, fontWeight: '600' },
 
   spotsScroll: { paddingHorizontal: spacing.lg, gap: 10, paddingBottom: 4, marginBottom: spacing.xl },
   spotCard: {
-    width: 118, borderRadius: radius.md, overflow: 'hidden',
+    width: 130, borderRadius: radius.md, overflow: 'hidden',
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)',
     ...elevation.raised,
   },
-  spotPhoto: { height: 140, justifyContent: 'flex-end' },
+  spotPhoto: { height: 150, justifyContent: 'flex-end' },
   spotPhotoOverlay: { padding: 10 },
   spotName: { fontSize: 13, fontWeight: '700', color: '#fff', marginBottom: 4 },
   spotMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   spotType: { fontSize: 10, color: 'rgba(255,255,255,0.5)', textTransform: 'capitalize' },
   spotRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   spotRating: { fontSize: 10, fontWeight: '700', color: colors.secondary },
+  spotDist: { fontSize: 9, color: 'rgba(255,255,255,0.55)', marginTop: 2 },
 
   bestCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { WORLD_SPOTS } from '../data/worldSpots';
 import { colors, radius, spacing, elevation } from '../constants/theme';
+import { getSpotImage } from '../constants/spotImages';
 import { useSessionStore } from '../store/sessionStore';
 import { useLocationStore } from '../store/locationStore';
 
@@ -85,7 +86,17 @@ export default function SpotDetailsScreen() {
   return (
     <View style={s.safe}>
       {/* Hero */}
-      <LinearGradient colors={grad} style={s.hero}>
+      <View style={s.hero}>
+        <LinearGradient colors={grad} style={StyleSheet.absoluteFillObject} />
+        <Image
+          source={{ uri: getSpotImage(spot) }}
+          style={[StyleSheet.absoluteFillObject, { opacity: 0.55 }]}
+          resizeMode="cover"
+        />
+        <LinearGradient
+          colors={['rgba(0,0,0,0.3)', 'transparent', 'rgba(0,0,0,0.6)']}
+          style={StyleSheet.absoluteFillObject}
+        />
         {/* Nav overlay */}
         <SafeAreaView edges={['top']} style={s.heroNav}>
           <TouchableOpacity onPress={() => router.back()} style={s.heroBtn}>
@@ -101,10 +112,10 @@ export default function SpotDetailsScreen() {
         {/* Big water icon */}
         <MaterialCommunityIcons
           name={TYPE_ICONS[spot.type] as any}
-          size={60} color="rgba(255,255,255,0.12)"
+          size={60} color="rgba(255,255,255,0.15)"
           style={s.heroIcon}
         />
-      </LinearGradient>
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Name + meta */}
@@ -221,7 +232,7 @@ export default function SpotDetailsScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  hero: { height: 220, justifyContent: 'flex-end', alignItems: 'center' },
+  hero: { height: 260, justifyContent: 'flex-end', alignItems: 'center', overflow: 'hidden' },
   heroNav: {
     position: 'absolute', top: 0, left: 0, right: 0,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
