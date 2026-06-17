@@ -146,9 +146,13 @@ export default function SpotsScreen() {
           <Text style={s.pageTitle}>Fishing Spots</Text>
           <Text style={s.pageCount}>{filtered.length} locations</Text>
         </View>
-        <TouchableOpacity style={s.nearBtn} accessibilityRole="button">
-          <MaterialCommunityIcons name="crosshairs-gps" size={15} color={colors.primary} />
-          <Text style={s.nearText}>Near me</Text>
+        <TouchableOpacity
+          style={[s.nearBtn, sortByDistance && s.nearBtnActive]}
+          onPress={() => setSortByDistance(v => !v)}
+          accessibilityRole="button"
+        >
+          <MaterialCommunityIcons name="crosshairs-gps" size={15} color={sortByDistance ? '#0A0E1A' : colors.primary} />
+          <Text style={[s.nearText, sortByDistance && s.nearTextActive]}>Near me</Text>
         </TouchableOpacity>
       </View>
 
@@ -299,7 +303,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 10,
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.25)', marginTop: 4,
   },
+  nearBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   nearText: { fontSize: 13, color: colors.primary, fontWeight: '700' },
+  nearTextActive: { color: '#0A0E1A' },
 
   searchWrap: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

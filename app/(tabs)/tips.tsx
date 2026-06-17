@@ -5,8 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { species } from '../../data/species';
@@ -33,7 +33,7 @@ export default function TipsScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>Species Guide</Text>
         <Text style={styles.subtitle}>{species.length} UK species</Text>
@@ -85,7 +85,7 @@ export default function TipsScreen() {
       >
         {filtered.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>🔍</Text>
+            <MaterialCommunityIcons name="magnify" size={40} color={colors.textTertiary} style={{ marginBottom: 12 }} />
             <Text style={styles.emptyText}>No species found</Text>
           </View>
         ) : (

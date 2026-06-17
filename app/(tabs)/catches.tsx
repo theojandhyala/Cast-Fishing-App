@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  FlatList, TouchableOpacity, TextInput, Dimensions,
+  FlatList, TouchableOpacity, TextInput, Dimensions, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,6 +9,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCatchStore, Catch } from '../../store/catchStore';
 import { colors, radius, spacing, elevation } from '../../constants/theme';
+import { getSpeciesImage } from '../../constants/spotImages';
 
 const { width } = Dimensions.get('window');
 const CARD_W = (width - spacing.lg * 2 - 10) / 2;
@@ -118,14 +119,20 @@ export default function CatchesScreen() {
                 onPress={() => router.push({ pathname: '/catch-detail', params: { id: item.id } } as any)}
                 activeOpacity={0.85}
               >
-                <LinearGradient colors={grad} style={s.cardPhoto}>
-                  <MaterialCommunityIcons name="fish" size={32} color="rgba(0,212,170,0.2)" />
+                <View style={s.cardPhoto}>
+                  <LinearGradient colors={grad} style={StyleSheet.absoluteFillObject} />
+                  <Image
+                    source={{ uri: getSpeciesImage(item.species) }}
+                    style={[StyleSheet.absoluteFillObject, { opacity: 0.7 }]}
+                    resizeMode="cover"
+                  />
+                  <LinearGradient colors={['transparent', 'rgba(0,0,0,0.5)']} style={StyleSheet.absoluteFillObject} />
                   {isPB && (
                     <View style={s.pbBadge}>
                       <Text style={s.pbText}>PB</Text>
                     </View>
                   )}
-                </LinearGradient>
+                </View>
                 <View style={s.cardBody}>
                   <Text style={s.cardSpecies} numberOfLines={1}>{item.species}</Text>
                   <Text style={s.cardWeight}>{item.weight ? `${item.weight} kg` : '—'}</Text>

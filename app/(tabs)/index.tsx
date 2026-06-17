@@ -34,6 +34,13 @@ function getGreeting() {
   const h = new Date().getHours();
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 }
+function getBestWindow() {
+  const h = new Date().getHours();
+  if (h < 10) return { time: '05:30 – 08:00', label: 'Dawn bite window', icon: 'weather-sunset-up' as const };
+  if (h < 15) return { time: '12:00 – 14:00', label: 'Midday activity', icon: 'weather-sunny' as const };
+  if (h < 20) return { time: '18:30 – 20:30', label: 'Evening bite window', icon: 'weather-sunset-down' as const };
+  return { time: '21:00 – 23:00', label: 'Night session', icon: 'weather-night' as const };
+}
 
 export default function HomeScreen() {
   const { user } = useAuthStore();
@@ -44,6 +51,7 @@ export default function HomeScreen() {
   const { location: gpsLocation } = useLocation();
 
   const firstName = user?.name?.split(' ')[0] || 'Angler';
+  const bestWindow = getBestWindow();
   const w = weather ?? { temp: 18, wind: 12, pressure: 1016, description: 'Partly Cloudy', fishingScore: 72 };
   const recentCatches = catches.slice(0, 3);
 
@@ -153,12 +161,12 @@ export default function HomeScreen() {
         <View style={s.bestCard}>
           <View style={s.bestAccent} />
           <View style={s.bestIconWrap}>
-            <MaterialCommunityIcons name="weather-sunny" size={30} color={colors.secondary} />
+            <MaterialCommunityIcons name={bestWindow.icon} size={30} color={colors.secondary} />
           </View>
           <View style={s.bestInfo}>
             <Text style={s.bestLabel}>BEST TIME TODAY</Text>
-            <Text style={s.bestTime}>18:30 – 20:00</Text>
-            <Text style={s.bestSub}>Great bite window</Text>
+            <Text style={s.bestTime}>{bestWindow.time}</Text>
+            <Text style={s.bestSub}>{bestWindow.label}</Text>
           </View>
           <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textTertiary} />
         </View>

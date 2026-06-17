@@ -123,7 +123,7 @@ export default function SpotDetailsScreen() {
           <Text style={s.spotName}>{spot.name}</Text>
           <View style={s.metaRow}>
             <Text style={s.metaType}>
-              {spot.type.charAt(0).toUpperCase() + spot.type.slice(1)} · Freshwater
+              {spot.type.charAt(0).toUpperCase() + spot.type.slice(1)} · {['sea','ocean','estuary'].includes(spot.type) ? 'Saltwater' : 'Freshwater'}
             </Text>
             <View style={s.ratingChip}>
               <MaterialCommunityIcons name="star" size={12} color={colors.secondary} />

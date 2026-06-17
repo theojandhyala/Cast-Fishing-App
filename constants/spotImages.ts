@@ -1,5 +1,25 @@
 import { WorldSpot } from '../data/worldSpots';
 
+export const SPECIES_IMAGES: Record<string, string> = {
+  carp:    'https://images.unsplash.com/photo-1597502655645-e9a5f38b5745?w=400&h=300&fit=crop&auto=format',
+  pike:    'https://images.unsplash.com/photo-1612965110667-4175024b0dcc?w=400&h=300&fit=crop&auto=format',
+  perch:   'https://images.unsplash.com/photo-1559827291-72fbe3c08592?w=400&h=300&fit=crop&auto=format',
+  trout:   'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop&auto=format',
+  salmon:  'https://images.unsplash.com/photo-1518379048481-48b8d1ea3fdb?w=400&h=300&fit=crop&auto=format',
+  bass:    'https://images.unsplash.com/photo-1561043260-9b57558af9e3?w=400&h=300&fit=crop&auto=format',
+  bream:   'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=300&fit=crop&auto=format',
+  tench:   'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop&auto=format',
+  barbel:  'https://images.unsplash.com/photo-1597502655645-e9a5f38b5745?w=400&h=300&fit=crop&auto=format',
+  zander:  'https://images.unsplash.com/photo-1612965110667-4175024b0dcc?w=400&h=300&fit=crop&auto=format',
+  roach:   'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=300&fit=crop&auto=format',
+  default: 'https://images.unsplash.com/photo-1519451241324-20b4ea2c4220?w=400&h=300&fit=crop&auto=format',
+};
+
+export function getSpeciesImage(species: string): string {
+  const key = species.toLowerCase().split(' ')[0];
+  return SPECIES_IMAGES[key] || SPECIES_IMAGES.default;
+}
+
 export const SPOT_IMAGES: Record<string, string[]> = {
   river: [
     'https://images.unsplash.com/photo-1500043788826-2e6d08ce4dc0?w=600&h=300&fit=crop&auto=format',
