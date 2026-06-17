@@ -5,6 +5,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Syne_600SemiBold, Syne_700Bold } from '@expo-google-fonts/syne';
 import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
+import MaterialCommunityIconsFont from '@expo/vector-icons/MaterialCommunityIcons';
 import { useAuthStore } from '../store/authStore';
 import { useCatchStore } from '../store/catchStore';
 import { useUserStore } from '../store/userStore';
@@ -26,6 +27,7 @@ export default function RootLayout() {
     Syne_700Bold,
     JetBrainsMono_500Medium,
     JetBrainsMono_700Bold,
+    ...MaterialCommunityIconsFont.font,
   });
 
   useEffect(() => {
