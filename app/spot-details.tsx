@@ -7,6 +7,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { WORLD_SPOTS } from '../data/worldSpots';
 import { colors, radius, spacing, elevation } from '../constants/theme';
 import { getSpotImage } from '../constants/spotImages';
+import { getSpotKnowledge } from '../utils/spotKnowledge';
 import { useSessionStore } from '../store/sessionStore';
 import { useLocationStore } from '../store/locationStore';
 
@@ -25,17 +26,18 @@ const TYPE_ICONS: Record<string, string> = {
   reservoir: 'water-pump', ocean: 'sail-boat', estuary: 'water-outline', private: 'lock',
 };
 
-const FISH_ICONS: Record<string, string> = {
-  Carp: 'fish', Pike: 'fish', Perch: 'fish', Bream: 'fish', Tench: 'fish',
-  Barbel: 'fish', Trout: 'fish', Salmon: 'fish', Bass: 'fish', Zander: 'fish',
-};
-
-function getBestTimes(spot: any) {
-  const times = [
-    { icon: 'weather-sunset-up', label: 'Dawn', time: '05:30 – 07:30' },
-    { icon: 'weather-sunset-down', label: 'Dusk', time: '18:30 – 20:00' },
-  ];
-  return times;
+function KnowledgeBlock({ icon, title, text }: { icon: string; title: string; text: string }) {
+  return (
+    <View style={s.knowledgeBlock}>
+      <View style={s.knowledgeHeader}>
+        <View style={s.knowledgeIconWrap}>
+          <MaterialCommunityIcons name={icon as any} size={16} color={colors.primary} />
+        </View>
+        <Text style={s.knowledgeTitle}>{title}</Text>
+      </View>
+      <Text style={s.knowledgeText}>{text}</Text>
+    </View>
+  );
 }
 
 export default function SpotDetailsScreen() {
@@ -64,7 +66,9 @@ export default function SpotDetailsScreen() {
   }
 
   const grad = SPOT_GRADIENTS[spot.type] || ['#1a2a3a', '#0f1924'];
-  const bestTimes = getBestTimes(spot);
+  const knowledge = getSpotKnowledge(spot);
+  const overflowCount = spot.species.length > 4 ? spot.species.length - 4 : 0;
+  const isSaltwater = ['sea', 'ocean', 'estuary'].includes(spot.type);
 
   const handleStartSession = () => {
     if (activeSession) {
@@ -81,23 +85,20 @@ export default function SpotDetailsScreen() {
     Linking.openURL(url).catch(() => Alert.alert('Unable to open maps'));
   };
 
-  const overflowCount = spot.species.length > 4 ? spot.species.length - 4 : 0;
-
   return (
     <View style={s.safe}>
-      {/* Hero */}
+      {/* ── Hero ── */}
       <View style={s.hero}>
         <LinearGradient colors={grad} style={StyleSheet.absoluteFillObject} />
         <Image
           source={{ uri: getSpotImage(spot) }}
-          style={[StyleSheet.absoluteFillObject, { opacity: 0.55 }]}
+          style={[StyleSheet.absoluteFillObject, { opacity: 0.65 }]}
           resizeMode="cover"
         />
         <LinearGradient
-          colors={['rgba(0,0,0,0.3)', 'transparent', 'rgba(0,0,0,0.6)']}
+          colors={['rgba(0,0,0,0.45)', 'transparent', 'rgba(0,0,0,0.7)']}
           style={StyleSheet.absoluteFillObject}
         />
-        {/* Nav overlay */}
         <SafeAreaView edges={['top']} style={s.heroNav}>
           <TouchableOpacity onPress={() => router.back()} style={s.heroBtn}>
             <MaterialCommunityIcons name="chevron-left" size={24} color="#fff" />
@@ -109,44 +110,63 @@ export default function SpotDetailsScreen() {
             />
           </TouchableOpacity>
         </SafeAreaView>
-        {/* Big water icon */}
-        <MaterialCommunityIcons
-          name={TYPE_ICONS[spot.type] as any}
-          size={60} color="rgba(255,255,255,0.15)"
-          style={s.heroIcon}
-        />
+        {/* Hero label at bottom */}
+        <View style={s.heroLabel}>
+          <View style={s.heroTypeBadge}>
+            <MaterialCommunityIcons name={TYPE_ICONS[spot.type] as any} size={12} color={colors.primary} />
+            <Text style={s.heroTypeBadgeText}>{spot.type.toUpperCase()}</Text>
+          </View>
+          <Text style={s.heroName} numberOfLines={2}>{spot.name}</Text>
+          <Text style={s.heroCountry}>{spot.region}, {spot.country}</Text>
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-        {/* Name + meta */}
-        <View style={s.nameSection}>
-          <Text style={s.spotName}>{spot.name}</Text>
-          <View style={s.metaRow}>
-            <Text style={s.metaType}>
-              {spot.type.charAt(0).toUpperCase() + spot.type.slice(1)} · {['sea','ocean','estuary'].includes(spot.type) ? 'Saltwater' : 'Freshwater'}
-            </Text>
-            <View style={s.ratingChip}>
-              <MaterialCommunityIcons name="star" size={12} color={colors.secondary} />
-              <Text style={s.ratingText}>{spot.rating} ({reviewCount})</Text>
-            </View>
-            {saved && (
-              <View style={s.savedChip}>
-                <Text style={s.savedText}>Saved</Text>
-              </View>
-            )}
+
+        {/* ── Rating + meta ── */}
+        <View style={s.metaBar}>
+          <View style={s.ratingChip}>
+            <MaterialCommunityIcons name="star" size={13} color={colors.secondary} />
+            <Text style={s.ratingText}>{spot.rating}</Text>
+            <Text style={s.ratingCount}>({reviewCount} reviews)</Text>
           </View>
+          <View style={s.metaDot} />
+          <Text style={s.metaType}>{isSaltwater ? 'Saltwater' : 'Freshwater'}</Text>
+          <View style={s.metaDot} />
+          <Text style={[s.metaDifficulty, {
+            color: spot.difficulty === 'beginner' ? '#10B981' : spot.difficulty === 'intermediate' ? colors.secondary : '#EF4444'
+          }]}>
+            {spot.difficulty.charAt(0).toUpperCase() + spot.difficulty.slice(1)}
+          </Text>
+          {saved && (
+            <>
+              <View style={s.metaDot} />
+              <Text style={s.savedText}>Saved</Text>
+            </>
+          )}
         </View>
 
-        {/* Species */}
+        {/* ── Quick Facts ── */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.factsScroll}>
+          {knowledge.quickFacts.map(f => (
+            <View key={f.label} style={s.factCard}>
+              <MaterialCommunityIcons name={f.icon as any} size={18} color={colors.primary} />
+              <Text style={s.factLabel}>{f.label}</Text>
+              <Text style={s.factValue} numberOfLines={2}>{f.value}</Text>
+            </View>
+          ))}
+        </ScrollView>
+
+        {/* ── Species ── */}
         <View style={s.section}>
           <Text style={s.sectionTitle}>Species</Text>
           <View style={s.speciesRow}>
-            {spot.species.slice(0, 4).map((sp: string) => (
+            {spot.species.slice(0, 5).map((sp: string) => (
               <View key={sp} style={s.speciesItem}>
                 <View style={s.speciesCircle}>
-                  <MaterialCommunityIcons name="fish" size={20} color={colors.primary} />
+                  <MaterialCommunityIcons name="fish" size={18} color={colors.primary} />
                 </View>
-                <Text style={s.speciesName} numberOfLines={1}>{sp}</Text>
+                <Text style={s.speciesName} numberOfLines={2}>{sp}</Text>
               </View>
             ))}
             {overflowCount > 0 && (
@@ -154,6 +174,7 @@ export default function SpotDetailsScreen() {
                 <View style={[s.speciesCircle, { backgroundColor: colors.surface2 }]}>
                   <Text style={s.overflowText}>+{overflowCount}</Text>
                 </View>
+                <Text style={s.speciesName}>more</Text>
               </View>
             )}
           </View>
@@ -161,14 +182,78 @@ export default function SpotDetailsScreen() {
 
         <View style={s.divider} />
 
-        {/* Best Times */}
+        {/* ── About this spot ── */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Best Times</Text>
-          <View style={s.timesRow}>
-            {bestTimes.map((t) => (
-              <View key={t.label} style={s.timeCard}>
-                <MaterialCommunityIcons name={t.icon as any} size={18} color={colors.secondary} />
-                <Text style={s.timeText}>{t.time}</Text>
+          <Text style={s.sectionTitle}>About this Spot</Text>
+          <Text style={s.bodyText}>{knowledge.extendedDescription}</Text>
+        </View>
+
+        <View style={s.divider} />
+
+        {/* ── Fishing knowledge ── */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Fishing Knowledge</Text>
+          <KnowledgeBlock
+            icon="hook"
+            title="Tactics & Technique"
+            text={knowledge.tactics}
+          />
+          <KnowledgeBlock
+            icon="waves"
+            title="Reading the Water"
+            text={knowledge.waterReading}
+          />
+          <KnowledgeBlock
+            icon="calendar-month"
+            title="Seasonal Advice"
+            text={knowledge.seasonalAdvice}
+          />
+          <KnowledgeBlock
+            icon="signal"
+            title="Difficulty Guide"
+            text={knowledge.difficultyNote}
+          />
+          {spot.tips ? (
+            <KnowledgeBlock
+              icon="lightbulb-on"
+              title="Local Tips"
+              text={spot.tips}
+            />
+          ) : null}
+        </View>
+
+        <View style={s.divider} />
+
+        {/* ── Best seasons ── */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Best Seasons</Text>
+          <View style={s.seasonsRow}>
+            {['Spring', 'Summer', 'Autumn', 'Winter'].map(season => {
+              const active = spot.bestSeason.some(s => s.includes(season));
+              return (
+                <View key={season} style={[s.seasonChip, active && s.seasonChipActive]}>
+                  <MaterialCommunityIcons
+                    name={season === 'Spring' ? 'flower' : season === 'Summer' ? 'weather-sunny' : season === 'Autumn' ? 'leaf' : 'snowflake'}
+                    size={16}
+                    color={active ? colors.primary : colors.textTertiary}
+                  />
+                  <Text style={[s.seasonText, active && s.seasonTextActive]}>{season}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={s.divider} />
+
+        {/* ── Best bait ── */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>Best Bait</Text>
+          <View style={s.baitRow}>
+            {spot.bestBait.map(bait => (
+              <View key={bait} style={s.baitChip}>
+                <MaterialCommunityIcons name="hook" size={12} color={colors.secondary} />
+                <Text style={s.baitText}>{bait}</Text>
               </View>
             ))}
           </View>
@@ -176,39 +261,67 @@ export default function SpotDetailsScreen() {
 
         <View style={s.divider} />
 
-        {/* Conditions */}
+        {/* ── Best times ── */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Conditions</Text>
-          <View style={s.condRow}>
-            <View style={s.condItem}>
-              <MaterialCommunityIcons name="thermometer" size={18} color={colors.accentBlue} />
-              <Text style={s.condValue}>18°C</Text>
-              <Text style={s.condLabel}>Water Temp</Text>
+          <Text style={s.sectionTitle}>Best Times to Fish</Text>
+          <View style={s.timesRow}>
+            <View style={s.timeCard}>
+              <MaterialCommunityIcons name="weather-sunset-up" size={18} color={colors.secondary} />
+              <View>
+                <Text style={s.timeLabel}>Dawn</Text>
+                <Text style={s.timeText}>05:30 – 08:00</Text>
+              </View>
             </View>
-            <View style={s.condItem}>
-              <MaterialCommunityIcons name="weather-windy" size={18} color={colors.accentBlue} />
-              <Text style={s.condValue}>Calm</Text>
-              <Text style={s.condLabel}>Wind</Text>
-            </View>
-            <View style={s.condItem}>
-              <MaterialCommunityIcons name="gauge" size={18} color={colors.accentBlue} />
-              <Text style={s.condValue}>Good</Text>
-              <Text style={s.condLabel}>Pressure</Text>
+            <View style={s.timeCard}>
+              <MaterialCommunityIcons name="weather-sunset-down" size={18} color={colors.secondary} />
+              <View>
+                <Text style={s.timeLabel}>Dusk</Text>
+                <Text style={s.timeText}>18:00 – 20:30</Text>
+              </View>
             </View>
           </View>
         </View>
 
         <View style={s.divider} />
 
-        {/* Notes */}
+        {/* ── Facilities ── */}
+        {spot.facilities && spot.facilities.length > 0 && (
+          <>
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>Facilities</Text>
+              <View style={s.facilitiesGrid}>
+                {spot.facilities.map(f => (
+                  <View key={f} style={s.facilityItem}>
+                    <MaterialCommunityIcons name="check-circle" size={14} color={colors.primary} />
+                    <Text style={s.facilityText}>{f}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+            <View style={s.divider} />
+          </>
+        )}
+
+        {/* ── Permit / regulations ── */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Notes</Text>
-          <Text style={s.notesText}>{spot.description}</Text>
-          {spot.tips ? <Text style={[s.notesText, { marginTop: 8, color: colors.textSecondary }]}>{spot.tips}</Text> : null}
+          <View style={[s.permitBanner, { borderColor: spot.permitRequired ? 'rgba(245,158,11,0.3)' : 'rgba(16,185,129,0.3)' }]}>
+            <MaterialCommunityIcons
+              name={spot.permitRequired ? 'file-document-outline' : 'check-circle-outline'}
+              size={20}
+              color={spot.permitRequired ? colors.secondary : '#10B981'}
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={[s.permitTitle, { color: spot.permitRequired ? colors.secondary : '#10B981' }]}>
+                {spot.permitRequired ? 'Permit Required' : 'No Permit Required'}
+              </Text>
+              <Text style={s.permitText}>{knowledge.regulatoryNote}</Text>
+            </View>
+          </View>
         </View>
+
       </ScrollView>
 
-      {/* Bottom CTA */}
+      {/* ── Bottom CTA ── */}
       <View style={s.bottomBar}>
         <TouchableOpacity
           style={s.dirBtn}
@@ -218,10 +331,11 @@ export default function SpotDetailsScreen() {
           accessibilityRole="button"
         >
           <MaterialCommunityIcons name="map-marker-outline" size={18} color={colors.textSecondary} />
-          <Text style={s.dirBtnText}>Get Directions</Text>
+          <Text style={s.dirBtnText}>Directions</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.startBtn} onPress={handleStartSession} activeOpacity={0.85}>
           <LinearGradient colors={['#00D4AA', '#00B892']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.startBtnGrad}>
+            <MaterialCommunityIcons name="fish" size={16} color="#0A0E1A" />
             <Text style={s.startBtnText}>Start Fishing Here</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -232,63 +346,122 @@ export default function SpotDetailsScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  hero: { height: 260, justifyContent: 'flex-end', alignItems: 'center', overflow: 'hidden' },
+
+  hero: { height: 280, justifyContent: 'flex-end', overflow: 'hidden' },
   heroNav: {
     position: 'absolute', top: 0, left: 0, right: 0,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: spacing.lg, paddingTop: spacing.sm,
   },
   heroBtn: {
-    width: 36, height: 36, borderRadius: radius.full,
-    backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center',
+    width: 38, height: 38, borderRadius: radius.full,
+    backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center',
   },
-  heroIcon: { marginBottom: spacing.lg },
+  heroLabel: { padding: spacing.lg, paddingBottom: 18 },
+  heroTypeBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(0,212,170,0.2)', borderRadius: radius.full,
+    paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start',
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.35)', marginBottom: 8,
+  },
+  heroTypeBadgeText: { fontSize: 10, fontWeight: '800', color: colors.primary, letterSpacing: 1.5 },
+  heroName: { fontSize: 24, fontWeight: '900', color: '#fff', letterSpacing: -0.5, marginBottom: 4 },
+  heroCountry: { fontSize: 13, color: 'rgba(255,255,255,0.65)' },
 
-  nameSection: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md },
-  spotName: { fontSize: 26, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  metaType: { fontSize: 13, color: colors.textSecondary },
-  ratingChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  ratingText: { fontSize: 13, color: colors.secondary, fontWeight: '700' },
-  savedChip: {
-    backgroundColor: 'rgba(0,212,170,0.15)', borderRadius: radius.full,
-    paddingHorizontal: 10, paddingVertical: 3,
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)',
+  metaBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+    paddingHorizontal: spacing.lg, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  savedText: { fontSize: 11, color: colors.primary, fontWeight: '700' },
+  ratingChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ratingText: { fontSize: 14, fontWeight: '800', color: colors.secondary },
+  ratingCount: { fontSize: 12, color: colors.textTertiary },
+  metaDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: colors.textTertiary },
+  metaType: { fontSize: 13, color: colors.textSecondary },
+  metaDifficulty: { fontSize: 13, fontWeight: '700' },
+  savedText: { fontSize: 12, color: colors.primary, fontWeight: '700' },
+
+  factsScroll: { paddingHorizontal: spacing.lg, gap: 10, paddingVertical: 14, paddingBottom: 18 },
+  factCard: {
+    width: 100, backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)', padding: 12, gap: 5,
+    ...elevation.raised,
+  },
+  factLabel: { fontSize: 9, fontWeight: '700', color: colors.textTertiary, textTransform: 'uppercase', letterSpacing: 0.8 },
+  factValue: { fontSize: 12, fontWeight: '700', color: colors.textPrimary, lineHeight: 16 },
 
   section: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 12 },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: colors.textPrimary, marginBottom: 14, letterSpacing: -0.2 },
   divider: { height: 1, backgroundColor: colors.border, marginHorizontal: spacing.lg },
 
-  speciesRow: { flexDirection: 'row', gap: 16, flexWrap: 'wrap' },
-  speciesItem: { alignItems: 'center', gap: 5 },
+  speciesRow: { flexDirection: 'row', gap: 14, flexWrap: 'wrap' },
+  speciesItem: { alignItems: 'center', gap: 6, width: 56 },
   speciesCircle: {
     width: 48, height: 48, borderRadius: radius.full,
+    backgroundColor: 'rgba(0,212,170,0.08)', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
+  },
+  speciesName: { fontSize: 10, color: colors.textSecondary, textAlign: 'center', lineHeight: 13 },
+  overflowText: { fontSize: 13, fontWeight: '800', color: colors.textSecondary },
+
+  bodyText: { fontSize: 14, color: colors.textSecondary, lineHeight: 22 },
+
+  knowledgeBlock: {
+    marginBottom: 16,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md,
+    ...elevation.raised,
+  },
+  knowledgeHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
+  knowledgeIconWrap: {
+    width: 28, height: 28, borderRadius: radius.xs,
     backgroundColor: 'rgba(0,212,170,0.1)', alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
   },
-  speciesName: { fontSize: 11, color: colors.textSecondary, maxWidth: 56, textAlign: 'center' },
-  overflowText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  knowledgeTitle: { fontSize: 13, fontWeight: '800', color: colors.textPrimary },
+  knowledgeText: { fontSize: 13, color: colors.textSecondary, lineHeight: 20 },
+
+  seasonsRow: { flexDirection: 'row', gap: 10 },
+  seasonChip: {
+    flex: 1, alignItems: 'center', gap: 6, paddingVertical: 12,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  seasonChipActive: { backgroundColor: 'rgba(0,212,170,0.08)', borderColor: 'rgba(0,212,170,0.3)' },
+  seasonText: { fontSize: 10, fontWeight: '600', color: colors.textTertiary },
+  seasonTextActive: { color: colors.primary, fontWeight: '800' },
+
+  baitRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  baitChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(245,158,11,0.1)', borderRadius: radius.full,
+    borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)',
+    paddingHorizontal: 12, paddingVertical: 7,
+  },
+  baitText: { fontSize: 12, fontWeight: '600', color: colors.secondary },
 
   timesRow: { flexDirection: 'row', gap: 12 },
   timeCard: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: colors.surface, borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.border, padding: spacing.md,
   },
-  timeText: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+  timeLabel: { fontSize: 10, color: colors.textTertiary, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.8 },
+  timeText: { fontSize: 14, fontWeight: '800', color: colors.textPrimary, marginTop: 2 },
 
-  condRow: { flexDirection: 'row', gap: 10 },
-  condItem: {
-    flex: 1, alignItems: 'center', gap: 4,
+  facilitiesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  facilityItem: { flexDirection: 'row', alignItems: 'center', gap: 6, width: '47%' },
+  facilityText: { fontSize: 13, color: colors.textSecondary },
+
+  permitBanner: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
     backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border, padding: spacing.md,
+    borderWidth: 1, padding: spacing.md,
   },
-  condValue: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  condLabel: { fontSize: 10, color: colors.textSecondary, textAlign: 'center' },
-
-  notesText: { fontSize: 14, color: colors.textPrimary, lineHeight: 21 },
+  permitTitle: { fontSize: 13, fontWeight: '800', marginBottom: 4 },
+  permitText: { fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
 
   bottomBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -305,6 +478,6 @@ const s = StyleSheet.create({
   },
   dirBtnText: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
   startBtn: { flex: 1, borderRadius: radius.full, overflow: 'hidden', ...elevation.glow },
-  startBtnGrad: { alignItems: 'center', justifyContent: 'center', paddingVertical: 14 },
-  startBtnText: { fontSize: 14, fontWeight: '800', color: '#0A0E1A', letterSpacing: 0.5 },
+  startBtnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14 },
+  startBtnText: { fontSize: 14, fontWeight: '800', color: '#0A0E1A', letterSpacing: 0.3 },
 });
