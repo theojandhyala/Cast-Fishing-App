@@ -1,321 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-<title>CAST — Your Ultimate Fishing Companion</title>
-<meta name="theme-color" content="#0A0E1A">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>CAST — Fishing App | AI Fish ID, Spots & Catch Log</title>
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+  <meta name="theme-color" content="#0A0E1A">
 <meta name="description" content="AI-powered fish identification, 10,000+ worldwide fishing spots, weather conditions, tides and catch logging. The ultimate fishing companion.">
-<meta name="keywords" content="fishing app, fish identifier, fishing spots, catch log, fishing conditions, AI fish ID, fishing companion, angling app, cast fishing">
-<meta name="robots" content="index, follow">
-<meta name="author" content="CAST Fishing">
-<link rel="canonical" href="https://castfishingapp.com">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://castfishingapp.com">
-<meta property="og:title" content="CAST — Your Ultimate Fishing Companion">
-<meta property="og:description" content="AI-powered fish identification, 10,000+ worldwide fishing spots, weather conditions, tides and catch logging.">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="CAST — Fishing App">
-<meta name="twitter:description" content="AI fish ID, worldwide spots, conditions and catch log. The ultimate fishing companion.">
-<link rel="icon" href="/favicon.ico" />
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/marketing-style.css">
-</head>
-<body>
+<link rel="icon" href="/favicon.ico" /></head>
 
-<header class="nav">
-  <div class="nav-inner">
-    <a class="brand" href="#top">
-      <img src="/marketing/img/logo-mark.png" alt="CAST" class="brand-mark" />
-      <span>CAST</span>
-    </a>
-    <nav class="nav-links">
-      <a href="#fish-id">Fish ID</a>
-      <a href="#spots">Spots</a>
-      <a href="#conditions">Conditions</a>
-      <a href="#community">Community</a>
-    </nav>
-    <a href="/app/" class="btn btn-primary btn-sm">Use Web App</a>
-  </div>
-</header>
-
-<main id="top">
-
-  <!-- 01 HERO -->
-  <section class="hero">
-    <div class="hero-glow"></div>
-    <div class="section-inner hero-grid">
-      <div class="hero-copy">
-        <p class="eyebrow">Hero</p>
-        <h1>Your Ultimate<br><span class="accent">Fishing</span> Companion</h1>
-        <p class="lede">AI tools, local knowledge and real-time conditions — all in one app.</p>
-        <div class="store-row">
-          <a href="#" class="store-badge store-badge-soon" aria-disabled="true">
-            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.13 0-.26-.02-.34-.03-.015-.1-.04-.31-.04-.52 0-1.14.572-2.27 1.207-2.98.804-.94 2.114-1.65 3.207-1.69.03.13.13.41.13.57zm3.61 17.27c-.5 1.1-.74 1.6-1.39 2.57-.9 1.35-2.18 3.04-3.76 3.06-1.4.02-1.76-.92-3.67-.91-1.9.01-2.31.93-3.71.91-1.58-.02-2.79-1.55-3.69-2.9-2.53-3.78-2.79-8.22-1.23-10.6.91-1.39 2.53-2.28 4.13-2.31 1.65-.03 2.69.94 4.06.94 1.36 0 2.4-.94 4.05-.91 1.39.02 2.86.71 3.79 1.93-3.34 1.93-2.78 6.93.4 8.22z"/></svg>
-            <span class="store-badge-text"><small>Coming Soon On</small>App Store</span>
-          </a>
-          <a href="#" class="store-badge store-badge-soon" aria-disabled="true">
-            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3.6 2.6c-.3.3-.5.7-.5 1.2v16.4c0 .5.2.9.5 1.2l9.2-9.4-9.2-9.4zm12.6 9.4l-2.6-2.6-9.6-5.5c.2-.1.5-.1.7 0l11.5 8.1zm-12.5 9.6l9.5-5.5 2.6-2.6-11.5 8.1c-.2.1-.4.1-.6 0zm14.2-8.6l-3.1 1.8-2.9-2.8 2.9-2.8 3.1 1.8c.6.4.6 1.6 0 2z"/></svg>
-            <span class="store-badge-text"><small>Coming Soon On</small>Google Play</span>
-          </a>
-        </div>
-        <a href="/app/" class="btn btn-primary hero-web-cta">
-          Use the Web App Now
-        </a>
-      </div>
-
-      <div class="hero-stage">
-        <div class="hero-panel">
-          <img src="/marketing/img/logo-full.png" alt="" class="hero-art" />
-        </div>
-        <div class="float-card fc-1">
-          <span class="fc-label">Fish Identified</span>
-          <span class="fc-value">European Sea Bass</span>
-          <span class="fc-sub fc-good">78% match</span>
-        </div>
-        <div class="float-card fc-2">
-          <span class="fc-label">Weather</span>
-          <span class="fc-value mono">18°</span>
-          <span class="fc-sub">Partly cloudy · NW 12km/h</span>
-        </div>
-        <div class="float-card fc-3">
-          <span class="fc-label">Tide</span>
-          <span class="fc-value mono">1.2m</span>
-          <span class="fc-sub">Rising · High 18:42</span>
-        </div>
-        <div class="float-card fc-4">
-          <span class="fc-label">Catch Logged</span>
-          <span class="fc-value mono">23</span>
-          <span class="fc-sub fc-good">This month · +4%</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 02 FISH ID -->
-  <section class="section" id="fish-id">
-    <div class="section-inner split">
-      <div class="split-copy">
-        <p class="eyebrow">Fish ID</p>
-        <h2>Identify Any Fish<br>In <span class="accent">Seconds</span></h2>
-        <p class="lede">Snap a photo and our AI instantly identifies the species, with accuracy you can trust.</p>
-      </div>
-      <div class="split-art">
-        <div class="scan-frame">
-          <svg class="fish-icon" viewBox="0 0 64 64" width="180" height="180"><path fill="none" stroke="#00D4AA" stroke-width="2" d="M4 32c10-14 28-18 40-10 6 4 12 4 18-2-2 8-6 12-6 12s4 4 6 12c-6-6-12-6-18-2-12 8-30 4-40-10z"/><circle cx="44" cy="28" r="2" fill="#00D4AA"/></svg>
-          <span class="scan-corner tl"></span><span class="scan-corner tr"></span>
-          <span class="scan-corner bl"></span><span class="scan-corner br"></span>
-        </div>
-        <div class="id-card">
-          <p class="id-tag">Identified</p>
-          <h4>European Sea Bass</h4>
-          <p class="id-latin">Dicentrarchus labrax <span class="accent">78% Match</span></p>
-          <p class="id-about-label">About</p>
-          <p class="id-about">Also known as seabass, is a species of carnivorous ray-finned fish.</p>
-          <div class="id-rows">
-            <div class="id-row"><span>Habitat</span><b>Coastal waters</b></div>
-            <div class="id-row"><span>Max Size</span><b>100 cm</b></div>
-            <div class="id-row"><span>Diet</span><b>Fish, Crustaceans</b></div>
-            <div class="id-row"><span>Best Time</span><b>Dawn &amp; Dusk</b></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 03 FISHING SPOTS -->
-  <section class="section" id="spots">
-    <div class="section-inner split reverse">
-      <div class="split-copy">
-        <p class="eyebrow">Fishing Spots</p>
-        <h2>Find The <span class="accent">Best</span><br>Fishing Spots</h2>
-        <p class="lede">Discover top local spots, see what's biting and get there with ease.</p>
-        <ul class="feature-list">
-          <li><b>Verified Hotspots</b><span>From real anglers</span></li>
-          <li><b>Catch Reports</b><span>See what's being caught</span></li>
-          <li><b>Navigate</b><span>Get there with ease</span></li>
-        </ul>
-      </div>
-      <div class="split-art">
-        <div class="map-panel">
-          <div class="map-grid"></div>
-          <span class="pin p1"></span><span class="pin p2"></span><span class="pin p3"></span>
-          <span class="pin p4"></span><span class="pin p5"></span><span class="pin p6 active"></span>
-          <div class="hotspot-card">
-            <p class="hs-tag">Hotspot</p>
-            <h4>Rocky Point</h4>
-            <p class="hs-rating">★★★★☆ 4.6 (128)</p>
-            <p class="hs-tag">Most Caught</p>
-            <div class="hs-species"><span>Bass</span><span>Bream</span></div>
-            <a href="#" class="btn btn-primary btn-block btn-sm">View Spot</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 04 WEATHER & TIDES -->
-  <section class="section" id="conditions">
-    <div class="section-inner split">
-      <div class="split-copy">
-        <p class="eyebrow">Weather &amp; Tides</p>
-        <h2>Stay One Step<br><span class="accent">Ahead</span></h2>
-        <p class="lede">Real-time weather, tides and solunar data to plan your perfect fishing trip.</p>
-      </div>
-      <div class="stat-grid">
-        <div class="stat-card">
-          <p class="sc-label">Weather</p>
-          <p class="sc-value mono">18<span>°C</span></p>
-          <p class="sc-sub">Partly Cloudy · NW 12km/h</p>
-        </div>
-        <div class="stat-card">
-          <p class="sc-label">Wind</p>
-          <p class="sc-value mono">12<span>km/h</span></p>
-          <p class="sc-sub">NW</p>
-        </div>
-        <div class="stat-card">
-          <p class="sc-label">Tide</p>
-          <p class="sc-value mono">1.2<span>m</span></p>
-          <p class="sc-sub">Rising · High 18:42</p>
-          <div class="sparkline"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
-        </div>
-        <div class="stat-card">
-          <p class="sc-label">Solunar Activity</p>
-          <p class="sc-value mono">85<span>%</span></p>
-          <p class="sc-sub">High Activity</p>
-          <div class="bars"><span style="height:30%"></span><span style="height:50%"></span><span style="height:65%"></span><span style="height:90%"></span><span style="height:100%"></span><span style="height:70%"></span></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 05 CATCH LOG -->
-  <section class="section" id="catch-log">
-    <div class="section-inner split reverse">
-      <div class="split-copy">
-        <p class="eyebrow">Catch Log</p>
-        <h2>Log Every Catch<br><span class="accent">Relive</span> Every Moment</h2>
-        <p class="lede">Keep a beautiful log of your catches, track your progress and share your best moments.</p>
-        <a href="#get-started" class="btn btn-primary">Log Your Catch</a>
-      </div>
-      <div class="catch-row">
-        <div class="catch-card">
-          <div class="catch-img"><svg viewBox="0 0 64 64" width="48" height="48"><path fill="none" stroke="#00D4AA" stroke-width="2" d="M4 32c10-14 28-18 40-10 6 4 12 4 18-2-2 8-6 12-6 12s4 4 6 12c-6-6-12-6-18-2-12 8-30 4-40-10z"/></svg></div>
-          <h5>European Sea Bass</h5>
-          <p>72 cm · 4.2 kg</p>
-          <p class="catch-meta">2h ago · Rocky Point</p>
-        </div>
-        <div class="catch-card">
-          <div class="catch-img alt"><svg viewBox="0 0 64 64" width="48" height="48"><path fill="none" stroke="#F59E0B" stroke-width="2" d="M4 32c10-14 28-18 40-10 6 4 12 4 18-2-2 8-6 12-6 12s4 4 6 12c-6-6-12-6-18-2-12 8-30 4-40-10z"/></svg></div>
-          <h5>Bluefin Tuna</h5>
-          <p>112 cm · 18.7 kg</p>
-          <p class="catch-meta">1d ago · Offshore</p>
-        </div>
-        <div class="catch-card">
-          <div class="catch-img"><svg viewBox="0 0 64 64" width="48" height="48"><path fill="none" stroke="#00D4AA" stroke-width="2" d="M4 32c10-14 28-18 40-10 6 4 12 4 18-2-2 8-6 12-6 12s4 4 6 12c-6-6-12-6-18-2-12 8-30 4-40-10z"/></svg></div>
-          <h5>Barred Surf Perch</h5>
-          <p>28 cm · 0.6 kg</p>
-          <p class="catch-meta">3d ago · Sandy Beach</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 06 APP SHOWCASE -->
-  <section class="section showcase">
-    <div class="section-inner">
-      <div class="showcase-head">
-        <p class="eyebrow">App Showcase</p>
-        <h2>Everything You Need.<br>Right In <span class="accent">Your Pocket.</span></h2>
-        <p class="lede">Powerful tools. Beautiful design. Built for anglers.</p>
-        <div class="store-row">
-          <a href="#" class="store-badge"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.13 0-.26-.02-.34-.03-.015-.1-.04-.31-.04-.52 0-1.14.572-2.27 1.207-2.98.804-.94 2.114-1.65 3.207-1.69.03.13.13.41.13.57zm3.61 17.27c-.5 1.1-.74 1.6-1.39 2.57-.9 1.35-2.18 3.04-3.76 3.06-1.4.02-1.76-.92-3.67-.91-1.9.01-2.31.93-3.71.91-1.58-.02-2.79-1.55-3.69-2.9-2.53-3.78-2.79-8.22-1.23-10.6.91-1.39 2.53-2.28 4.13-2.31 1.65-.03 2.69.94 4.06.94 1.36 0 2.4-.94 4.05-.91 1.39.02 2.86.71 3.79 1.93-3.34 1.93-2.78 6.93.4 8.22z"/></svg><span>App Store</span></a>
-          <a href="#" class="store-badge"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3.6 2.6c-.3.3-.5.7-.5 1.2v16.4c0 .5.2.9.5 1.2l9.2-9.4-9.2-9.4zm12.6 9.4l-2.6-2.6-9.6-5.5c.2-.1.5-.1.7 0l11.5 8.1zm-12.5 9.6l9.5-5.5 2.6-2.6-11.5 8.1c-.2.1-.4.1-.6 0zm14.2-8.6l-3.1 1.8-2.9-2.8 2.9-2.8 3.1 1.8c.6.4.6 1.6 0 2z"/></svg><span>Google Play</span></a>
-        </div>
-      </div>
-      <div class="phones">
-        <div class="phone phone-side">
-          <div class="phone-screen">
-            <p class="ph-label">Rocky Point</p>
-            <div class="map-grid small"></div>
-            <span class="pin small p1"></span><span class="pin small p2 active"></span><span class="pin small p3"></span>
-          </div>
-        </div>
-        <div class="phone phone-main">
-          <div class="phone-screen">
-            <p class="ph-label">Identified</p>
-            <h6>European Sea Bass</h6>
-            <p class="ph-sub accent">78% Match</p>
-            <div class="ph-block"></div>
-          </div>
-        </div>
-        <div class="phone phone-side">
-          <div class="phone-screen">
-            <p class="ph-label">18°</p>
-            <p class="ph-sub">Partly Cloudy</p>
-            <div class="ph-row"><span>Tide</span><b>1.2m</b></div>
-            <div class="ph-row"><span>Wind</span><b>12km/h</b></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 07 COMMUNITY -->
-  <section class="section" id="community">
-    <div class="section-inner split">
-      <div class="split-copy">
-        <p class="eyebrow">Community</p>
-        <h2>Join A Community<br>That <span class="accent">Loves Fishing</span></h2>
-        <p class="lede">Share catches, tips and local knowledge with anglers around the world.</p>
-        <ul class="feature-list">
-          <li><b>Share Your Catches</b></li>
-          <li><b>Follow Anglers</b></li>
-          <li><b>Get Inspired</b></li>
-        </ul>
-      </div>
-      <div class="split-art">
-        <div class="post-card">
-          <div class="post-head">
-            <span class="avatar"></span>
-            <div><b>Tom C.</b><span>Rocky Point</span></div>
-          </div>
-          <div class="post-img"><svg viewBox="0 0 64 64" width="40" height="40"><path fill="none" stroke="#00D4AA" stroke-width="2" d="M4 32c10-14 28-18 40-10 6 4 12 4 18-2-2 8-6 12-6 12s4 4 6 12c-6-6-12-6-18-2-12 8-30 4-40-10z"/></svg></div>
-          <p class="post-text">Great morning out! The bites were on just before sunrise.</p>
-          <div class="post-foot"><span>♥ 124</span><span>💬 23</span></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- 08 GET STARTED -->
-  <section class="section cta" id="get-started">
-    <div class="section-inner cta-inner">
-      <p class="eyebrow">Get Started</p>
-      <h2>Ready For<br>Your <span class="accent">Next Catch?</span></h2>
-      <p class="lede">CAST is coming soon to the App Store and Google Play. In the meantime, use the full web app right now.</p>
-      <a href="/app/" class="btn btn-primary btn-lg cta-web-btn">Use the Web App</a>
-      <div class="store-row centered">
-        <a href="#" class="store-badge store-badge-soon" aria-disabled="true"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.13 0-.26-.02-.34-.03-.015-.1-.04-.31-.04-.52 0-1.14.572-2.27 1.207-2.98.804-.94 2.114-1.65 3.207-1.69.03.13.13.41.13.57zm3.61 17.27c-.5 1.1-.74 1.6-1.39 2.57-.9 1.35-2.18 3.04-3.76 3.06-1.4.02-1.76-.92-3.67-.91-1.9.01-2.31.93-3.71.91-1.58-.02-2.79-1.55-3.69-2.9-2.53-3.78-2.79-8.22-1.23-10.6.91-1.39 2.53-2.28 4.13-2.31 1.65-.03 2.69.94 4.06.94 1.36 0 2.4-.94 4.05-.91 1.39.02 2.86.71 3.79 1.93-3.34 1.93-2.78 6.93.4 8.22z"/></svg><span class="store-badge-text"><small>Coming Soon On</small>App Store</span></a>
-        <a href="#" class="store-badge store-badge-soon" aria-disabled="true"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3.6 2.6c-.3.3-.5.7-.5 1.2v16.4c0 .5.2.9.5 1.2l9.2-9.4-9.2-9.4zm12.6 9.4l-2.6-2.6-9.6-5.5c.2-.1.5-.1.7 0l11.5 8.1zm-12.5 9.6l9.5-5.5 2.6-2.6-11.5 8.1c-.2.1-.4.1-.6 0zm14.2-8.6l-3.1 1.8-2.9-2.8 2.9-2.8 3.1 1.8c.6.4.6 1.6 0 2z"/></svg><span class="store-badge-text"><small>Coming Soon On</small>Google Play</span></a>
-      </div>
-    </div>
-    <div class="cta-glow"></div>
-  </section>
-
-</main>
-
-<footer class="footer">
-  <div class="section-inner footer-inner">
-    <div class="brand">
-      <img src="/marketing/img/logo-mark.png" alt="CAST" class="brand-mark" />
-      <span>CAST</span>
-    </div>
-    <p>© 2026 CAST Fishing. All rights reserved.</p>
-  </div>
-</footer>
-
+  <body>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+  <script src="/_expo/static/js/web/entry-6a5521b372725bdbbc777eb0cb35e585.js" defer></script>
 </body>
 </html>
