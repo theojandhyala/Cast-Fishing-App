@@ -65,6 +65,7 @@ const MENU_SECTIONS = [
   {
     section: 'COMMUNITY',
     items: [
+      { icon: 'account-group', label: 'Friends', route: '/friends', color: '#22C55E', desc: 'Find and connect with other anglers' },
       { icon: 'account-group', label: 'Community Feed', route: '/community', color: '#60A5FA', desc: 'See what others are catching' },
       { icon: 'podium', label: 'Leaderboards', route: '/leaderboards', color: colors.secondary, desc: 'Top anglers this week' },
       { icon: 'account-multiple', label: 'Fishing Clubs', route: '/clubs', color: '#8B5CF6', desc: 'Join and create clubs' },
