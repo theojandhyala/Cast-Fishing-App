@@ -10,11 +10,18 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { PRODUCTS, Product } from '../data/productsData';
+import { PRODUCTS, HOT_DEALS, Product } from '../data/productsData';
 import { colors, radius, spacing } from '../constants/theme';
 
-const CATEGORIES = ['All', 'Rods', 'Reels', 'Lines', 'Lures', 'Bait', 'Clothing', 'Electronics'];
+const CATEGORIES = ['All', 'Rods', 'Reels', 'Lines', 'Lures', 'Bait', 'Clothing', 'Electronics', 'Nets', 'Bivvies', 'Terminal'];
 const SORT_OPTIONS = ['Featured', 'Price Low-High', 'Price High-Low', 'Best Rated'];
+
+const CONDITION_COLORS: Record<string, { bg: string; text: string }> = {
+  'New':       { bg: 'rgba(16,185,129,0.15)', text: '#10B981' },
+  'Like New':  { bg: 'rgba(0,212,170,0.15)',  text: '#00D4AA' },
+  'Good':      { bg: 'rgba(245,158,11,0.15)', text: '#F59E0B' },
+  'Used':      { bg: 'rgba(139,149,167,0.15)', text: '#8B95A7' },
+};
 
 export default function MarketplaceScreen() {
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -51,8 +58,21 @@ export default function MarketplaceScreen() {
         <LinearGradient colors={['rgba(0,212,170,0.15)', 'transparent']} style={styles.hero}>
           <MaterialCommunityIcons name="store" size={40} color={colors.primary} />
           <Text style={styles.heroTitle}>Gear Up for the Season</Text>
-          <Text style={styles.heroSub}>Best deals from top fishing brands</Text>
+          <Text style={styles.heroSub}>New & second-hand tackle from the community</Text>
         </LinearGradient>
+
+        {/* Hot Deals strip */}
+        <View style={styles.hotDealsSection}>
+          <View style={styles.hotDealsHeader}>
+            <MaterialCommunityIcons name="fire" size={18} color={colors.danger} />
+            <Text style={styles.hotDealsTitle}>Hot Deals</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hotDealsRow}>
+            {HOT_DEALS.map(product => (
+              <HotDealCard key={product.id} product={product} />
+            ))}
+          </ScrollView>
+        </View>
 
         {/* Category tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.catBar} contentContainerStyle={styles.catContent}>
@@ -100,7 +120,7 @@ export default function MarketplaceScreen() {
         )}
 
         {/* Results count */}
-        <Text style={styles.resultsText}>{filtered.length} products</Text>
+        <Text style={styles.resultsText}>{filtered.length} listings</Text>
 
         {/* Products */}
         <View style={styles.productsGrid}>
@@ -118,14 +138,39 @@ export default function MarketplaceScreen() {
         <View style={styles.disclaimer}>
           <MaterialCommunityIcons name="information-outline" size={14} color={colors.textSecondary} />
           <Text style={styles.disclaimerText}>
-            CAST earns a small commission when you shop through our links. This helps keep the app free.
-            All prices shown are indicative — check Angling Direct for current pricing.
+            New items link to Angling Direct — CAST earns a small commission that helps keep the app free.
+            Second-hand listings are from community members; always meet safely in a public place.
           </Text>
         </View>
 
         <View style={{ height: 60 }} />
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function HotDealCard({ product }: { product: Product }) {
+  return (
+    <TouchableOpacity
+      style={styles.hotDealCard}
+      onPress={() => Alert.alert('Hot Deal', `${product.brand} ${product.name}\n\n${product.description}\n\nNow £${product.price.toFixed(2)} — was £${product.originalPrice?.toFixed(2)}`)}
+      activeOpacity={0.85}
+    >
+      {product.discountPct && (
+        <View style={styles.hotDealBadge}>
+          <Text style={styles.hotDealBadgeText}>{product.discountPct}% OFF</Text>
+        </View>
+      )}
+      <View style={styles.hotDealImage}>
+        <MaterialCommunityIcons name="tag-heart" size={28} color={colors.danger} />
+      </View>
+      <Text style={styles.hotDealBrand}>{product.brand}</Text>
+      <Text style={styles.hotDealName} numberOfLines={2}>{product.name}</Text>
+      <View style={styles.hotDealPrices}>
+        <Text style={styles.hotDealPrice}>£{product.price.toFixed(2)}</Text>
+        {product.originalPrice && <Text style={styles.hotDealOriginal}>£{product.originalPrice.toFixed(2)}</Text>}
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -138,52 +183,110 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function ProductCard({ product, wishlisted, onWishlist }: { product: Product; wishlisted: boolean; onWishlist: () => void }) {
+function ConditionBadge({ condition }: { condition: string }) {
+  const style = CONDITION_COLORS[condition] ?? CONDITION_COLORS['Used'];
   return (
-    <View style={styles.card}>
-      {product.sponsored && (
+    <View style={[styles.conditionBadge, { backgroundColor: style.bg }]}>
+      <Text style={[styles.conditionText, { color: style.text }]}>{condition}</Text>
+    </View>
+  );
+}
+
+function ProductCard({ product, wishlisted, onWishlist }: { product: Product; wishlisted: boolean; onWishlist: () => void }) {
+  const isSecondHand = product.condition && product.condition !== 'New';
+  return (
+    <View style={[styles.card, product.sold && styles.cardSold]}>
+      {product.sold && (
+        <View style={styles.soldOverlay}>
+          <View style={styles.soldBanner}>
+            <Text style={styles.soldText}>SOLD</Text>
+          </View>
+        </View>
+      )}
+      {product.sponsored && !product.sold && (
         <View style={styles.sponsoredBadge}>
           <Text style={styles.sponsoredText}>SPONSORED</Text>
         </View>
       )}
-      {product.discountPct && (
+      {product.discountPct && !product.sold && (
         <View style={styles.discountBadge}>
           <Text style={styles.discountText}>{product.discountPct}% OFF</Text>
         </View>
       )}
       {/* Image placeholder */}
       <View style={styles.productImage}>
-        <MaterialCommunityIcons name="shopping" size={36} color={colors.textSecondary} />
+        <MaterialCommunityIcons
+          name={isSecondHand ? 'recycle' : 'shopping'}
+          size={36}
+          color={isSecondHand ? colors.secondary : colors.textSecondary}
+        />
       </View>
       <View style={styles.cardBody}>
-        <Text style={styles.brandText}>{product.brand}</Text>
+        <View style={styles.cardTopRow}>
+          <Text style={styles.brandText}>{product.brand}</Text>
+          {product.condition && <ConditionBadge condition={product.condition} />}
+        </View>
         <Text style={styles.productName} numberOfLines={2}>{product.name}</Text>
         <Text style={styles.productDesc} numberOfLines={2}>{product.description}</Text>
-        <View style={styles.ratingRow}>
-          <StarRating rating={product.rating} />
-          <Text style={styles.reviewCount}>({product.reviewCount})</Text>
-        </View>
+
+        {/* Seller info for second-hand */}
+        {isSecondHand && product.sellerName && (
+          <View style={styles.sellerRow}>
+            <MaterialCommunityIcons name="account-circle-outline" size={13} color={colors.textSecondary} />
+            <Text style={styles.sellerName}>{product.sellerName}</Text>
+            {product.sellerRating && (
+              <View style={styles.sellerRatingBadge}>
+                <MaterialCommunityIcons name="star" size={11} color={colors.secondary} />
+                <Text style={styles.sellerRatingText}>{product.sellerRating.toFixed(1)}</Text>
+              </View>
+            )}
+            {product.distance && (
+              <>
+                <MaterialCommunityIcons name="map-marker-outline" size={11} color={colors.textSecondary} />
+                <Text style={styles.distanceText}>{product.distance}</Text>
+              </>
+            )}
+          </View>
+        )}
+
+        {!isSecondHand && (
+          <View style={styles.ratingRow}>
+            <StarRating rating={product.rating} />
+            <Text style={styles.reviewCount}>({product.reviewCount})</Text>
+          </View>
+        )}
+
         <View style={styles.priceBlock}>
           <Text style={styles.currentPrice}>£{product.price.toFixed(2)}</Text>
           {product.originalPrice && (
             <Text style={styles.originalPrice}>£{product.originalPrice.toFixed(2)}</Text>
           )}
         </View>
-        <View style={styles.cardActions}>
-          <TouchableOpacity
-            style={styles.shopBtn}
-            onPress={() => Alert.alert('Opening Angling Direct...', `Redirecting to Angling Direct for ${product.brand} ${product.name}`)}
-          >
-            <Text style={styles.shopBtnText}>Shop on Angling Direct</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.heartBtn} onPress={onWishlist}>
-            <MaterialCommunityIcons
-              name={wishlisted ? 'heart' : 'heart-outline'}
-              size={20}
-              color={wishlisted ? '#EF4444' : colors.textSecondary}
-            />
-          </TouchableOpacity>
-        </View>
+        {!product.sold && (
+          <View style={styles.cardActions}>
+            <TouchableOpacity
+              style={styles.shopBtn}
+              onPress={() => Alert.alert(
+                isSecondHand ? 'Contact Seller' : 'Opening Angling Direct...',
+                isSecondHand
+                  ? `Send a message to ${product.sellerName} about this ${product.name}?\n\nAsking: £${product.price.toFixed(2)}`
+                  : `Redirecting to Angling Direct for ${product.brand} ${product.name}`,
+                isSecondHand
+                  ? [{ text: 'Cancel', style: 'cancel' }, { text: 'Message Seller', onPress: () => Alert.alert('Message sent!', 'The seller will reply shortly.') }]
+                  : [{ text: 'OK' }]
+              )}
+            >
+              <Text style={styles.shopBtnText}>{isSecondHand ? 'Message Seller' : 'Shop on Angling Direct'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.heartBtn} onPress={onWishlist}>
+              <MaterialCommunityIcons
+                name={wishlisted ? 'heart' : 'heart-outline'}
+                size={20}
+                color={wishlisted ? '#EF4444' : colors.textSecondary}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -194,6 +297,22 @@ const styles = StyleSheet.create({
   hero: { alignItems: 'center', paddingVertical: spacing.xl, paddingHorizontal: spacing.lg },
   heroTitle: { fontSize: 26, fontWeight: '800', color: colors.textPrimary, marginTop: spacing.sm },
   heroSub: { fontSize: 15, color: colors.textSecondary, marginTop: 4 },
+
+  /* Hot Deals */
+  hotDealsSection: { marginBottom: spacing.md },
+  hotDealsHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
+  hotDealsTitle: { fontSize: 16, fontWeight: '800', color: colors.textPrimary },
+  hotDealsRow: { paddingHorizontal: spacing.lg, gap: spacing.sm },
+  hotDealCard: { width: 160, backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: 'rgba(239,68,68,0.25)', overflow: 'hidden', padding: spacing.sm },
+  hotDealBadge: { alignSelf: 'flex-start', backgroundColor: colors.danger, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 6 },
+  hotDealBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
+  hotDealImage: { height: 70, backgroundColor: 'rgba(239,68,68,0.06)', borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
+  hotDealBrand: { fontSize: 10, fontWeight: '700', color: colors.primary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  hotDealName: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, marginTop: 2 },
+  hotDealPrices: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  hotDealPrice: { fontSize: 15, fontWeight: '800', color: colors.textPrimary },
+  hotDealOriginal: { fontSize: 12, color: colors.textSecondary, textDecorationLine: 'line-through' },
+
   catBar: { marginBottom: spacing.md },
   catContent: { paddingHorizontal: spacing.lg, gap: spacing.sm },
   catChip: { paddingHorizontal: 14, paddingVertical: 8, backgroundColor: colors.surface, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border },
@@ -214,16 +333,30 @@ const styles = StyleSheet.create({
   sortOptionText: { fontSize: 14, color: colors.textPrimary },
   resultsText: { fontSize: 12, color: colors.textSecondary, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   productsGrid: { paddingHorizontal: spacing.lg, gap: spacing.md },
+
   card: { backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  cardSold: { opacity: 0.7 },
+  soldOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.35)' },
+  soldBanner: { backgroundColor: colors.danger, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.md, transform: [{ rotate: '-12deg' }] },
+  soldText: { fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: 2 },
+
   sponsoredBadge: { position: 'absolute', top: spacing.sm, left: spacing.sm, zIndex: 1, backgroundColor: 'rgba(245,158,11,0.2)', borderRadius: radius.sm, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(245,158,11,0.4)' },
   sponsoredText: { fontSize: 9, color: colors.secondary, fontWeight: '800', letterSpacing: 0.5 },
   discountBadge: { position: 'absolute', top: spacing.sm, right: spacing.xl + spacing.md, zIndex: 1, backgroundColor: '#EF4444', borderRadius: radius.sm, paddingHorizontal: 6, paddingVertical: 2 },
   discountText: { fontSize: 10, color: '#fff', fontWeight: '800' },
   productImage: { height: 140, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' },
   cardBody: { padding: spacing.md, gap: 4 },
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brandText: { fontSize: 11, color: colors.primary, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  conditionBadge: { borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
+  conditionText: { fontSize: 10, fontWeight: '700' },
   productName: { fontSize: 16, fontWeight: '700', color: colors.textPrimary },
   productDesc: { fontSize: 13, color: colors.textSecondary, lineHeight: 18 },
+  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap', marginTop: 2 },
+  sellerName: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
+  sellerRatingBadge: { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: 'rgba(245,158,11,0.12)', borderRadius: radius.full, paddingHorizontal: 5, paddingVertical: 1 },
+  sellerRatingText: { fontSize: 11, color: colors.secondary, fontWeight: '700' },
+  distanceText: { fontSize: 11, color: colors.textSecondary },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   reviewCount: { fontSize: 11, color: colors.textSecondary },
   priceBlock: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 4 },
