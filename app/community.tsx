@@ -5,7 +5,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { COMMUNITY_POSTS, LEADERBOARD_DATA, TOP_SPOTS_WEEK, CommunityPost } from '../data/communityData';
+import { COMMUNITY_POSTS, LEADERBOARD_DATA, TOP_SPOTS_WEEK, CommunityPost, LeaderboardEntry } from '../data/communityData';
 import { colors, spacing, radius, typography, fonts } from '../constants/theme';
 
 function timeAgo(isoString: string): string {
