@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView,
-  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
+  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -10,6 +10,8 @@ import { useCatchStore } from '../store/catchStore';
 import { useLocationStore } from '../store/locationStore';
 import { CONFIG } from '../constants/config';
 import { colors, spacing, radius } from '../constants/theme';
+import { useProStore } from '../store/proStore';
+import { useAuthStore } from '../store/authStore';
 
 interface Message {
   id: string;
@@ -181,6 +183,9 @@ export default function AIAdvisorScreen() {
   const router = useRouter();
   const { catches } = useCatchStore();
   const { location } = useLocationStore();
+  const { aiAdvisorUses, useAIAdvisor } = useProStore();
+  const { user } = useAuthStore();
+  const isPro = user?.isPro ?? false;
   const scrollRef = useRef<ScrollView>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -193,6 +198,7 @@ export default function AIAdvisorScreen() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
