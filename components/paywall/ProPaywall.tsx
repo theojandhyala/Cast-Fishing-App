@@ -148,7 +148,7 @@ export function ProPaywall({ onClose }: ProPaywallProps) {
             activeOpacity={0.85}
           >
             <Text style={s.planLabel}>Monthly</Text>
-            <Text style={[s.planPrice, billing === 'monthly' && s.planPriceActive]}>£3.99</Text>
+            <Text style={[s.planPrice, billing === 'monthly' && s.planPriceActive]}>£4.99</Text>
             <Text style={s.planPer}>per month</Text>
           </TouchableOpacity>
 
@@ -162,10 +162,10 @@ export function ProPaywall({ onClose }: ProPaywallProps) {
               <Text style={s.bestValueText}>BEST VALUE</Text>
             </View>
             <Text style={s.planLabel}>Annual</Text>
-            <Text style={[s.planPrice, billing === 'annual' && s.planPriceActive]}>£24.99</Text>
-            <Text style={s.planPer}>£2.08/mo</Text>
+            <Text style={[s.planPrice, billing === 'annual' && s.planPriceActive]}>£30.00</Text>
+            <Text style={s.planPer}>£2.50/mo</Text>
             <View style={s.savePill}>
-              <Text style={s.saveText}>Save 48%</Text>
+              <Text style={s.saveText}>Save 50%</Text>
             </View>
           </TouchableOpacity>
         </View>
