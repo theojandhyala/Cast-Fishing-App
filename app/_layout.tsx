@@ -8,6 +8,7 @@ import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fon
 import { useAuthStore } from '../store/authStore';
 import { useCatchStore } from '../store/catchStore';
 import { useUserStore } from '../store/userStore';
+import { useProStore } from '../store/proStore';
 import { colors } from '../constants/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -16,6 +17,7 @@ export default function RootLayout() {
   const { loadUser } = useAuthStore();
   const { loadCatches } = useCatchStore();
   const { load: loadUserPrefs } = useUserStore();
+  const { load: loadPro } = useProStore();
   const [ready, setReady] = useState(false);
 
   const [fontsLoaded] = useFonts({
@@ -42,7 +44,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (!ready) return;
     async function init() {
-      await Promise.all([loadUser(), loadCatches(), loadUserPrefs()]);
+      await Promise.all([loadUser(), loadCatches(), loadUserPrefs(), loadPro()]);
       await SplashScreen.hideAsync().catch(() => {});
     }
     init();

@@ -206,6 +206,15 @@ export default function AIAdvisorScreen() {
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
+
+    if (!isPro) {
+      const allowed = useAIAdvisor();
+      if (!allowed) {
+        setShowUpgrade(true);
+        return;
+      }
+    }
+
     const userMsg: Message = { id: generateId(), role: 'user', content: text, timestamp: new Date() };
     const history = [...messages, userMsg];
     setMessages(history);
@@ -263,6 +272,26 @@ export default function AIAdvisorScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Upgrade modal */}
+      <Modal visible={showUpgrade} transparent animationType="fade" onRequestClose={() => setShowUpgrade(false)}>
+        <View style={styles.upgradeOverlay}>
+          <View style={styles.upgradeCard}>
+            <MaterialCommunityIcons name="crown" size={40} color="#F59E0B" style={{ marginBottom: spacing.md }} />
+            <Text style={styles.upgradeHeading}>You've used your 5 free AI questions</Text>
+            <Text style={styles.upgradeSub}>Upgrade to CAST Pro for unlimited fishing advice</Text>
+            <TouchableOpacity
+              style={styles.upgradeBtn}
+              onPress={() => { setShowUpgrade(false); router.push('/pro' as any); }}
+            >
+              <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.upgradeGhost} onPress={() => setShowUpgrade(false)}>
+              <Text style={styles.upgradeGhostText}>Maybe Later</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <LinearGradient colors={['rgba(0,212,170,0.08)', 'transparent']} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={colors.textPrimary} />
@@ -272,7 +301,15 @@ export default function AIAdvisorScreen() {
           <View style={styles.onlineDot} />
           <Text style={styles.onlineText}>Online</Text>
         </View>
-        <View style={{ width: 40 }} />
+        {!isPro ? (
+          <View style={[styles.usesChip, aiAdvisorUses <= 2 && styles.usesChipAmber]}>
+            <Text style={[styles.usesChipText, aiAdvisorUses <= 2 && styles.usesChipTextAmber]}>
+              {aiAdvisorUses}/5 free
+            </Text>
+          </View>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </LinearGradient>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -402,4 +439,16 @@ const styles = StyleSheet.create({
   input: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: 15, color: colors.textPrimary, maxHeight: 120 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.4 },
+  usesChip: { backgroundColor: 'rgba(0,212,170,0.12)', borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)' },
+  usesChipAmber: { backgroundColor: 'rgba(245,158,11,0.12)', borderColor: 'rgba(245,158,11,0.4)' },
+  usesChipText: { fontSize: 11, fontWeight: '700', color: colors.primary },
+  usesChipTextAmber: { color: '#F59E0B' },
+  upgradeOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  upgradeCard: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl, alignItems: 'center', width: '100%', borderWidth: 1, borderColor: colors.border },
+  upgradeHeading: { fontSize: 20, fontWeight: '800', color: colors.textPrimary, textAlign: 'center', marginBottom: spacing.sm },
+  upgradeSub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: spacing.xl },
+  upgradeBtn: { backgroundColor: colors.primary, borderRadius: radius.lg, paddingVertical: 14, paddingHorizontal: spacing.xl, width: '100%', alignItems: 'center', marginBottom: spacing.sm },
+  upgradeBtnText: { fontSize: 16, fontWeight: '800', color: '#0A0E1A' },
+  upgradeGhost: { paddingVertical: 12, paddingHorizontal: spacing.xl, width: '100%', alignItems: 'center' },
+  upgradeGhostText: { fontSize: 14, color: colors.textSecondary, fontWeight: '600' },
 });

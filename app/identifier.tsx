@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   Image,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,6 +18,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFishIdentifier } from '../hooks/useFishIdentifier';
 import { CastButton } from '../components/ui/CastButton';
 import { colors, radius, spacing, typography, fonts, elevation } from '../constants/theme';
+import { useProStore } from '../store/proStore';
+import { useAuthStore } from '../store/authStore';
 
 const HISTORY_KEY = '@cast_fish_id_history';
 
@@ -29,9 +32,13 @@ interface HistoryItem {
 
 export default function IdentifierScreen() {
   const router = useRouter();
+  const { fishIdUses, useFishId } = useProStore();
+  const { user } = useAuthStore();
+  const isPro = user?.isPro ?? false;
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const { identify, loading, result, error, reset } = useFishIdentifier();
 
   useEffect(() => { loadHistory(); }, []);
@@ -90,6 +97,13 @@ export default function IdentifierScreen() {
       : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, base64: true });
 
     if (!res.canceled && res.assets[0]) {
+      if (!isPro) {
+        const allowed = useFishId();
+        if (!allowed) {
+          setShowUpgrade(true);
+          return;
+        }
+      }
       setImageUri(res.assets[0].uri);
       setImageBase64(res.assets[0].base64 || null);
       reset();
@@ -123,12 +137,38 @@ export default function IdentifierScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Upgrade modal */}
+      <Modal visible={showUpgrade} transparent animationType="fade" onRequestClose={() => setShowUpgrade(false)}>
+        <View style={styles.upgradeOverlay}>
+          <View style={styles.upgradeCard}>
+            <MaterialCommunityIcons name="crown" size={40} color="#F59E0B" style={{ marginBottom: spacing.md }} />
+            <Text style={styles.upgradeHeading}>You've used your 3 free scans</Text>
+            <Text style={styles.upgradeSub}>Upgrade to Pro for unlimited fish identification</Text>
+            <TouchableOpacity
+              style={styles.upgradeBtn}
+              onPress={() => { setShowUpgrade(false); router.push('/pro' as any); }}
+            >
+              <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.upgradeGhost} onPress={() => setShowUpgrade(false)}>
+              <Text style={styles.upgradeGhostText}>Maybe Later</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
           <MaterialCommunityIcons name="chevron-left" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Fish ID</Text>
-        <View style={{ width: 26 }} />
+        {!isPro ? (
+          <View style={styles.scansChip}>
+            <Text style={styles.scansChipText}>{fishIdUses} free scans</Text>
+          </View>
+        ) : (
+          <View style={{ width: 26 }} />
+        )}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -340,4 +380,14 @@ const styles = StyleSheet.create({
   historySpecies: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   historyDate: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
   historyConfidence: { ...typography.mono, fontSize: 13, color: colors.primary },
+  scansChip: { backgroundColor: 'rgba(0,212,170,0.12)', borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)' },
+  scansChipText: { fontSize: 11, fontWeight: '700', color: colors.primary },
+  upgradeOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', padding: spacing.xl },
+  upgradeCard: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing.xl, alignItems: 'center', width: '100%', borderWidth: 1, borderColor: colors.border },
+  upgradeHeading: { fontSize: 20, fontWeight: '800', color: colors.textPrimary, textAlign: 'center', marginBottom: spacing.sm },
+  upgradeSub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: spacing.xl },
+  upgradeBtn: { backgroundColor: colors.primary, borderRadius: radius.lg, paddingVertical: 14, paddingHorizontal: spacing.xl, width: '100%', alignItems: 'center', marginBottom: spacing.sm },
+  upgradeBtnText: { fontSize: 16, fontWeight: '800', color: '#0A0E1A' },
+  upgradeGhost: { paddingVertical: 12, paddingHorizontal: spacing.xl, width: '100%', alignItems: 'center' },
+  upgradeGhostText: { fontSize: 14, color: colors.textSecondary, fontWeight: '600' },
 });
