@@ -74,7 +74,7 @@ function getTipOfDay(): string {
 }
 
 export default function HomeScreen() {
-  const { user, isDemoUser } = useAuthStore();
+  const { user } = useAuthStore();
   const { catches } = useCatchStore();
   const { location } = useLocationStore();
   const router = useRouter();
@@ -124,21 +124,6 @@ export default function HomeScreen() {
           <Text style={s.greetName}>{firstName}.</Text>
           <Text style={s.greetSub}>Here's what the water looks like today.</Text>
         </View>
-
-        {/* ── Guest mode nudge banner ── */}
-        {(isDemoUser || user?.id === 'demo-user') && (
-          <TouchableOpacity
-            style={s.guestBanner}
-            onPress={() => router.push('/(auth)/login' as any)}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel="Sign in to save your catches and progress"
-          >
-            <MaterialCommunityIcons name="alert-circle-outline" size={15} color="rgba(245,158,11,0.9)" />
-            <Text style={s.guestBannerText}>You're in guest mode — sign in to save your catches and progress</Text>
-            <Text style={s.guestBannerCta}>Sign In →</Text>
-          </TouchableOpacity>
-        )}
 
         {/* ── START FISHING CTA ── */}
         <TouchableOpacity
@@ -351,16 +336,6 @@ const s = StyleSheet.create({
   greetLine: { fontSize: 13, color: colors.textSecondary, fontWeight: '500', letterSpacing: 0.3 },
   greetName: { fontSize: 30, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.8, marginTop: 1 },
   greetSub: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
-
-  guestBanner: {
-    flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: spacing.lg, marginBottom: 14,
-    backgroundColor: 'rgba(245,158,11,0.12)',
-    borderColor: 'rgba(245,158,11,0.3)', borderWidth: 1,
-    borderRadius: 10, padding: 10, gap: 8,
-  },
-  guestBannerText: { flex: 1, fontSize: 12, color: 'rgba(245,158,11,0.9)', lineHeight: 17 },
-  guestBannerCta: { fontSize: 12, fontWeight: '700', color: 'rgba(245,158,11,1)', flexShrink: 0 },
 
   ctaWrap: {
     marginHorizontal: spacing.lg, marginBottom: 24,

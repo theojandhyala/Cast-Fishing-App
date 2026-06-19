@@ -5,7 +5,6 @@ export interface Competition {
   location: string;
   entryFee: number;
   species: string;
-  prize: string;
   organiser: string;
   description: string;
   maxEntrants: number;
@@ -38,7 +37,6 @@ export const COMPETITIONS: Competition[] = [
     location: 'Grafham Water, Cambridgeshire',
     entryFee: 25,
     species: 'Mixed Coarse',
-    prize: '£500 + Trophy',
     organiser: 'Grafham Water AC',
     description: 'Annual open match at one of England\'s finest reservoirs. Biggest bag wins. All methods allowed from the bank.',
     maxEntrants: 80,
@@ -55,7 +53,6 @@ export const COMPETITIONS: Competition[] = [
     location: 'River Thames, Oxfordshire',
     entryFee: 30,
     species: 'Barbel',
-    prize: '£750 + Rod & Reel Combo',
     organiser: 'Thames Barbel Society',
     description: 'Two-day specimen hunt on the upper Thames for barbel over 8lb. Catch & photo release system.',
     maxEntrants: 40,
@@ -71,7 +68,6 @@ export const COMPETITIONS: Competition[] = [
     location: 'Chesil Beach, Dorset',
     entryFee: 20,
     species: 'Cod & Bass',
-    prize: '£400 + Season Ticket',
     organiser: 'Dorset Sea Anglers',
     description: 'Shore fishing festival along Chesil Beach. Biggest cod and bass counted. Starts at 06:00 local.',
     maxEntrants: 120,
@@ -87,7 +83,6 @@ export const COMPETITIONS: Competition[] = [
     location: 'Yateley Complex, Hampshire',
     entryFee: 50,
     species: 'Carp',
-    prize: '£2,000 + Korda Tackle Bundle',
     organiser: 'Yateley Carp Club',
     description: '48-hour carp fishing pairs event on the famous Yateley complex. Heaviest single fish wins. Booking in at 10:00.',
     maxEntrants: 30,
@@ -103,7 +98,6 @@ export const COMPETITIONS: Competition[] = [
     location: 'River Tay, Scotland',
     entryFee: 75,
     species: 'Atlantic Salmon',
-    prize: '£1,500 + Hardy Fly Rod',
     organiser: 'Tay District Salmon Fisheries Board',
     description: 'Prestigious salmon fly fishing competition on Scotland\'s greatest salmon river. Fly only, catch and release. Formal attire on the bank.',
     maxEntrants: 24,
@@ -119,7 +113,6 @@ export const COMPETITIONS: Competition[] = [
     location: 'Whitby, Yorkshire',
     entryFee: 60,
     species: 'Blue Shark & Tope',
-    prize: '£800 + Penn Reel',
     organiser: 'Whitby Sea Anglers',
     description: 'Boat fishing challenge from Whitby harbour targeting blue shark and tope. All fish catch and release. Departs 05:30.',
     maxEntrants: 36,
@@ -135,7 +128,6 @@ export const COMPETITIONS: Competition[] = [
     location: 'Grand Union Canal, Northampton',
     entryFee: 15,
     species: 'Mixed Coarse',
-    prize: '£200 + £150 Tackle Voucher',
     organiser: 'Northampton AA',
     description: 'Classic canal match fishing on drawn pegs. Roach, perch and skimmers expected in good numbers. Maggot and bread allowed.',
     maxEntrants: 60,
@@ -151,7 +143,6 @@ export const COMPETITIONS: Competition[] = [
     location: 'North Cornwall',
     entryFee: 35,
     species: 'Sea Bass',
-    prize: '£600 + Rio Fly Line Set',
     organiser: 'Cornish Fly Fishers',
     description: 'Shore-based fly fishing for sea bass along the stunning North Cornwall coast. Catch & release, longest fish wins.',
     maxEntrants: 20,
@@ -167,7 +158,6 @@ export const COMPETITIONS: Competition[] = [
     location: 'Norfolk Broads',
     entryFee: 25,
     species: 'Pike',
-    prize: '£500 + Abu Garcia Reel',
     organiser: 'Norfolk Pike Club',
     description: 'Boat-based pike fishing on the iconic Norfolk Broads. Largest fish wins. Catch & release required, forceps and unhooking mats mandatory.',
     maxEntrants: 40,
@@ -183,7 +173,6 @@ export const COMPETITIONS: Competition[] = [
     location: 'Virtual — Submit via CAST App',
     entryFee: 0,
     species: 'All Species',
-    prize: '2,000 XP + Gold Badge',
     organiser: 'CAST Community',
     description: 'Our monthly virtual competition. Log your biggest catch of the month on CAST. Top 3 win bonus XP and exclusive badges. Any species, any water.',
     maxEntrants: 999,
@@ -199,7 +188,6 @@ export const COMPETITIONS: Competition[] = [
     location: 'Windermere, Lake District',
     entryFee: 40,
     species: 'Bream & Carp',
-    prize: '£350 + £150 Tackle Voucher',
     organiser: 'Cumbria Anglers',
     description: 'Weekend specimen hunt on England\'s largest natural lake. Points for each species with big fish bonus. Camping on-site.',
     maxEntrants: 50,
@@ -215,7 +203,6 @@ export const COMPETITIONS: Competition[] = [
     location: 'River Kennet, Berkshire',
     entryFee: 10,
     species: 'Roach',
-    prize: '£100 + Drennan Rod',
     organiser: 'Kennet Anglers',
     description: 'Traditional float fishing match on one of the UK\'s finest chalk streams. Bread punch and maggot only. Drawn pegs on the day.',
     maxEntrants: 30,

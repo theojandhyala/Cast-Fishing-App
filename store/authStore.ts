@@ -28,7 +28,6 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  isDemoUser: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -39,40 +38,22 @@ interface AuthState {
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-const DEMO_USER: User = {
-  id: 'demo-user',
-  name: 'Guest Angler',
-  email: '',
-  isPro: false,
-  xp: 2340,
-  level: 4,
-  streak: 3,
-  favouriteSpecies: ['Common Carp', 'Northern Pike', 'Perch'],
-  joinedAt: new Date(Date.now() - 60 * 86400000).toISOString(),
-  fishingExperience: 'intermediate',
-  hasLicence: true,
-  preferredFishing: 'freshwater',
-  isPublicProfile: true,
-};
-
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
-  isDemoUser: false,
 
   loadUser: async () => {
     try {
       const stored = await AsyncStorage.getItem('cast_user');
       if (stored) {
         const user = JSON.parse(stored);
-        set({ user, isAuthenticated: true, isLoading: false, isDemoUser: false });
+        set({ user, isAuthenticated: true, isLoading: false });
       } else {
-        // No stored user — show demo state without persisting
-        set({ user: DEMO_USER, isAuthenticated: false, isLoading: false, isDemoUser: true });
+        set({ user: null, isAuthenticated: false, isLoading: false });
       }
     } catch {
-      set({ user: DEMO_USER, isAuthenticated: false, isLoading: false, isDemoUser: true });
+      set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },
 
@@ -82,11 +63,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (stored) {
         const user = JSON.parse(stored);
         if (user.email === email) {
-          set({ user, isAuthenticated: true, isDemoUser: false });
+          set({ user, isAuthenticated: true });
           return true;
         }
       }
-      // Create demo user if not found
+      // Create user if not found
       const user: User = {
         id: generateId(),
         name: email.split('@')[0],
@@ -99,7 +80,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         joinedAt: new Date().toISOString(),
       };
       await AsyncStorage.setItem('cast_user', JSON.stringify(user));
-      set({ user, isAuthenticated: true, isDemoUser: false });
+      set({ user, isAuthenticated: true });
       return true;
     } catch {
       return false;
@@ -120,7 +101,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         joinedAt: new Date().toISOString(),
       };
       await AsyncStorage.setItem('cast_user', JSON.stringify(user));
-      set({ user, isAuthenticated: true, isDemoUser: false });
+      set({ user, isAuthenticated: true });
       return true;
     } catch {
       return false;
@@ -129,7 +110,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: () => {
     AsyncStorage.removeItem('cast_user');
-    set({ user: DEMO_USER, isAuthenticated: false, isDemoUser: true });
+    set({ user: null, isAuthenticated: false });
   },
 
   updateUser: async (updates: Partial<User>) => {
