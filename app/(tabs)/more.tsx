@@ -186,11 +186,9 @@ export default function MoreScreen() {
                     if (item.route) {
                       router.push(item.route as any);
                     } else if (item.label === 'Rate the App') {
-                      Alert.alert('Rate CAST', 'Thank you for using CAST! A rating on the App Store means the world to us.');
-                    } else if (item.label === 'Settings' || item.label === 'Help & Feedback' || item.label === 'Fishing Clubs') {
-                      Alert.alert('Coming Soon', 'This feature is coming in a future update!');
-                    } else if (item.label === 'My Profile') {
-                      Alert.alert('Your Profile', `Level ${user?.level || 1} Angler\n${user?.xp || 0} XP\n${stats.total} catches logged\n${Object.keys(stats.speciesCounts).length} species caught`);
+                      Alert.alert('Rate CAST', 'Thank you for using CAST! A rating means the world to us.');
+                    } else if (item.label === 'Help & Feedback') {
+                      Alert.alert('Help & Feedback', 'Email us at hello@castfishingapp.com — we read every message.');
                     }
                   }}
                 >

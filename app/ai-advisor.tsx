@@ -20,12 +20,12 @@ interface Message {
 }
 
 const QUICK_QUESTIONS = [
-  "What's biting near me?",
-  "Best rig for Carp?",
-  "Is today good for fishing?",
-  "Best bait for Barbel?",
-  "How do I tie a hair rig?",
-  "When does the closed season end?",
+  "Best bait for carp right now?",
+  "Why am I missing bites?",
+  "How do I read the water?",
+  "Best time to fish today?",
+  "What's a good beginner rig?",
+  "How do I hold a pike safely?",
 ];
 
 const CANNED_RESPONSES: Record<string, { content: string; suggestions: string[] }> = {
