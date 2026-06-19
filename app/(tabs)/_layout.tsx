@@ -1,15 +1,61 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Tabs } from 'expo-router';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Tabs, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, radius } from '../../constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, radius, spacing } from '../../constants/theme';
+import { useSessionStore } from '../../store/sessionStore';
 
-// Active tab gets a teal pill indicator above the icon
 function TabIcon({ name, color, focused }: { name: string; color: string; focused: boolean }) {
   return (
     <View style={styles.iconWrap}>
       {focused && <View style={styles.indicator} />}
       <MaterialCommunityIcons name={name as any} size={22} color={color} />
+    </View>
+  );
+}
+
+// Renders as the tab bar background — sits behind the tab icons
+// We abuse tabBarBackground to inject a banner above the actual tab items
+function TabBarWithBanner() {
+  const { activeSession } = useSessionStore();
+  const router = useRouter();
+
+  const startTime = activeSession ? new Date(activeSession.startTime) : null;
+  const elapsed = startTime ? Math.floor((Date.now() - startTime.getTime()) / 60000) : 0;
+  const hours = Math.floor(elapsed / 60);
+  const mins = elapsed % 60;
+  const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+  return (
+    <View style={styles.tabBarBg}>
+      {activeSession && (
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/session' as any)}
+          activeOpacity={0.88}
+        >
+          <LinearGradient
+            colors={['#001F18', '#002E22']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.banner}
+          >
+            <View style={styles.bannerLeft}>
+              <View style={styles.activeDot} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.bannerLabel}>CURRENTLY FISHING AT</Text>
+                <Text style={styles.bannerSpot} numberOfLines={1}>{activeSession.spotName}</Text>
+              </View>
+            </View>
+            <View style={styles.bannerRight}>
+              <MaterialCommunityIcons name="timer-outline" size={14} color={colors.primary} />
+              <Text style={styles.bannerTime}>{timeStr}</Text>
+              <MaterialCommunityIcons name="chevron-right" size={16} color="rgba(0,212,170,0.5)" />
+            </View>
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+      <View style={styles.tabBarSurface} />
     </View>
   );
 }
@@ -20,13 +66,14 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
           height: 68,
           paddingBottom: 12,
           paddingTop: 6,
+          elevation: 0,
         },
+        tabBarBackground: () => <TabBarWithBanner />,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: {
@@ -93,5 +140,62 @@ const styles = StyleSheet.create({
     height: 3,
     borderRadius: radius.full,
     backgroundColor: colors.primary,
+  },
+  tabBarBg: {
+    flex: 1,
+  },
+  tabBarSurface: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 11,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,212,170,0.25)',
+  },
+  bannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  activeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  bannerLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: 1.2,
+    opacity: 0.75,
+  },
+  bannerSpot: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginTop: 1,
+  },
+  bannerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  bannerTime: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primary,
   },
 });
