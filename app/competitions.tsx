@@ -58,15 +58,15 @@ export default function CompetitionsScreen() {
 
                   <View style={styles.featuredStats}>
                     <View style={styles.featuredStat}>
-                      <MaterialCommunityIcons name="trophy" size={16} color={colors.secondary} />
-                      <Text style={styles.featuredStatLabel}>Prize</Text>
-                      <Text style={styles.featuredStatValue}>{featured.prize}</Text>
-                    </View>
-                    <View style={styles.featuredStatDivider} />
-                    <View style={styles.featuredStat}>
                       <MaterialCommunityIcons name="account-group" size={16} color={colors.primary} />
                       <Text style={styles.featuredStatLabel}>Anglers</Text>
                       <Text style={styles.featuredStatValue}>{featured.currentEntrants}/{featured.maxEntrants}</Text>
+                    </View>
+                    <View style={styles.featuredStatDivider} />
+                    <View style={styles.featuredStat}>
+                      <MaterialCommunityIcons name="tag-outline" size={16} color={colors.secondary} />
+                      <Text style={styles.featuredStatLabel}>Entry</Text>
+                      <Text style={styles.featuredStatValue}>{featured.entryFee === 0 ? 'Free' : `£${featured.entryFee}`}</Text>
                     </View>
                     <View style={styles.featuredStatDivider} />
                     <View style={styles.featuredStat}>
@@ -82,7 +82,7 @@ export default function CompetitionsScreen() {
                     style={styles.featuredEnterBtn}
                     onPress={() => Alert.alert(
                       'Enter Competition',
-                      `Register for ${featured.name}?\n\nEntry fee: ${featured.entryFee === 0 ? 'Free' : '£' + featured.entryFee}\nPrize: ${featured.prize}`,
+                      `Register for ${featured.name}?\n\nEntry fee: ${featured.entryFee === 0 ? 'Free' : '£' + featured.entryFee}`,
                       [
                         { text: 'Cancel', style: 'cancel' },
                         { text: 'Enter Now', onPress: () => Alert.alert('Entered!', 'You have been registered. Good luck!') },
@@ -114,7 +114,6 @@ export default function CompetitionsScreen() {
               <View style={styles.communityMeta}>
                 <Text style={styles.communityMetaItem}>📅 Ends {new Date(community.date).toLocaleDateString('en-GB')}</Text>
                 <Text style={styles.communityMetaItem}>👥 {community.currentEntrants} entered</Text>
-                <Text style={styles.communityMetaItem}>🎁 {community.prize}</Text>
                 {(community.daysLeft ?? 0) > 0 && (
                   <Text style={styles.communityMetaItem}>⏰ {community.daysLeft} days left</Text>
                 )}
@@ -199,7 +198,6 @@ function CompCard({ comp }: { comp: ReturnType<typeof COMPETITIONS.find> & {} })
       <Text style={styles.description}>{comp.description}</Text>
       <View style={styles.infoGrid}>
         <InfoItem icon="fish" label="Species" value={comp.species} />
-        <InfoItem icon="trophy" label="Prize" value={comp.prize} />
         <InfoItem icon="account" label="Organiser" value={comp.organiser} />
         <View style={styles.infoRowFull}>
           <InfoItem icon="account-group" label="Entrants" value={`${comp.currentEntrants}/${comp.maxEntrants}`} />
