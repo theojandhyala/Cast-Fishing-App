@@ -161,7 +161,12 @@ function PostCard({ post, onLike }: { post: CommunityPost; onLike: () => void })
           <MaterialCommunityIcons name="account-circle" size={24} color={colors.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.postUsername}>{post.username}</Text>
+          <View style={styles.postUsernameRow}>
+            <Text style={styles.postUsername}>{post.username}</Text>
+            {post.verified && (
+              <MaterialCommunityIcons name="check-decagram" size={14} color={colors.primary} />
+            )}
+          </View>
           <Text style={styles.postTime}>{timeAgo(post.timestamp)}</Text>
         </View>
         <View style={styles.postSpeciesBadge}>
@@ -186,6 +191,16 @@ function PostCard({ post, onLike }: { post: CommunityPost; onLike: () => void })
         </View>
       </View>
 
+      {post.commentPreviews && post.commentPreviews.length > 0 && (
+        <View style={styles.commentPreviews}>
+          {post.commentPreviews.slice(0, 2).map((c, i) => (
+            <Text key={i} style={styles.commentPreviewText} numberOfLines={1}>
+              <Text style={styles.commentDot}>› </Text>{c}
+            </Text>
+          ))}
+        </View>
+      )}
+
       <View style={styles.postActions}>
         <TouchableOpacity style={styles.likeBtn} onPress={onLike}>
           <MaterialCommunityIcons
@@ -194,6 +209,10 @@ function PostCard({ post, onLike }: { post: CommunityPost; onLike: () => void })
             color={post.liked ? colors.danger : colors.textSecondary}
           />
           <Text style={[styles.likeCount, post.liked && { color: colors.danger }]}>{post.likes}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.commentBtn} onPress={() => Alert.alert('Comments', 'Comments coming soon!')}>
+          <MaterialCommunityIcons name="comment-outline" size={20} color={colors.textSecondary} />
+          <Text style={styles.commentCount}>{post.comments}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.shareBtn} onPress={() => Alert.alert('Share', 'Sharing coming soon!')}>
           <MaterialCommunityIcons name="share-outline" size={20} color={colors.textSecondary} />
