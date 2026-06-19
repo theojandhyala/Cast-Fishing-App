@@ -89,7 +89,7 @@ export default function CommunityScreen() {
         {tab === 'leaderboard' && (
           <View style={styles.leaderContent}>
             <Text style={styles.leaderTitle}>This Week's Top Anglers</Text>
-            {LEADERBOARD_DATA.map(entry => (
+            {LEADERBOARD_DATA.map((entry: LeaderboardEntry) => (
               <View key={entry.rank} style={[styles.leaderCard, entry.rank === 1 && styles.leaderCardGold]}>
                 {entry.rank <= 3 ? (
                   <MaterialCommunityIcons
@@ -105,8 +105,20 @@ export default function CommunityScreen() {
                   <MaterialCommunityIcons name="fish" size={20} color={colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.leaderUsername}>{entry.username}</Text>
+                  <View style={styles.leaderUsernameRow}>
+                    <Text style={styles.leaderUsername}>{entry.username}</Text>
+                    {entry.verified && (
+                      <MaterialCommunityIcons name="check-decagram" size={13} color={colors.primary} />
+                    )}
+                  </View>
                   <Text style={styles.leaderBigFish}>Best: {entry.biggestFish}</Text>
+                  <View style={styles.leaderMeta}>
+                    <MaterialCommunityIcons name="map-marker-outline" size={11} color={colors.textSecondary} />
+                    <Text style={styles.leaderHomeWater}>{entry.homeWater}</Text>
+                    <View style={styles.leaderLevelBadge}>
+                      <Text style={styles.leaderLevelText}>Lv.{entry.level}</Text>
+                    </View>
+                  </View>
                 </View>
                 <View style={styles.leaderCatches}>
                   <Text style={styles.leaderCatchNum}>{entry.catches}</Text>
