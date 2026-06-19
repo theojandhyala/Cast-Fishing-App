@@ -217,7 +217,7 @@ function CompCard({ comp }: { comp: ReturnType<typeof COMPETITIONS.find> & {} })
           isFull ? 'Full' : 'Enter Competition',
           isFull
             ? 'This competition is now full. Check back for updates.'
-            : `Register for ${comp.name}?\n\nEntry fee: ${comp.entryFee === 0 ? 'Free' : '£' + comp.entryFee}\nPrize: ${comp.prize}`,
+            : `Register for ${comp.name}?\n\nEntry fee: ${comp.entryFee === 0 ? 'Free' : '£' + comp.entryFee}`,
           isFull
             ? [{ text: 'OK' }]
             : [
