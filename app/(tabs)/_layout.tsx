@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, useRouter, Link } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius, spacing } from '../../constants/theme';
@@ -15,11 +15,9 @@ function TabIcon({ name, color, focused }: { name: string; color: string; focuse
   );
 }
 
-// Renders as the tab bar background — sits behind the tab icons
-// We abuse tabBarBackground to inject a banner above the actual tab items
+// Session banner rendered inside tabBarBackground
 function TabBarWithBanner() {
   const { activeSession } = useSessionStore();
-  const router = useRouter();
 
   const startTime = activeSession ? new Date(activeSession.startTime) : null;
   const elapsed = startTime ? Math.floor((Date.now() - startTime.getTime()) / 60000) : 0;
@@ -30,8 +28,8 @@ function TabBarWithBanner() {
   return (
     <View style={styles.tabBarBg}>
       {activeSession && (
+        <Link href="/(tabs)/session" asChild>
         <TouchableOpacity
-          onPress={() => router.push('/(tabs)/session' as any)}
           activeOpacity={0.88}
         >
           <LinearGradient
@@ -54,6 +52,7 @@ function TabBarWithBanner() {
             </View>
           </LinearGradient>
         </TouchableOpacity>
+        </Link>
       )}
       <View style={styles.tabBarSurface} />
     </View>
