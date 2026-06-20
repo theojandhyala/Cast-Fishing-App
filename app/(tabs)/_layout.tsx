@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Tabs, useRouter, Link } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius, spacing } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
+
+const TAB_BAR_HEIGHT = 68;
 
 function TabIcon({ name, color, focused }: { name: string; color: string; focused: boolean }) {
   return (
@@ -15,116 +17,135 @@ function TabIcon({ name, color, focused }: { name: string; color: string; focuse
   );
 }
 
-// Session banner rendered inside tabBarBackground
-function TabBarWithBanner() {
-  const { activeSession } = useSessionStore();
+// Persistent "Currently fishing at..." banner. Rendered as an overlay that sits
+// directly above the tab bar — NOT inside tabBarBackground, which has a fragile
+// render context on web and was causing a blank screen.
+function SessionBanner() {
+  const activeSession = useSessionStore((s) => s.activeSession);
+  const router = useRouter();
+  const [, forceTick] = useState(0);
 
-  const startTime = activeSession ? new Date(activeSession.startTime) : null;
-  const elapsed = startTime ? Math.floor((Date.now() - startTime.getTime()) / 60000) : 0;
+  // Keep the elapsed timer fresh while a session is running.
+  useEffect(() => {
+    if (!activeSession) return;
+    const id = setInterval(() => forceTick((n) => n + 1), 60000);
+    return () => clearInterval(id);
+  }, [activeSession]);
+
+  if (!activeSession) return null;
+
+  const startTime = new Date(activeSession.startTime);
+  const elapsed = Math.max(0, Math.floor((Date.now() - startTime.getTime()) / 60000));
   const hours = Math.floor(elapsed / 60);
   const mins = elapsed % 60;
   const timeStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 
   return (
-    <View style={styles.tabBarBg}>
-      {activeSession && (
-        <Link href="/(tabs)/session" asChild>
-        <TouchableOpacity
-          activeOpacity={0.88}
+    <View style={styles.bannerWrap} pointerEvents="box-none">
+      <TouchableOpacity
+        activeOpacity={0.88}
+        onPress={() => router.push('/session')}
+        accessibilityRole="button"
+        accessibilityLabel={`Return to your active session at ${activeSession.spotName}`}
+      >
+        <LinearGradient
+          colors={['#001F18', '#002E22']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.banner}
         >
-          <LinearGradient
-            colors={['#001F18', '#002E22']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.banner}
-          >
-            <View style={styles.bannerLeft}>
-              <View style={styles.activeDot} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.bannerLabel}>CURRENTLY FISHING AT</Text>
-                <Text style={styles.bannerSpot} numberOfLines={1}>{activeSession.spotName}</Text>
-              </View>
+          <View style={styles.bannerLeft}>
+            <View style={styles.activeDot} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bannerLabel}>CURRENTLY FISHING AT</Text>
+              <Text style={styles.bannerSpot} numberOfLines={1}>{activeSession.spotName}</Text>
             </View>
-            <View style={styles.bannerRight}>
-              <MaterialCommunityIcons name="timer-outline" size={14} color={colors.primary} />
-              <Text style={styles.bannerTime}>{timeStr}</Text>
-              <MaterialCommunityIcons name="chevron-right" size={16} color="rgba(0,212,170,0.5)" />
-            </View>
-          </LinearGradient>
-        </TouchableOpacity>
-        </Link>
-      )}
-      <View style={styles.tabBarSurface} />
+          </View>
+          <View style={styles.bannerRight}>
+            <MaterialCommunityIcons name="timer-outline" size={14} color={colors.primary} />
+            <Text style={styles.bannerTime}>{timeStr}</Text>
+            <MaterialCommunityIcons name="chevron-right" size={16} color="rgba(0,212,170,0.5)" />
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
     </View>
   );
 }
 
 export default function TabsLayout() {
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: 'transparent',
-          borderTopWidth: 0,
-          height: 68,
-          paddingBottom: 12,
-          paddingTop: 6,
-          elevation: 0,
-        },
-        tabBarBackground: () => <TabBarWithBanner />,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '700',
-          letterSpacing: 0.4,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, focused }) => <TabIcon name="home-outline" color={color} focused={focused} />,
+    <View style={styles.root}>
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            backgroundColor: colors.surface,
+            borderTopWidth: 1,
+            borderTopColor: colors.border,
+            height: TAB_BAR_HEIGHT,
+            paddingBottom: 12,
+            paddingTop: 6,
+            elevation: 0,
+          },
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textSecondary,
+          tabBarLabelStyle: {
+            fontSize: 10,
+            fontWeight: '700',
+            letterSpacing: 0.4,
+          },
         }}
-      />
-      <Tabs.Screen
-        name="map"
-        options={{
-          title: 'Spots',
-          tabBarIcon: ({ color, focused }) => <TabIcon name="map-marker-multiple-outline" color={color} focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="session"
-        options={{
-          title: 'Session',
-          tabBarIcon: ({ color, focused }) => <TabIcon name="timer-outline" color={color} focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="catches"
-        options={{
-          title: 'Log',
-          tabBarIcon: ({ color, focused }) => <TabIcon name="book-open-variant" color={color} focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, focused }) => <TabIcon name="account-circle-outline" color={color} focused={focused} />,
-        }}
-      />
-      <Tabs.Screen name="tips" options={{ href: null }} />
-      <Tabs.Screen name="more" options={{ href: null }} />
-      <Tabs.Screen name="add-tab" options={{ href: null }} />
-    </Tabs>
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+            tabBarIcon: ({ color, focused }) => <TabIcon name="home-outline" color={color} focused={focused} />,
+          }}
+        />
+        <Tabs.Screen
+          name="map"
+          options={{
+            title: 'Spots',
+            tabBarIcon: ({ color, focused }) => <TabIcon name="map-marker-multiple-outline" color={color} focused={focused} />,
+          }}
+        />
+        <Tabs.Screen
+          name="session"
+          options={{
+            title: 'Session',
+            tabBarIcon: ({ color, focused }) => <TabIcon name="timer-outline" color={color} focused={focused} />,
+          }}
+        />
+        <Tabs.Screen
+          name="catches"
+          options={{
+            title: 'Log',
+            tabBarIcon: ({ color, focused }) => <TabIcon name="book-open-variant" color={color} focused={focused} />,
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ color, focused }) => <TabIcon name="account-circle-outline" color={color} focused={focused} />,
+          }}
+        />
+        <Tabs.Screen name="tips" options={{ href: null }} />
+        <Tabs.Screen name="more" options={{ href: null }} />
+        <Tabs.Screen name="add-tab" options={{ href: null }} />
+      </Tabs>
+
+      <SessionBanner />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   iconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -140,14 +161,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
     backgroundColor: colors.primary,
   },
-  tabBarBg: {
-    flex: 1,
-  },
-  tabBarSurface: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  bannerWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: TAB_BAR_HEIGHT,
   },
   banner: {
     flexDirection: 'row',
