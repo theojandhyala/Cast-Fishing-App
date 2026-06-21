@@ -41,7 +41,8 @@ import pathlib
 p = pathlib.Path('dist/index.html')
 html = p.read_text()
 spinner = '''<style>
-  #cast-loader{position:fixed;inset:0;background:#0A0E1A;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
+  body{background:#0A0E1A}
+  #cast-loader{position:fixed;inset:0;background:#0A0E1A;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s}
   #cast-loader.hidden{opacity:0;pointer-events:none}
   .cast-spin{width:44px;height:44px;border:3px solid rgba(0,212,170,.2);border-top-color:#00D4AA;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:18px}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -49,7 +50,17 @@ spinner = '''<style>
 </style>
 <div id="cast-loader"><div class="cast-spin"></div><div class="cast-loader-text">CAST</div></div>
 <script>
-  window.addEventListener('load',function(){var l=document.getElementById('cast-loader');if(l){l.classList.add('hidden');setTimeout(function(){l.remove()},500);}});
+  // Hide spinner once React has mounted something into #root
+  function checkMounted(){
+    var root=document.getElementById('root');
+    var loader=document.getElementById('cast-loader');
+    if(!loader)return;
+    if(root&&root.children.length>0){loader.classList.add('hidden');setTimeout(function(){loader.remove()},600);}
+    else{setTimeout(checkMounted,100);}
+  }
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(checkMounted,200);});
+  // Safety net: hide after 10s regardless
+  setTimeout(function(){var l=document.getElementById('cast-loader');if(l){l.classList.add('hidden');setTimeout(function(){l.remove()},600);}},10000);
 </script>'''
 html = html.replace('</body>', spinner + '\n</body>', 1)
 p.write_text(html)

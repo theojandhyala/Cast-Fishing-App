@@ -41,9 +41,10 @@ export default function RootLayout() {
   const { loadCatches } = useCatchStore();
   const { load: loadUserPrefs } = useUserStore();
   const { load: loadPro } = useProStore();
-  const [ready, setReady] = useState(false);
 
-  const [fontsLoaded] = useFonts({
+  // Load fonts without blocking — app renders immediately with system fonts
+  // then upgrades to custom fonts once loaded. No blank-screen wait.
+  useFonts({
     Inter_400Regular,
     Inter_600SemiBold,
     Inter_700Bold,
@@ -55,14 +56,6 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    // Fallback: proceed even if fonts fail to load within 4s
-    const timeout = setTimeout(() => setReady(true), 4000);
-    if (fontsLoaded) { clearTimeout(timeout); setReady(true); }
-    return () => clearTimeout(timeout);
-  }, [fontsLoaded]);
-
-  useEffect(() => {
-    if (!ready) return;
     async function init() {
       try {
         await Promise.all([loadUser(), loadCatches(), loadUserPrefs(), loadPro()]);
@@ -70,9 +63,7 @@ export default function RootLayout() {
       try { await SplashScreen.hideAsync(); } catch {}
     }
     init();
-  }, [ready]);
-
-  if (!ready) return null;
+  }, []);
 
   return (
     <ErrorBoundary>
