@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, Component, ReactNode } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Stack } from 'expo-router';
+import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
@@ -10,14 +12,48 @@ import { useCatchStore } from '../store/catchStore';
 import { useUserStore } from '../store/userStore';
 import { colors } from '../constants/theme';
 
-SplashScreen.preventAutoHideAsync();
+const CastTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: colors.background,
+    card: colors.surface,
+    text: colors.textPrimary,
+    border: 'rgba(255,255,255,0.08)',
+    primary: colors.primary,
+  },
+};
+
+try { SplashScreen.preventAutoHideAsync(); } catch {}
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#0A0E1A', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <Text style={{ color: '#00D4AA', fontSize: 18, fontWeight: '700', marginBottom: 12 }}>Something went wrong</Text>
+          <Text style={{ color: '#8B95A7', fontSize: 13, textAlign: 'center', marginBottom: 24 }}>
+            {(this.state.error as Error).message}
+          </Text>
+          <TouchableOpacity onPress={() => this.setState({ error: null })}
+            style={{ backgroundColor: '#00D4AA', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 }}>
+            <Text style={{ color: '#0A0E1A', fontWeight: '700' }}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function RootLayout() {
   const { loadUser } = useAuthStore();
   const { loadCatches } = useCatchStore();
   const { load: loadUserPrefs } = useUserStore();
-  const [ready, setReady] = useState(false);
-
+  // Load fonts without blocking — app renders immediately with system fonts
+  // then upgrades to custom fonts once loaded. No blank-screen wait.
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_600SemiBold,
@@ -26,31 +62,23 @@ export default function RootLayout() {
     Syne_700Bold,
     JetBrainsMono_500Medium,
     JetBrainsMono_700Bold,
+    MaterialCommunityIcons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
   });
 
   useEffect(() => {
-    // Fallback: if fonts don't load within 4s, continue anyway
-    const timeout = setTimeout(() => setReady(true), 4000);
-    if (fontsLoaded) {
-      clearTimeout(timeout);
-      setReady(true);
-    }
-    return () => clearTimeout(timeout);
-  }, [fontsLoaded]);
-
-  useEffect(() => {
-    if (!ready) return;
     async function init() {
-      await Promise.all([loadUser(), loadCatches(), loadUserPrefs()]);
-      await SplashScreen.hideAsync().catch(() => {});
+      try {
+        await Promise.all([loadUser(), loadCatches(), loadUserPrefs()]);
+      } catch {}
+      try { await SplashScreen.hideAsync(); } catch {}
     }
     init();
-  }, [ready]);
-
-  if (!ready) return null;
+  }, []);
 
   return (
-    <>
+    <ThemeProvider value={CastTheme}>
+    <ErrorBoundary>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -116,6 +144,8 @@ export default function RootLayout() {
         <Stack.Screen name="session" options={{ headerShown: false }} />
         <Stack.Screen name="session-summary" options={{ headerShown: false, presentation: 'modal' }} />
       </Stack>
-    </>
+      </View>
+    </ErrorBoundary>
+    </ThemeProvider>
   );
 }
