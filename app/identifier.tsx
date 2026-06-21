@@ -180,6 +180,13 @@ export default function IdentifierScreen() {
           </View>
         )}
 
+        {error && !loading && (
+          <View style={styles.errorBanner}>
+            <MaterialCommunityIcons name="wifi-off" size={16} color={colors.secondary} />
+            <Text style={styles.errorText}>AI service unavailable — showing best match from database</Text>
+          </View>
+        )}
+
         {/* Result */}
         {result && (
           <View style={styles.resultCard}>
@@ -330,6 +337,14 @@ const styles = StyleSheet.create({
   altChip: { backgroundColor: colors.surface2, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 3 },
   altChipText: { fontSize: 12, color: colors.textSecondary },
   resultActions: { flexDirection: 'row', gap: spacing.sm },
+
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(245,158,11,0.08)',
+    borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)',
+    padding: spacing.sm, marginBottom: spacing.md,
+  },
+  errorText: { flex: 1, fontSize: 12, color: colors.secondary, lineHeight: 17 },
 
   historySection: { marginTop: spacing.lg, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', ...elevation.raised },
   historyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },

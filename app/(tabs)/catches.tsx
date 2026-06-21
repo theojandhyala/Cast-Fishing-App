@@ -22,7 +22,7 @@ const CATCH_GRADS: [string, string][] = [
 function getSpeciesIcon(species: string): string {
   const s = species.toLowerCase();
   if (s.includes('bass')) return 'fish';
-  if (s.includes('trout') || s.includes('salmon')) return 'fish-off';
+  if (s.includes('trout') || s.includes('salmon')) return 'fish';
   if (s.includes('pike') || s.includes('perch')) return 'fish';
   if (s.includes('carp')) return 'fish';
   if (s.includes('tuna') || s.includes('marlin')) return 'sail-boat';

@@ -21,6 +21,7 @@ export interface SessionSummary {
 interface SessionState {
   activeSession: ActiveSession | null;
   lastSummary: SessionSummary | null;
+  sessionHistory: SessionSummary[];
   startSession: (spotName: string, opts?: { spotQuery?: string; latitude?: number; longitude?: number }) => void;
   addCatchToSession: (catchId: string) => void;
   endSession: () => void;
@@ -33,6 +34,7 @@ export const useSessionStore = create<SessionState>()(
     (set, get) => ({
       activeSession: null,
       lastSummary: null,
+      sessionHistory: [],
 
       startSession: (spotName, opts) =>
         set({
@@ -55,14 +57,16 @@ export const useSessionStore = create<SessionState>()(
       endSession: () => {
         const session = get().activeSession;
         if (!session) return;
+        const summary: SessionSummary = {
+          spotName: session.spotName,
+          startTime: session.startTime,
+          endTime: new Date().toISOString(),
+          catchIds: session.catchIds,
+        };
         set({
           activeSession: null,
-          lastSummary: {
-            spotName: session.spotName,
-            startTime: session.startTime,
-            endTime: new Date().toISOString(),
-            catchIds: session.catchIds,
-          },
+          lastSummary: summary,
+          sessionHistory: [summary, ...get().sessionHistory].slice(0, 50),
         });
       },
 

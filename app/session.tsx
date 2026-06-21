@@ -55,7 +55,7 @@ function getBarColor(v: number): string {
 export default function SessionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { activeSession, addCatchToSession, endSession } = useSessionStore();
+  const { activeSession, addCatchToSession, endSession, sessionHistory } = useSessionStore();
   const { addCatch, catches } = useCatchStore();
   const { weather } = useWeather(activeSession?.spotQuery);
   const [now, setNow] = useState(Date.now());
@@ -90,17 +90,17 @@ export default function SessionScreen() {
     ]);
   };
 
-  const handleLogCatch = () => {
+  const handleLogCatch = async () => {
     if (!species.trim()) return;
     const newCatch = {
       species: species.trim(),
       weight: parseFloat(weight) || 0,
       location: spotName,
-      date: new Date().toISOString(),
       bait: bait.trim() || undefined,
       notes: '',
     };
-    const result = addCatch(newCatch as any);
+    const result = await addCatch(newCatch as any);
+    addCatchToSession(result.id);
     setSpecies(''); setWeight(''); setBait('');
     setLogOpen(false);
   };
@@ -122,7 +122,7 @@ export default function SessionScreen() {
   if (!activeSession) {
     return (
       <SafeAreaView style={s.safe} edges={['top']}>
-        <View style={s.noSessionContainer}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
           <LinearGradient colors={['#0A1E2E', '#051015']} style={s.noSessionHero}>
             <MaterialCommunityIcons name="fish" size={48} color="rgba(0,212,170,0.3)" />
             <Text style={s.noSessionTitle}>No Active Session</Text>
@@ -138,7 +138,37 @@ export default function SessionScreen() {
               </LinearGradient>
             </TouchableOpacity>
           </LinearGradient>
-        </View>
+
+          {sessionHistory.length > 0 && (
+            <View style={s.historySection}>
+              <Text style={s.historyTitle}>PAST SESSIONS</Text>
+              {sessionHistory.map((sess, i) => {
+                const start = new Date(sess.startTime);
+                const end = new Date(sess.endTime);
+                const durMs = end.getTime() - start.getTime();
+                const durH = Math.floor(durMs / 3600000);
+                const durM = Math.floor((durMs % 3600000) / 60000);
+                const durStr = durH > 0 ? `${durH}h ${durM}m` : `${durM}m`;
+                const dateStr = start.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+                return (
+                  <View key={i} style={[s.historyRow, i > 0 && s.historyRowBorder]}>
+                    <View style={s.historyIcon}>
+                      <MaterialCommunityIcons name="map-marker-outline" size={18} color={colors.primary} />
+                    </View>
+                    <View style={s.historyBody}>
+                      <Text style={s.historySpot}>{sess.spotName}</Text>
+                      <Text style={s.historyMeta}>{dateStr} · {durStr}</Text>
+                    </View>
+                    <View style={s.historyCatches}>
+                      <MaterialCommunityIcons name="fish" size={12} color={colors.textSecondary} />
+                      <Text style={s.historyCatchCount}>{sess.catchIds.length}</Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -512,9 +542,8 @@ export default function SessionScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
-  noSessionContainer: { flex: 1 },
   noSessionHero: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 40,
+    alignItems: 'center', justifyContent: 'center', gap: 12, padding: 40, paddingVertical: 60,
   },
   noSessionTitle: { fontSize: 22, fontWeight: '800', color: colors.textPrimary, marginTop: 8 },
   noSessionSub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
@@ -524,6 +553,36 @@ const s = StyleSheet.create({
     gap: 10, paddingVertical: 16,
   },
   noSessionBtnText: { fontSize: 14, fontWeight: '800', color: '#051410', letterSpacing: 1.5 },
+
+  historySection: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    ...elevation.raised,
+  },
+  historyTitle: {
+    fontSize: 10, fontWeight: '800', color: colors.textTertiary,
+    letterSpacing: 1.5, paddingHorizontal: spacing.md, paddingTop: 14, paddingBottom: 10,
+  },
+  historyRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: spacing.md, paddingVertical: 14,
+  },
+  historyRowBorder: { borderTopWidth: 1, borderTopColor: colors.border },
+  historyIcon: {
+    width: 36, height: 36, borderRadius: radius.sm,
+    backgroundColor: 'rgba(0,212,170,0.1)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  historyBody: { flex: 1, gap: 3 },
+  historySpot: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  historyMeta: { fontSize: 12, color: colors.textSecondary },
+  historyCatches: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  historyCatchCount: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
 
   // Hero
   hero: { paddingHorizontal: spacing.lg, paddingBottom: 20 },

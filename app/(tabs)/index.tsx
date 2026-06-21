@@ -234,8 +234,8 @@ export default function HomeScreen() {
               <View style={s.spotIconBg}>
                 <MaterialCommunityIcons
                   name={getSpotIcon(spot.type) as any}
-                  size={64}
-                  color="rgba(0,212,170,0.07)"
+                  size={72}
+                  color="rgba(0,212,170,0.12)"
                 />
               </View>
               {/* Distance badge */}
