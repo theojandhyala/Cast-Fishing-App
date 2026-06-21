@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Component, ReactNode } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -11,7 +12,29 @@ import { useUserStore } from '../store/userStore';
 import { useProStore } from '../store/proStore';
 import { colors } from '../constants/theme';
 
-SplashScreen.preventAutoHideAsync();
+try { SplashScreen.preventAutoHideAsync(); } catch {}
+
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#0A0E1A', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          <Text style={{ color: '#00D4AA', fontSize: 18, fontWeight: '700', marginBottom: 12 }}>Something went wrong</Text>
+          <Text style={{ color: '#8B95A7', fontSize: 13, textAlign: 'center', marginBottom: 24 }}>
+            {(this.state.error as Error).message}
+          </Text>
+          <TouchableOpacity onPress={() => this.setState({ error: null })}
+            style={{ backgroundColor: '#00D4AA', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 }}>
+            <Text style={{ color: '#0A0E1A', fontWeight: '700' }}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export default function RootLayout() {
   const { loadUser } = useAuthStore();
@@ -32,20 +55,19 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    // Fallback: if fonts don't load within 4s, continue anyway
+    // Fallback: proceed even if fonts fail to load within 4s
     const timeout = setTimeout(() => setReady(true), 4000);
-    if (fontsLoaded) {
-      clearTimeout(timeout);
-      setReady(true);
-    }
+    if (fontsLoaded) { clearTimeout(timeout); setReady(true); }
     return () => clearTimeout(timeout);
   }, [fontsLoaded]);
 
   useEffect(() => {
     if (!ready) return;
     async function init() {
-      await Promise.all([loadUser(), loadCatches(), loadUserPrefs(), loadPro()]);
-      await SplashScreen.hideAsync().catch(() => {});
+      try {
+        await Promise.all([loadUser(), loadCatches(), loadUserPrefs(), loadPro()]);
+      } catch {}
+      try { await SplashScreen.hideAsync(); } catch {}
     }
     init();
   }, [ready]);
@@ -53,7 +75,7 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
-    <>
+    <ErrorBoundary>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -119,6 +141,6 @@ export default function RootLayout() {
         <Stack.Screen name="session" options={{ headerShown: false }} />
         <Stack.Screen name="session-summary" options={{ headerShown: false, presentation: 'modal' }} />
       </Stack>
-    </>
+    </ErrorBoundary>
   );
 }

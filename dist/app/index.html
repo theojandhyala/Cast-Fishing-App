@@ -34,6 +34,17 @@
     </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-  <script src="/app/_expo/static/js/web/entry-aaa19bc47a39cb888acbd7e28f4f8c5f.js" defer></script>
+  <script src="/app/_expo/static/js/web/entry-ae94118f66b15dd9c2759e00e615145c.js" defer></script>
+<style>
+  #cast-loader{position:fixed;inset:0;background:#0A0E1A;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
+  #cast-loader.hidden{opacity:0;pointer-events:none}
+  .cast-spin{width:44px;height:44px;border:3px solid rgba(0,212,170,.2);border-top-color:#00D4AA;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:18px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .cast-loader-text{color:#00D4AA;font-family:system-ui,sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;opacity:.7}
+</style>
+<div id="cast-loader"><div class="cast-spin"></div><div class="cast-loader-text">CAST</div></div>
+<script>
+  window.addEventListener('load',function(){var l=document.getElementById('cast-loader');if(l){l.classList.add('hidden');setTimeout(function(){l.remove()},500);}});
+</script>
 </body>
 </html>
