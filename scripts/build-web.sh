@@ -47,9 +47,27 @@ spinner = '''<style>
   .cast-spin{width:44px;height:44px;border:3px solid rgba(0,212,170,.2);border-top-color:#00D4AA;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:18px}
   @keyframes spin{to{transform:rotate(360deg)}}
   .cast-loader-text{color:#00D4AA;font-family:system-ui,sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;opacity:.7}
+  #cast-retry{display:none;flex-direction:column;align-items:center;gap:12px}
+  #cast-retry-btn{background:#00D4AA;color:#0A0E1A;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer}
+  #cast-retry-msg{color:#8B95A7;font-family:system-ui,sans-serif;font-size:13px;text-align:center}
 </style>
-<div id="cast-loader"><div class="cast-spin"></div><div class="cast-loader-text">CAST</div></div>
+<div id="cast-loader">
+  <div id="cast-spin-wrap"><div class="cast-spin"></div><div class="cast-loader-text">CAST</div></div>
+  <div id="cast-retry">
+    <div id="cast-retry-msg">Taking longer than expected</div>
+    <button id="cast-retry-btn" onclick="window.location.reload()">Reload App</button>
+  </div>
+</div>
 <script>
+  // Capture JS errors and show reload button
+  window.onerror=function(){showRetry();};
+  window.addEventListener('unhandledrejection',function(){showRetry();});
+  function showRetry(){
+    var spin=document.getElementById('cast-spin-wrap');
+    var retry=document.getElementById('cast-retry');
+    if(spin)spin.style.display='none';
+    if(retry)retry.style.display='flex';
+  }
   // Hide spinner once React has mounted something into #root
   function checkMounted(){
     var root=document.getElementById('root');
@@ -59,8 +77,11 @@ spinner = '''<style>
     else{setTimeout(checkMounted,100);}
   }
   document.addEventListener('DOMContentLoaded',function(){setTimeout(checkMounted,200);});
-  // Safety net: hide after 10s regardless
-  setTimeout(function(){var l=document.getElementById('cast-loader');if(l){l.classList.add('hidden');setTimeout(function(){l.remove()},600);}},10000);
+  // After 12s with no mount, show reload button instead of blank
+  setTimeout(function(){
+    var root=document.getElementById('root');
+    if(!root||root.children.length===0){showRetry();}
+  },12000);
 </script>'''
 html = html.replace('</body>', spinner + '\n</body>', 1)
 p.write_text(html)
