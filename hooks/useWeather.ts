@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CONFIG } from '../constants/config';
 
 export interface DailyForecast {
   date: string;
@@ -54,7 +53,7 @@ const MOCK_WEATHER: Omit<WeatherData, 'moonPhase' | 'moonEmoji' | 'fishingScore'
   temp: 14,
   feelsLike: 12,
   description: 'Partly Cloudy',
-  icon: '⛅',
+  icon: 'weather-partly-cloudy',
   wind: 12,
   windDirection: 225,
   humidity: 72,
@@ -118,6 +117,34 @@ export function calculateFishingScore(params: {
   return Math.max(0, Math.min(100, score));
 }
 
+function wmoDescription(code: number): string {
+  if (code === 0) return 'Clear Sky';
+  if (code <= 2) return 'Partly Cloudy';
+  if (code === 3) return 'Overcast';
+  if (code <= 9) return 'Fog';
+  if (code <= 19) return 'Drizzle';
+  if (code <= 29) return 'Rain';
+  if (code <= 39) return 'Snow';
+  if (code <= 49) return 'Fog';
+  if (code <= 59) return 'Drizzle';
+  if (code <= 69) return 'Rain';
+  if (code <= 79) return 'Snow';
+  if (code <= 84) return 'Rain Showers';
+  if (code <= 94) return 'Thunderstorm';
+  return 'Storm';
+}
+
+function wmoIcon(code: number): string {
+  if (code === 0) return 'weather-sunny';
+  if (code <= 2) return 'weather-partly-cloudy';
+  if (code === 3) return 'weather-cloudy';
+  if (code <= 49) return 'weather-fog';
+  if (code <= 69) return 'weather-rainy';
+  if (code <= 79) return 'weather-snowy';
+  if (code <= 84) return 'weather-pouring';
+  return 'weather-lightning-rainy';
+}
+
 function seededRandom(seed: number): number {
   const x = Math.sin(seed) * 10000;
   return x - Math.floor(x);
@@ -167,6 +194,47 @@ function generate7DayForecast(baseDate: Date): DailyForecast[] {
   });
 }
 
+function generate7DayForecastFromApi(
+  daily: {
+    time: string[];
+    weather_code: number[];
+    temperature_2m_max: number[];
+    temperature_2m_min: number[];
+    wind_speed_10m_max: number[];
+    surface_pressure_mean: number[];
+  },
+  baseDate: Date
+): DailyForecast[] {
+  return daily.time.slice(0, 7).map((dateStr, i) => {
+    const day = new Date(dateStr + 'T12:00:00');
+    const code = daily.weather_code[i] ?? 0;
+    const high = Math.round(daily.temperature_2m_max[i] ?? 15);
+    const low = Math.round(daily.temperature_2m_min[i] ?? 10);
+    const wind = Math.round(daily.wind_speed_10m_max[i] ?? 10);
+    const pressure = Math.round(daily.surface_pressure_mean[i] ?? 1013);
+    const description = wmoDescription(code);
+
+    const fishingScore = calculateFishingScore({
+      pressure,
+      pressureTrend: 'stable',
+      wind,
+      description,
+    });
+
+    return {
+      date: day.toISOString(),
+      dayName: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : DAY_NAMES[day.getDay()],
+      icon: WEATHER_ICONS[Math.min(Math.floor(code / 20), WEATHER_ICONS.length - 1)],
+      high,
+      low,
+      description,
+      wind,
+      pressure,
+      fishingScore,
+    };
+  });
+}
+
 function generateHourlyForecast(baseDate: Date): HourlyForecast[] {
   const baseTemp = 12 + Math.round(seededRandom(baseDate.getDate()) * 8);
   const now = baseDate.getHours();
@@ -203,6 +271,56 @@ function generateHourlyForecast(baseDate: Date): HourlyForecast[] {
       fishingScore,
     };
   });
+}
+
+function generateHourlyForecastFromApi(
+  hourly: {
+    time: string[];
+    temperature_2m: number[];
+    weather_code: number[];
+    wind_speed_10m: number[];
+    surface_pressure: number[];
+  },
+  baseDate: Date
+): HourlyForecast[] {
+  // Find the start of today
+  const todayStr = baseDate.toISOString().slice(0, 10);
+  const todayEntries = hourly.time
+    .map((t, i) => ({ t, i }))
+    .filter(({ t }) => t.startsWith(todayStr));
+
+  const result: HourlyForecast[] = [];
+  for (let h = 0; h < 24; h++) {
+    const entry = todayEntries.find(({ t }) => t.endsWith(`T${String(h).padStart(2, '0')}:00`));
+    const idx = entry?.i ?? -1;
+
+    const temp = idx >= 0 ? Math.round(hourly.temperature_2m[idx]) : 15;
+    const code = idx >= 0 ? (hourly.weather_code[idx] ?? 0) : 0;
+    const wind = idx >= 0 ? Math.round(hourly.wind_speed_10m[idx]) : 10;
+    const pressure = idx >= 0 ? Math.round(hourly.surface_pressure[idx]) : 1013;
+    const description = wmoDescription(code);
+
+    const fishingScore = calculateFishingScore({
+      pressure,
+      pressureTrend: 'stable',
+      wind,
+      description,
+      hour: h,
+    });
+
+    const label = h === 0 ? 'Midnight' : h === 12 ? 'Noon' : h < 12 ? `${h}am` : `${h - 12}pm`;
+
+    result.push({
+      hour: h,
+      label,
+      icon: wmoIcon(code),
+      temp,
+      wind,
+      pressure,
+      fishingScore,
+    });
+  }
+  return result;
 }
 
 function generateSolunarTimes(date: Date): SolunarTime[] {
@@ -246,16 +364,38 @@ function generateSolunarTimes(date: Date): SolunarTime[] {
   ];
 }
 
-export function useWeather(latOrCity?: number | string, lon?: number) {
+function buildMockWeather(now: Date): WeatherData {
+  const moon = getMoonPhase(now);
+  const fishingScore = calculateFishingScore({
+    pressure: MOCK_WEATHER.pressure,
+    pressureTrend: MOCK_WEATHER.pressureTrend,
+    wind: MOCK_WEATHER.wind,
+    description: MOCK_WEATHER.description,
+    hour: now.getHours(),
+  });
+  return {
+    ...MOCK_WEATHER,
+    moonPhase: moon.phase,
+    moonEmoji: moon.emoji,
+    fishingScore,
+    forecast7day: generate7DayForecast(now),
+    hourlyToday: generateHourlyForecast(now),
+    solunarTimes: generateSolunarTimes(now),
+  };
+}
+
+export function useWeather(lat?: number, lon?: number) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const cacheKey = typeof latOrCity === 'string' ? `cast_weather_${latOrCity}` : 'cast_weather';
+  const hasCoords = lat !== undefined && lon !== undefined;
+  const cacheKey = hasCoords ? `cast_weather_${lat.toFixed(3)}_${lon.toFixed(3)}` : 'cast_weather_mock';
 
   useEffect(() => {
     async function fetchWeather() {
       setLoading(true);
+      setError(null);
 
       try {
         const cached = await AsyncStorage.getItem(cacheKey);
@@ -270,88 +410,73 @@ export function useWeather(latOrCity?: number | string, lon?: number) {
       } catch {}
 
       const now = new Date();
-      const moon = getMoonPhase(now);
 
-      const hasCity = typeof latOrCity === 'string' && latOrCity.length > 0;
-      const hasCoords = typeof latOrCity === 'number' && lon !== undefined;
-
-      if (!CONFIG.OPENWEATHER_API_KEY || (!hasCity && !hasCoords)) {
-        const fishingScore = calculateFishingScore({
-          pressure: MOCK_WEATHER.pressure,
-          pressureTrend: MOCK_WEATHER.pressureTrend,
-          wind: MOCK_WEATHER.wind,
-          description: MOCK_WEATHER.description,
-          hour: now.getHours(),
-        });
-
-        const mock: WeatherData = {
-          ...MOCK_WEATHER,
-          moonPhase: moon.phase,
-          moonEmoji: moon.emoji,
-          fishingScore,
-          forecast7day: generate7DayForecast(now),
-          hourlyToday: generateHourlyForecast(now),
-          solunarTimes: generateSolunarTimes(now),
-        };
-        setWeather(mock);
+      if (!hasCoords) {
+        setWeather(buildMockWeather(now));
         setLoading(false);
         return;
       }
 
       try {
-        const url = hasCity
-          ? `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(latOrCity as string)}&appid=${CONFIG.OPENWEATHER_API_KEY}&units=metric`
-          : `https://api.openweathermap.org/data/2.5/weather?lat=${latOrCity}&lon=${lon}&appid=${CONFIG.OPENWEATHER_API_KEY}&units=metric`;
+        const url =
+          `https://api.open-meteo.com/v1/forecast` +
+          `?latitude=${lat}&longitude=${lon}` +
+          `&current=temperature_2m,apparent_temperature,wind_speed_10m,weather_code,surface_pressure,relative_humidity_2m,wind_direction_10m` +
+          `&hourly=temperature_2m,weather_code,wind_speed_10m,surface_pressure` +
+          `&daily=weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,surface_pressure_mean` +
+          `&timezone=auto&forecast_days=7`;
+
         const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
+        const current = data.current;
+        const code = current.weather_code ?? 0;
+        const description = wmoDescription(code);
+        const icon = wmoIcon(code);
+        const temp = Math.round(current.temperature_2m ?? 15);
+        const feelsLike = Math.round(current.apparent_temperature ?? temp);
+        const wind = Math.round(current.wind_speed_10m ?? 10);
+        const windDirection = Math.round(current.wind_direction_10m ?? 0);
+        const humidity = Math.round(current.relative_humidity_2m ?? 70);
+        const pressure = Math.round(current.surface_pressure ?? 1013);
+
+        const moon = getMoonPhase(now);
+
+        const fishingScore = calculateFishingScore({
+          pressure,
+          pressureTrend: 'stable',
+          wind,
+          description,
+          hour: now.getHours(),
+        });
+
         const weatherData: WeatherData = {
-          temp: Math.round(data.main.temp),
-          feelsLike: Math.round(data.main.feels_like),
-          description: data.weather[0].description,
-          icon: '⛅',
-          wind: Math.round(data.wind.speed * 3.6),
-          windDirection: data.wind.deg,
-          humidity: data.main.humidity,
-          pressure: data.main.pressure,
+          temp,
+          feelsLike,
+          description,
+          icon,
+          wind,
+          windDirection,
+          humidity,
+          pressure,
           pressureTrend: 'stable',
           moonPhase: moon.phase,
           moonEmoji: moon.emoji,
-          fishingScore: 50,
-          city: data.name,
-          forecast7day: generate7DayForecast(now),
-          hourlyToday: generateHourlyForecast(now),
+          fishingScore,
+          city: `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
+          forecast7day: generate7DayForecastFromApi(data.daily, now),
+          hourlyToday: generateHourlyForecastFromApi(data.hourly, now),
           solunarTimes: generateSolunarTimes(now),
         };
-        weatherData.fishingScore = calculateFishingScore({
-          pressure: weatherData.pressure,
-          pressureTrend: weatherData.pressureTrend,
-          wind: weatherData.wind,
-          description: weatherData.description,
-          hour: now.getHours(),
-        });
 
-        const cacheData = { data: weatherData, timestamp: Date.now() };
-        await AsyncStorage.setItem(cacheKey, JSON.stringify(cacheData));
+        try {
+          await AsyncStorage.setItem(cacheKey, JSON.stringify({ data: weatherData, timestamp: Date.now() }));
+        } catch {}
+
         setWeather(weatherData);
       } catch (e) {
-        const fishingScore = calculateFishingScore({
-          pressure: MOCK_WEATHER.pressure,
-          pressureTrend: MOCK_WEATHER.pressureTrend,
-          wind: MOCK_WEATHER.wind,
-          description: MOCK_WEATHER.description,
-          hour: now.getHours(),
-        });
-        const mock: WeatherData = {
-          ...MOCK_WEATHER,
-          moonPhase: moon.phase,
-          moonEmoji: moon.emoji,
-          fishingScore,
-          forecast7day: generate7DayForecast(now),
-          hourlyToday: generateHourlyForecast(now),
-          solunarTimes: generateSolunarTimes(now),
-        };
-        setWeather(mock);
+        setWeather(buildMockWeather(now));
         setError('Using offline data');
       } finally {
         setLoading(false);
@@ -359,7 +484,7 @@ export function useWeather(latOrCity?: number | string, lon?: number) {
     }
 
     fetchWeather();
-  }, [latOrCity, lon]);
+  }, [lat, lon]);
 
   return { weather, loading, error };
 }
