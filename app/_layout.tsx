@@ -1,6 +1,7 @@
-import { useEffect, useState, Component, ReactNode } from 'react';
+import { useEffect, Component, ReactNode } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Stack } from 'expo-router';
+import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
@@ -11,6 +12,18 @@ import { useCatchStore } from '../store/catchStore';
 import { useUserStore } from '../store/userStore';
 import { useProStore } from '../store/proStore';
 import { colors } from '../constants/theme';
+
+const CastTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: colors.background,
+    card: colors.surface,
+    text: colors.textPrimary,
+    border: 'rgba(255,255,255,0.08)',
+    primary: colors.primary,
+  },
+};
 
 try { SplashScreen.preventAutoHideAsync(); } catch {}
 
@@ -66,7 +79,9 @@ export default function RootLayout() {
   }, []);
 
   return (
+    <ThemeProvider value={CastTheme}>
     <ErrorBoundary>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -132,6 +147,8 @@ export default function RootLayout() {
         <Stack.Screen name="session" options={{ headerShown: false }} />
         <Stack.Screen name="session-summary" options={{ headerShown: false, presentation: 'modal' }} />
       </Stack>
+      </View>
     </ErrorBoundary>
+    </ThemeProvider>
   );
 }
