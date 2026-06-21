@@ -52,8 +52,7 @@ export default function RootLayout() {
   const { loadUser } = useAuthStore();
   const { loadCatches } = useCatchStore();
   const { load: loadUserPrefs } = useUserStore();
-  // Load fonts without blocking — app renders immediately with system fonts
-  // then upgrades to custom fonts once loaded. No blank-screen wait.
+
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_600SemiBold,
@@ -62,10 +61,13 @@ export default function RootLayout() {
     Syne_700Bold,
     JetBrainsMono_500Medium,
     JetBrainsMono_700Bold,
+    // Must be loaded explicitly on web — font name must match exactly what
+    // @expo/vector-icons uses internally to resolve icon glyphs
     MaterialCommunityIcons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
   });
 
   useEffect(() => {
+    if (!fontsLoaded) return;
     async function init() {
       try {
         await Promise.all([loadUser(), loadCatches(), loadUserPrefs()]);
@@ -73,7 +75,12 @@ export default function RootLayout() {
       try { await SplashScreen.hideAsync(); } catch {}
     }
     init();
-  }, []);
+  }, [fontsLoaded]);
+
+  // Don't render until icon font is loaded — prevents rectangle flash
+  if (!fontsLoaded) {
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+  }
 
   return (
     <ThemeProvider value={CastTheme}>
