@@ -60,7 +60,7 @@ export default function RootLayout() {
     if (existing) return;
     const style = document.createElement('style');
     style.id = 'mci-font';
-    style.textContent = `@font-face{font-family:'MaterialCommunityIcons';src:url('/assets/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.b62641afc9ab487008e996a5c5865e56.ttf') format('truetype');font-weight:normal;font-style:normal;}`;
+    style.textContent = `@font-face{font-family:'material-community';src:url('/assets/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.b62641afc9ab487008e996a5c5865e56.ttf') format('truetype');font-weight:normal;font-style:normal;}`;
     document.head.appendChild(style);
   }, []);
 
@@ -74,7 +74,7 @@ export default function RootLayout() {
     JetBrainsMono_700Bold,
     // Must be loaded explicitly on web — font name must match exactly what
     // @expo/vector-icons uses internally to resolve icon glyphs
-    MaterialCommunityIcons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
+    'material-community': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
   });
 
   useEffect(() => {
