@@ -25,7 +25,8 @@
     </style>
   <meta name="theme-color" content="#0A0E1A">
 <meta name="description" content="AI-powered fish identification, 10,000+ worldwide fishing spots, weather conditions, tides and catch logging. The ultimate fishing companion.">
-<link rel="icon" href="/favicon.ico" /></head>
+<link rel="icon" href="/favicon.ico" />
+<style>html,body{background:#0A0E1A!important}</style></head>
 
   <body>
     <!-- Use static rendering with Expo Router to support running without JavaScript. -->
@@ -36,16 +37,33 @@
     <div id="root"></div>
   <script src="/_expo/static/js/web/entry-c6c969ff7163130d7719aba51ee7e816.js" defer></script>
 <style>
-  body{background:#0A0E1A}
   #cast-loader{position:fixed;inset:0;background:#0A0E1A;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s}
   #cast-loader.hidden{opacity:0;pointer-events:none}
   .cast-spin{width:44px;height:44px;border:3px solid rgba(0,212,170,.2);border-top-color:#00D4AA;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:18px}
   @keyframes spin{to{transform:rotate(360deg)}}
   .cast-loader-text{color:#00D4AA;font-family:system-ui,sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;opacity:.7}
+  #cast-retry{display:none;flex-direction:column;align-items:center;gap:12px}
+  #cast-retry-btn{background:#00D4AA;color:#0A0E1A;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer}
+  #cast-retry-msg{color:#8B95A7;font-family:system-ui,sans-serif;font-size:13px;text-align:center;max-width:260px}
 </style>
-<div id="cast-loader"><div class="cast-spin"></div><div class="cast-loader-text">CAST</div></div>
+<div id="cast-loader">
+  <div id="cast-spin-wrap"><div class="cast-spin"></div><div class="cast-loader-text">CAST</div></div>
+  <div id="cast-retry">
+    <div id="cast-retry-msg">Taking longer than expected</div>
+    <button id="cast-retry-btn" onclick="window.location.reload()">Reload App</button>
+  </div>
+</div>
 <script>
-  // Hide spinner once React has mounted something into #root
+  window.onerror=function(msg,src,line,col,err){showRetry('JS error: '+(err?err.message:msg));return false;};
+  window.addEventListener('unhandledrejection',function(e){showRetry('Promise error: '+(e.reason&&e.reason.message?e.reason.message:String(e.reason)));});
+  function showRetry(detail){
+    var spin=document.getElementById('cast-spin-wrap');
+    var retry=document.getElementById('cast-retry');
+    var msg=document.getElementById('cast-retry-msg');
+    if(spin)spin.style.display='none';
+    if(retry)retry.style.display='flex';
+    if(detail&&msg)msg.textContent=detail;
+  }
   function checkMounted(){
     var root=document.getElementById('root');
     var loader=document.getElementById('cast-loader');
@@ -54,8 +72,10 @@
     else{setTimeout(checkMounted,100);}
   }
   document.addEventListener('DOMContentLoaded',function(){setTimeout(checkMounted,200);});
-  // Safety net: hide after 10s regardless
-  setTimeout(function(){var l=document.getElementById('cast-loader');if(l){l.classList.add('hidden');setTimeout(function(){l.remove()},600);}},10000);
+  setTimeout(function(){
+    var root=document.getElementById('root');
+    if(!root||root.children.length===0){showRetry('App took too long — tap to reload');}
+  },12000);
 </script>
 </body>
 </html>

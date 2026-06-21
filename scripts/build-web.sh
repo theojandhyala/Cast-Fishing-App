@@ -35,13 +35,33 @@ cat > dist/_redirects <<'EOF'
 /*  /index.html  200
 EOF
 
-echo "==> Injecting loading spinner into dist/index.html"
+echo "==> Writing dist/_headers (no-cache for HTML)"
+cat > dist/_headers <<'EOF'
+/*.html
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+EOF
+
+echo "==> Injecting dark background + loading spinner into dist/index.html"
 python3 - <<'PYEOF'
 import pathlib
 p = pathlib.Path('dist/index.html')
 html = p.read_text()
+
+# 1. Inject dark background into <head> so it appears BEFORE any JS executes.
+#    This fixes "white flash" on slow connections and ensures iOS Safari sees
+#    the dark theme immediately from raw HTML.
+head_css = '''<style>
+  html,body{background:#0A0E1A!important;-webkit-background-size:cover;background-size:cover}
+</style>'''
+html = html.replace('</head>', head_css + '\n</head>', 1)
+
+# 2. Inject full-featured loading spinner + error recovery before </body>
 spinner = '''<style>
-  body{background:#0A0E1A}
   #cast-loader{position:fixed;inset:0;background:#0A0E1A;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s}
   #cast-loader.hidden{opacity:0;pointer-events:none}
   .cast-spin{width:44px;height:44px;border:3px solid rgba(0,212,170,.2);border-top-color:#00D4AA;border-radius:50%;animation:spin .8s linear infinite;margin-bottom:18px}
@@ -59,16 +79,16 @@ spinner = '''<style>
   </div>
 </div>
 <script>
-  // Capture JS errors and show reload button
-  window.onerror=function(){showRetry();};
-  window.addEventListener('unhandledrejection',function(){showRetry();});
-  function showRetry(){
+  window.onerror=function(msg,src,line,col,err){showRetry('JS error: '+(err?err.message:msg));return false;};
+  window.addEventListener('unhandledrejection',function(e){showRetry('Promise error: '+(e.reason&&e.reason.message?e.reason.message:String(e.reason)));});
+  function showRetry(detail){
     var spin=document.getElementById('cast-spin-wrap');
     var retry=document.getElementById('cast-retry');
+    var msg=document.getElementById('cast-retry-msg');
     if(spin)spin.style.display='none';
     if(retry)retry.style.display='flex';
+    if(detail&&msg)msg.textContent=detail;
   }
-  // Hide spinner once React has mounted something into #root
   function checkMounted(){
     var root=document.getElementById('root');
     var loader=document.getElementById('cast-loader');
@@ -77,15 +97,14 @@ spinner = '''<style>
     else{setTimeout(checkMounted,100);}
   }
   document.addEventListener('DOMContentLoaded',function(){setTimeout(checkMounted,200);});
-  // After 12s with no mount, show reload button instead of blank
   setTimeout(function(){
     var root=document.getElementById('root');
-    if(!root||root.children.length===0){showRetry();}
+    if(!root||root.children.length===0){showRetry('App took too long — tap to reload');}
   },12000);
 </script>'''
 html = html.replace('</body>', spinner + '\n</body>', 1)
 p.write_text(html)
-print('  Spinner injected.')
+print('  Dark background + spinner injected into head and body.')
 PYEOF
 
 echo "==> Done. dist/ contents:"
