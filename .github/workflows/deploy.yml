@@ -26,3 +26,17 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 0e58fe4a2ba9eabd4aa4e029b8b5ed85
+
+      - name: Health check (wait for Cloudflare to propagate, then verify)
+        run: |
+          echo "Waiting 15s for Cloudflare to propagate..."
+          sleep 15
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://castfishingapp.com/)
+          echo "castfishingapp.com status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "WARNING: castfishingapp.com returned $STATUS (expected 200)"
+          else
+            echo "OK: castfishingapp.com is up"
+          fi
+          STATUS2=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://cast-fishing-app.pages.dev/)
+          echo "pages.dev status: $STATUS2"
