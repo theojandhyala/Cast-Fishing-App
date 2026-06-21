@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
   TouchableOpacity, Image,
@@ -9,15 +9,14 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../store/authStore';
 import { useCatchStore } from '../../store/catchStore';
-import { useLocationStore } from '../../store/locationStore';
 import { useWeather } from '../../hooks/useWeather';
 import { useLocation } from '../../hooks/useLocation';
 import { colors, spacing, radius, elevation } from '../../constants/theme';
-import { WORLD_SPOTS } from '../../data/worldSpots';
+import { WORLD_SPOTS, WorldSpot } from '../../data/worldSpots';
 import { haversineKm, formatDistance } from '../../utils/distance';
 import { getSpotPhoto } from '../../constants/spotPhotos';
 
-type SpotWithDist = typeof WORLD_SPOTS[0] & { _distKm?: number };
+type SpotWithDist = WorldSpot & { _distKm?: number };
 
 function timeAgo(dateStr: string) {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
@@ -39,15 +38,10 @@ function getBestWindow() {
   return { time: '21:00 – 23:00', label: 'Night session opportunity', icon: 'weather-night' as const };
 }
 
-function getFishingScore(temp: number, pressure: number, wind: number): number {
-  let score = 60;
-  if (temp >= 12 && temp <= 22) score += 15;
-  else if (temp < 6 || temp > 28) score -= 15;
-  if (pressure >= 1010 && pressure <= 1025) score += 15;
-  else if (pressure < 990) score -= 10;
-  if (wind < 15) score += 10;
-  else if (wind > 30) score -= 10;
-  return Math.min(100, Math.max(20, score));
+function getScoreColor(score: number): string {
+  if (score >= 70) return '#00D4AA';
+  if (score >= 40) return '#F59E0B';
+  return '#EF4444';
 }
 
 function getScoreLabel(score: number) {
@@ -76,17 +70,19 @@ function getTipOfDay(): string {
 export default function HomeScreen() {
   const { user } = useAuthStore();
   const { catches } = useCatchStore();
-  const { location } = useLocationStore();
   const router = useRouter();
-  const { weather } = useWeather(location?.query);
   const { location: gpsLocation } = useLocation();
+
+  const [selectedSpot, setSelectedSpot] = useState<WorldSpot | null>(null);
+
+  const { weather } = useWeather(
+    selectedSpot?.latitude,
+    selectedSpot?.longitude
+  );
 
   const firstName = user?.name?.split(' ')[0] || 'Angler';
   const bestWindow = getBestWindow();
-  const w = weather ?? { temp: 16, wind: 10, pressure: 1015, description: 'Partly Cloudy', fishingScore: 72 };
   const recentCatches = catches.slice(0, 3);
-  const fishingScore = getFishingScore(w.temp, w.pressure, w.wind);
-  const scoreInfo = getScoreLabel(fishingScore);
   const tip = getTipOfDay();
 
   const spots: SpotWithDist[] = useMemo(() => {
@@ -98,6 +94,10 @@ export default function HomeScreen() {
   }, [gpsLocation]);
 
   const nearMe = !!gpsLocation;
+
+  const w = weather;
+  const scoreColor = w ? getScoreColor(w.fishingScore) : '#F59E0B';
+  const scoreInfo = w ? getScoreLabel(w.fishingScore) : { label: 'Unknown', color: '#F59E0B' };
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -138,51 +138,97 @@ export default function HomeScreen() {
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* ── Today's Conditions ── */}
-        <View style={s.condCard}>
-          <View style={s.condHeader}>
-            <View>
-              <Text style={s.condLabel}>TODAY'S CONDITIONS</Text>
-              <Text style={s.condSub}>Based on current weather data</Text>
-            </View>
-            <TouchableOpacity onPress={() => router.push('/weather-detail' as any)}>
-              <Text style={s.condLink}>Full report</Text>
+        {/* ── No Spot Selected Prompt ── */}
+        {!selectedSpot && (
+          <View style={s.chooseSpotCard}>
+            <Text style={s.chooseSpotLabel}>SELECT A SPOT</Text>
+            <Text style={s.chooseSpotText}>
+              Pick where you're fishing to get real-time conditions, tides and fishing forecast
+            </Text>
+            <TouchableOpacity
+              style={s.chooseSpotBtn}
+              onPress={() => router.push('/(tabs)/map' as any)}
+              activeOpacity={0.85}
+            >
+              <Text style={s.chooseSpotBtnText}>Choose Spot →</Text>
             </TouchableOpacity>
           </View>
+        )}
 
-          {/* Score row */}
-          <View style={s.scoreRow}>
-            <View style={s.scoreLeft}>
-              <Text style={[s.scoreNum, { color: scoreInfo.color }]}>{fishingScore}</Text>
-              <Text style={[s.scoreLabel, { color: scoreInfo.color }]}>{scoreInfo.label} conditions</Text>
-              <Text style={s.scoreDesc}>Fishing score out of 100</Text>
+        {/* ── Conditions Card (only when spot selected) ── */}
+        {selectedSpot && (
+          <View style={s.condCard}>
+            {/* Card header with spot name, change button, score badge */}
+            <View style={s.condHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.condLabel}>CONDITIONS AT</Text>
+                <Text style={s.condSpotName} numberOfLines={1}>{selectedSpot.name.split(',')[0]}</Text>
+              </View>
+              <View style={s.condHeaderRight}>
+                {w && (
+                  <View style={[s.scoreBadge, { borderColor: scoreColor }]}>
+                    <Text style={[s.scoreBadgeNum, { color: scoreColor }]}>{w.fishingScore}</Text>
+                    <Text style={[s.scoreBadgeLabel, { color: scoreColor }]}>/ 100</Text>
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={s.changeBtn}
+                  onPress={() => setSelectedSpot(null)}
+                >
+                  <Text style={s.changeBtnText}>Change</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={s.scoreRight}>
-              {[
-                { icon: 'thermometer', label: 'Air Temp', value: `${w.temp}°C` },
-                { icon: 'weather-windy', label: 'Wind', value: `${w.wind} km/h` },
-                { icon: 'gauge', label: 'Pressure', value: `${w.pressure} hPa` },
-              ].map(item => (
-                <View key={item.label} style={s.condItem}>
-                  <MaterialCommunityIcons name={item.icon as any} size={13} color={colors.textTertiary} />
-                  <View>
-                    <Text style={s.condItemVal}>{item.value}</Text>
-                    <Text style={s.condItemLabel}>{item.label}</Text>
+
+            {w ? (
+              <>
+                {/* Score label row */}
+                <View style={s.scoreRow}>
+                  <View style={s.scoreLeft}>
+                    <Text style={[s.scoreNum, { color: scoreInfo.color }]}>{w.fishingScore}</Text>
+                    <Text style={[s.scoreLabelText, { color: scoreInfo.color }]}>{scoreInfo.label} conditions</Text>
+                    <Text style={s.scoreDesc}>Fishing score out of 100</Text>
+                  </View>
+                  <View style={s.scoreRight}>
+                    {[
+                      { icon: 'thermometer', label: 'Air Temp', value: `${w.temp}°C` },
+                      { icon: 'weather-windy', label: 'Wind', value: `${w.wind} km/h` },
+                      { icon: 'gauge', label: 'Pressure', value: `${w.pressure} hPa` },
+                    ].map(item => (
+                      <View key={item.label} style={s.condItem}>
+                        <MaterialCommunityIcons name={item.icon as any} size={13} color={colors.textTertiary} />
+                        <View>
+                          <Text style={s.condItemVal}>{item.value}</Text>
+                          <Text style={s.condItemLabel}>{item.label}</Text>
+                        </View>
+                      </View>
+                    ))}
                   </View>
                 </View>
-              ))}
-            </View>
-          </View>
 
-          {/* Best window */}
-          <View style={s.bestWindow}>
-            <MaterialCommunityIcons name={bestWindow.icon} size={16} color={colors.secondary} />
-            <View style={{ flex: 1 }}>
-              <Text style={s.bestWindowTitle}>Best window today: {bestWindow.time}</Text>
-              <Text style={s.bestWindowSub}>{bestWindow.label}</Text>
-            </View>
+                {/* Description row */}
+                <View style={s.condDescRow}>
+                  <MaterialCommunityIcons name={w.icon as any} size={16} color={colors.primary} />
+                  <Text style={s.condDescText}>{w.description}</Text>
+                  <Text style={s.condWindDir}>Wind {w.windDirection}°</Text>
+                </View>
+
+                {/* Best window */}
+                <View style={s.bestWindow}>
+                  <MaterialCommunityIcons name={getBestWindow().icon} size={16} color={colors.secondary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.bestWindowTitle}>Best window today: {getBestWindow().time}</Text>
+                    <Text style={s.bestWindowSub}>{getBestWindow().label}</Text>
+                  </View>
+                </View>
+              </>
+            ) : (
+              <View style={s.loadingRow}>
+                <Text style={s.loadingText}>Loading conditions…</Text>
+              </View>
+            )}
           </View>
-        </View>
+        )}
 
         {/* ── Spots Near Me / Recommended ── */}
         <View style={s.sectionHead}>
@@ -205,8 +251,11 @@ export default function HomeScreen() {
           {spots.map((spot) => (
             <TouchableOpacity
               key={spot.id}
-              style={s.spotCard}
-              onPress={() => router.push({ pathname: '/spot-details', params: { id: spot.id } } as any)}
+              style={[s.spotCard, selectedSpot?.id === spot.id && s.spotCardSelected]}
+              onPress={() => {
+                setSelectedSpot(spot);
+                router.push({ pathname: '/spot-details', params: { id: spot.id } } as any);
+              }}
               activeOpacity={0.85}
             >
               <Image
@@ -225,6 +274,12 @@ export default function HomeScreen() {
                   <Text style={s.spotBadgeText}>{formatDistance(spot._distKm)}</Text>
                 )}
               </View>
+              {/* selected indicator */}
+              {selectedSpot?.id === spot.id && (
+                <View style={s.spotSelectedBadge}>
+                  <MaterialCommunityIcons name="check-circle" size={14} color={colors.primary} />
+                </View>
+              )}
               {/* species chips */}
               <View style={s.spotInfo}>
                 <Text style={s.spotName} numberOfLines={1}>{spot.name.split(',')[0]}</Text>
@@ -361,6 +416,27 @@ const s = StyleSheet.create({
   },
   ctaText: { fontSize: 14, fontWeight: '800', color: '#031A12', letterSpacing: 2 },
 
+  // ── Choose Spot Prompt
+  chooseSpotCard: {
+    marginHorizontal: spacing.lg, marginBottom: 24,
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
+    padding: spacing.lg, alignItems: 'center', gap: 12,
+    ...elevation.raised,
+  },
+  chooseSpotLabel: {
+    fontSize: 10, fontWeight: '800', color: colors.primary,
+    letterSpacing: 1.5, textTransform: 'uppercase',
+  },
+  chooseSpotText: {
+    fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20,
+  },
+  chooseSpotBtn: {
+    backgroundColor: colors.primary, borderRadius: radius.full,
+    paddingHorizontal: 24, paddingVertical: 12, marginTop: 4,
+  },
+  chooseSpotBtnText: { fontSize: 14, fontWeight: '700', color: '#031A12' },
+
   // ── Conditions card
   condCard: {
     marginHorizontal: spacing.lg, marginBottom: 28,
@@ -371,17 +447,41 @@ const s = StyleSheet.create({
   },
   condHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   condLabel: { fontSize: 10, fontWeight: '800', color: colors.textTertiary, letterSpacing: 1.5, textTransform: 'uppercase' },
-  condSub: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
-  condLink: { fontSize: 12, color: colors.primary, fontWeight: '700' },
+  condSpotName: { fontSize: 15, fontWeight: '800', color: colors.textPrimary, marginTop: 2 },
+  condHeaderRight: { alignItems: 'flex-end', gap: 8 },
+
+  scoreBadge: {
+    borderWidth: 2, borderRadius: 30,
+    width: 60, height: 60,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  scoreBadgeNum: { fontSize: 18, fontWeight: '900', lineHeight: 22 },
+  scoreBadgeLabel: { fontSize: 9, fontWeight: '700' },
+
+  changeBtn: {
+    borderWidth: 1, borderColor: colors.border, borderRadius: radius.full,
+    paddingHorizontal: 12, paddingVertical: 5,
+  },
+  changeBtnText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+
   scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   scoreLeft: { gap: 3 },
   scoreNum: { fontSize: 48, fontWeight: '900', letterSpacing: -2, lineHeight: 52 },
-  scoreLabel: { fontSize: 14, fontWeight: '800', letterSpacing: -0.3 },
+  scoreLabelText: { fontSize: 14, fontWeight: '800', letterSpacing: -0.3 },
   scoreDesc: { fontSize: 11, color: colors.textTertiary },
   scoreRight: { flex: 1, gap: 10 },
   condItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   condItemVal: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
   condItemLabel: { fontSize: 10, color: colors.textTertiary },
+
+  condDescRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(0,212,170,0.05)', borderRadius: radius.sm,
+    padding: 10, borderWidth: 1, borderColor: 'rgba(0,212,170,0.1)',
+  },
+  condDescText: { flex: 1, fontSize: 13, color: colors.textPrimary, fontWeight: '600' },
+  condWindDir: { fontSize: 11, color: colors.textTertiary },
+
   bestWindow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
     backgroundColor: 'rgba(245,158,11,0.07)', borderRadius: radius.sm,
@@ -389,6 +489,9 @@ const s = StyleSheet.create({
   },
   bestWindowTitle: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
   bestWindowSub: { fontSize: 12, color: colors.textSecondary },
+
+  loadingRow: { alignItems: 'center', padding: 20 },
+  loadingText: { fontSize: 13, color: colors.textTertiary },
 
   sectionHead: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -413,6 +516,9 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     ...elevation.raised,
   },
+  spotCardSelected: {
+    borderColor: colors.primary, borderWidth: 2,
+  },
   spotBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
     alignSelf: 'flex-end', margin: 8,
@@ -421,6 +527,10 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
   },
   spotBadgeText: { fontSize: 9, color: colors.primary, fontWeight: '700' },
+  spotSelectedBadge: {
+    position: 'absolute', top: 8, left: 8,
+    backgroundColor: 'rgba(3,8,18,0.7)', borderRadius: radius.full, padding: 2,
+  },
   spotInfo: { padding: 10 },
   spotName: { fontSize: 13, fontWeight: '700', color: '#fff', marginBottom: 4 },
   spotMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

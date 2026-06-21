@@ -53,6 +53,17 @@ export default function RootLayout() {
   const { loadCatches } = useCatchStore();
   const { load: loadUserPrefs } = useUserStore();
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    // Inject MaterialCommunityIcons font-face directly into DOM for web
+    const existing = document.getElementById('mci-font');
+    if (existing) return;
+    const style = document.createElement('style');
+    style.id = 'mci-font';
+    style.textContent = `@font-face{font-family:'MaterialCommunityIcons';src:url('/assets/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.b62641afc9ab487008e996a5c5865e56.ttf') format('truetype');font-weight:normal;font-style:normal;}`;
+    document.head.appendChild(style);
+  }, []);
+
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_600SemiBold,
