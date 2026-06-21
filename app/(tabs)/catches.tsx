@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  FlatList, TouchableOpacity, TextInput, Dimensions, Image,
+  FlatList, TouchableOpacity, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,10 +11,8 @@ import { useCatchStore } from '../../store/catchStore';
 import { colors, radius, spacing, elevation } from '../../constants/theme';
 import { getSpeciesImage } from '../../constants/spotImages';
 
-const { width } = Dimensions.get('window');
-const CARD_W = (width - spacing.lg * 2 - 12) / 2;
-
-const FILTERS = ['All', 'Species', 'Date', 'Spot'];
+const TABS = ['My Catches', 'Statistics'] as const;
+type Tab = typeof TABS[number];
 
 const CATCH_GRADS: [string, string][] = [
   ['#0F2A1C', '#061510'], ['#0F1E2E', '#060E18'],
@@ -22,169 +20,184 @@ const CATCH_GRADS: [string, string][] = [
   ['#201A08', '#100D04'], ['#0F0F24', '#070710'],
 ];
 
-function timeAgo(dateStr: string) {
+function formatDate(dateStr: string) {
   const d = new Date(dateStr);
-  const now = new Date();
-  if (d.toDateString() === now.toDateString()) {
-    return `Today, ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-  }
-  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  return `${Math.floor((now.getTime() - d.getTime()) / 86400000)}d ago`;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const h = d.getHours();
+  const m = String(d.getMinutes()).padStart(2, '0');
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} - ${hour}:${m} ${ampm}`;
 }
 
 export default function CatchesScreen() {
   const { catches, getStats } = useCatchStore();
   const router = useRouter();
-  const [filter, setFilter] = useState('All');
-  const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<Tab>('My Catches');
+  const [saved, setSaved] = useState<Set<string>>(new Set());
   const stats = getStats();
-  const pbMap = stats.personalBests || {};
 
   const totalWeight = catches.reduce((sum, c) => sum + (c.weight || 0), 0);
   const speciesCount = Object.keys(stats.speciesCounts || {}).length;
   const topSpecies = Object.entries(stats.speciesCounts || {})
-    .sort((a, b) => b[1] - a[1])[0]?.[0];
+    .sort((a, b) => b[1] - a[1]);
 
-  const filtered = useMemo(() => catches.filter(c =>
-    !search || c.species.toLowerCase().includes(search.toLowerCase()) ||
-    (c.location || '').toLowerCase().includes(search.toLowerCase())
-  ), [catches, search]);
+  const toggleSaved = (id: string) => setSaved(prev => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
+  });
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
 
-      {/* Header */}
-      <View style={s.header}>
-        <View>
-          <Text style={s.title}>Catch Log</Text>
-          <Text style={s.subtitle}>
-            {catches.length > 0 ? `${catches.length} catch${catches.length !== 1 ? 'es' : ''} recorded` : 'Start your fishing story'}
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={s.addBtn}
-          onPress={() => router.push('/add-catch' as any)}
-          accessibilityRole="button"
-          accessibilityLabel="Log a catch"
-        >
-          <MaterialCommunityIcons name="plus" size={22} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Stats banner */}
-      {catches.length > 0 && (
-        <View style={s.statsBanner}>
-          <View style={s.statBItem}>
-            <Text style={s.statBVal}>{totalWeight > 0 ? totalWeight.toFixed(1) : '0'}<Text style={s.statBUnit}> kg</Text></Text>
-            <Text style={s.statBLabel}>Total weight</Text>
-          </View>
-          <View style={s.statBDiv} />
-          <View style={s.statBItem}>
-            <Text style={s.statBVal}>{speciesCount}</Text>
-            <Text style={s.statBLabel}>Species</Text>
-          </View>
-          <View style={s.statBDiv} />
-          <View style={s.statBItem}>
-            <Text style={s.statBVal} numberOfLines={1}>{stats.heaviest ? `${stats.heaviest.weight}kg` : '—'}</Text>
-            <Text style={s.statBLabel}>Personal best</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Search */}
-      <View style={s.searchWrap}>
-        <MaterialCommunityIcons name="magnify" size={18} color={colors.textSecondary} />
-        <TextInput
-          style={s.searchInput}
-          placeholder="Search species or location…"
-          placeholderTextColor={colors.textTertiary}
-          value={search} onChangeText={setSearch}
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <MaterialCommunityIcons name="close" size={15} color={colors.textSecondary} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Filters */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.pillsRow}>
-        {FILTERS.map(f => (
-          <TouchableOpacity key={f} style={[s.pill, filter === f && s.pillActive]} onPress={() => setFilter(f)}>
-            <Text style={[s.pillText, filter === f && s.pillTextActive]}>{f}</Text>
+      {/* Tab switcher */}
+      <View style={s.tabRow}>
+        {TABS.map(tab => (
+          <TouchableOpacity
+            key={tab}
+            style={[s.tabBtn, activeTab === tab && s.tabBtnActive]}
+            onPress={() => setActiveTab(tab)}
+            activeOpacity={0.85}
+          >
+            <Text style={[s.tabBtnText, activeTab === tab && s.tabBtnTextActive]}>{tab}</Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
-      {/* Grid */}
-      {filtered.length === 0 ? (
-        <View style={s.empty}>
-          <LinearGradient colors={['rgba(0,212,170,0.08)', 'transparent']} style={s.emptyGrad}>
-            <MaterialCommunityIcons name="fish-off" size={40} color={colors.textTertiary} />
-          </LinearGradient>
-          <Text style={s.emptyTitle}>{search ? 'No results found' : 'No catches yet'}</Text>
-          <Text style={s.emptySub}>
-            {search ? 'Try a different species or location' : 'Every angler starts somewhere.\nLog your first catch today.'}
-          </Text>
-          {!search && (
-            <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/add-catch' as any)}>
-              <MaterialCommunityIcons name="plus" size={16} color={colors.background} />
-              <Text style={s.emptyBtnText}>Log First Catch</Text>
+      {activeTab === 'My Catches' ? (
+        <>
+          {/* Filter row */}
+          <View style={s.filterRow}>
+            <TouchableOpacity style={s.filterPill}>
+              <Text style={s.filterPillText}>All Species</Text>
+              <MaterialCommunityIcons name="chevron-down" size={14} color={colors.textSecondary} />
             </TouchableOpacity>
-          )}
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={item => item.id}
-          numColumns={2}
-          contentContainerStyle={s.grid}
-          columnWrapperStyle={{ gap: 12 }}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item, index }) => {
-            const grad = CATCH_GRADS[index % CATCH_GRADS.length];
-            const isPB = item.weight && pbMap[item.species] && item.weight >= pbMap[item.species];
-            return (
-              <TouchableOpacity
-                style={s.card}
-                onPress={() => router.push({ pathname: '/catch-detail', params: { id: item.id } } as any)}
-                activeOpacity={0.85}
-              >
-                <View style={s.cardPhoto}>
-                  <LinearGradient colors={grad} style={StyleSheet.absoluteFillObject} />
-                  <Image
-                    source={{ uri: getSpeciesImage(item.species) }}
-                    style={[StyleSheet.absoluteFillObject, { opacity: 0.65 }]}
-                    resizeMode="cover"
-                  />
-                  <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.55)']}
-                    style={StyleSheet.absoluteFillObject}
-                  />
-                  {isPB && (
-                    <View style={s.pbBadge}>
-                      <Text style={s.pbText}>PB</Text>
-                    </View>
-                  )}
-                  {item.weight && (
-                    <View style={s.weightOverlay}>
-                      <Text style={s.weightOverlayText}>{item.weight} kg</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={s.cardBody}>
-                  <Text style={s.cardSpecies} numberOfLines={1}>{item.species}</Text>
-                  <View style={s.cardMetaRow}>
-                    <MaterialCommunityIcons name="map-marker-outline" size={11} color={colors.textTertiary} />
-                    <Text style={s.cardLocation} numberOfLines={1}>{item.location || 'Unknown spot'}</Text>
-                  </View>
-                  <Text style={s.cardTime}>{timeAgo(item.date)}</Text>
-                </View>
+            <TouchableOpacity style={s.filterIcon}>
+              <MaterialCommunityIcons name="calendar-outline" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={s.filterIcon}>
+              <MaterialCommunityIcons name="sort-variant" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {catches.length === 0 ? (
+            <View style={s.empty}>
+              <MaterialCommunityIcons name="fish-off" size={48} color={colors.textTertiary} />
+              <Text style={s.emptyTitle}>No catches yet</Text>
+              <Text style={s.emptySub}>Every angler starts somewhere.{'\n'}Log your first catch today.</Text>
+              <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/add-catch' as any)}>
+                <MaterialCommunityIcons name="plus" size={16} color={colors.background} />
+                <Text style={s.emptyBtnText}>Log First Catch</Text>
               </TouchableOpacity>
-            );
-          }}
-        />
+            </View>
+          ) : (
+            <FlatList
+              data={catches}
+              keyExtractor={item => item.id}
+              contentContainerStyle={{ paddingBottom: 100 }}
+              showsVerticalScrollIndicator={false}
+              ItemSeparatorComponent={() => <View style={s.separator} />}
+              renderItem={({ item, index }) => {
+                const grad = CATCH_GRADS[index % CATCH_GRADS.length];
+                const isSaved = saved.has(item.id);
+                return (
+                  <TouchableOpacity
+                    style={s.catchRow}
+                    onPress={() => router.push({ pathname: '/catch-detail', params: { id: item.id } } as any)}
+                    activeOpacity={0.85}
+                  >
+                    {/* Fish photo */}
+                    <View style={s.catchPhoto}>
+                      <LinearGradient colors={grad} style={StyleSheet.absoluteFillObject} />
+                      <Image
+                        source={{ uri: getSpeciesImage(item.species) }}
+                        style={[StyleSheet.absoluteFillObject, { opacity: 0.75 }]}
+                        resizeMode="cover"
+                      />
+                    </View>
+
+                    {/* Info */}
+                    <View style={s.catchBody}>
+                      <Text style={s.catchSpecies} numberOfLines={1}>{item.species}</Text>
+                      {(item.length || item.weight) && (
+                        <Text style={s.catchMeasure}>
+                          {[
+                            item.length ? `${item.length} cm` : null,
+                            item.weight ? `${item.weight} kg` : null,
+                          ].filter(Boolean).join(' - ')}
+                        </Text>
+                      )}
+                      <Text style={s.catchDate}>{formatDate(item.date)}</Text>
+                    </View>
+
+                    {/* Bookmark */}
+                    <TouchableOpacity
+                      style={s.bookmarkBtn}
+                      onPress={() => toggleSaved(item.id)}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <MaterialCommunityIcons
+                        name={isSaved ? 'bookmark' : 'bookmark-outline'}
+                        size={20}
+                        color={isSaved ? colors.primary : colors.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          )}
+        </>
+      ) : (
+        // Statistics tab
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+
+          {/* Stats grid */}
+          <View style={s.statsGrid}>
+            {[
+              { val: String(catches.length), label: 'Total Catches', icon: 'fish', color: colors.primary },
+              { val: String(speciesCount), label: 'Species', icon: 'dna', color: '#60A5FA' },
+              { val: totalWeight > 0 ? `${totalWeight.toFixed(1)}kg` : '0', label: 'Total Weight', icon: 'weight', color: colors.secondary },
+              { val: stats.heaviest ? `${stats.heaviest.weight}kg` : '—', label: 'Personal Best', icon: 'trophy', color: '#F472B6' },
+            ].map(item => (
+              <View key={item.label} style={s.statCard}>
+                <View style={[s.statIcon, { backgroundColor: item.color + '20' }]}>
+                  <MaterialCommunityIcons name={item.icon as any} size={20} color={item.color} />
+                </View>
+                <Text style={s.statVal}>{item.val}</Text>
+                <Text style={s.statLabel}>{item.label}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Top species */}
+          {topSpecies.length > 0 && (
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>TOP SPECIES</Text>
+              <View style={s.speciesCard}>
+                {topSpecies.slice(0, 6).map(([species, count], i) => {
+                  const pct = (count / topSpecies[0][1]) * 100;
+                  return (
+                    <View key={species} style={[s.speciesRow, i > 0 && s.speciesRowBorder]}>
+                      <Text style={s.speciesName} numberOfLines={1}>{species}</Text>
+                      <View style={s.speciesBarWrap}>
+                        <View style={[s.speciesBar, { width: `${pct}%` }]} />
+                      </View>
+                      <Text style={s.speciesCount}>{count}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {catches.length === 0 && (
+            <View style={s.empty}>
+              <MaterialCommunityIcons name="chart-bar" size={48} color={colors.textTertiary} />
+              <Text style={s.emptyTitle}>No stats yet</Text>
+              <Text style={s.emptySub}>Log catches to see your fishing statistics.</Text>
+            </View>
+          )}
+        </ScrollView>
       )}
     </SafeAreaView>
   );
@@ -193,82 +206,86 @@ export default function CatchesScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
-  header: {
-    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm,
+  // Tabs
+  tabRow: {
+    flexDirection: 'row',
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 3,
+    gap: 3,
   },
-  title: { fontSize: 26, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.5 },
-  subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
-  addBtn: {
-    width: 44, height: 44, borderRadius: radius.sm,
-    backgroundColor: 'rgba(0,212,170,0.1)', borderWidth: 1, borderColor: 'rgba(0,212,170,0.25)',
-    alignItems: 'center', justifyContent: 'center', marginTop: 2,
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+  },
+  tabBtnActive: { backgroundColor: colors.primary },
+  tabBtnText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  tabBtnTextActive: { color: colors.background },
+
+  // Filter row
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  filterPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  filterPillText: { flex: 1, fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
+  filterIcon: {
+    width: 42,
+    height: 42,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  statsBanner: {
-    flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: spacing.lg, marginBottom: spacing.sm,
-    backgroundColor: colors.surface, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border,
-    paddingVertical: 14,
+  // Catch rows
+  separator: { height: 1, backgroundColor: colors.border, marginLeft: 90 },
+  catchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 12,
+    gap: 14,
+    backgroundColor: colors.background,
   },
-  statBItem: { flex: 1, alignItems: 'center' },
-  statBVal: { fontSize: 17, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.3 },
-  statBUnit: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
-  statBLabel: { fontSize: 10, color: colors.textSecondary, marginTop: 2 },
-  statBDiv: { width: 1, height: 28, backgroundColor: colors.border },
+  catchPhoto: {
+    width: 68,
+    height: 68,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+    backgroundColor: colors.surface,
+  },
+  catchBody: { flex: 1, gap: 4 },
+  catchSpecies: { fontSize: 15, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.3 },
+  catchMeasure: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
+  catchDate: { fontSize: 11, color: colors.textTertiary },
+  bookmarkBtn: { padding: 4 },
 
-  searchWrap: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    marginHorizontal: spacing.lg, marginBottom: spacing.sm,
-    backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: 11,
-  },
-  searchInput: { flex: 1, fontSize: 14, color: colors.textPrimary },
-
-  pillsRow: { paddingHorizontal: spacing.lg, gap: 8, paddingBottom: spacing.sm },
-  pill: {
-    paddingHorizontal: 16, paddingVertical: 9, minHeight: 44, borderRadius: radius.full,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  pillText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
-  pillTextActive: { color: colors.background, fontWeight: '700' },
-
-  grid: { paddingHorizontal: spacing.lg, paddingBottom: 110, gap: 12 },
-  card: {
-    width: CARD_W, backgroundColor: colors.surface,
-    borderRadius: radius.md, overflow: 'hidden',
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.1)',
-    ...elevation.raised,
-  },
-  cardPhoto: { height: 120, position: 'relative' },
-  pbBadge: {
-    position: 'absolute', top: 8, left: 8,
-    backgroundColor: colors.secondary, borderRadius: radius.xs,
-    paddingHorizontal: 7, paddingVertical: 3,
-  },
-  pbText: { fontSize: 9, fontWeight: '900', color: '#0A0E1A', letterSpacing: 0.5 },
-  weightOverlay: {
-    position: 'absolute', bottom: 8, right: 8,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: radius.xs,
-    paddingHorizontal: 7, paddingVertical: 3,
-  },
-  weightOverlayText: { fontSize: 12, fontWeight: '800', color: colors.primary },
-  cardBody: { padding: 11 },
-  cardSpecies: { fontSize: 14, fontWeight: '800', color: colors.textPrimary, marginBottom: 5, letterSpacing: -0.2 },
-  cardMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 3 },
-  cardLocation: { flex: 1, fontSize: 11, color: colors.textSecondary },
-  cardTime: { fontSize: 10, color: colors.textTertiary },
-
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 60, paddingHorizontal: 40 },
-  emptyGrad: {
-    width: 84, height: 84, borderRadius: 42,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
-  },
+  // Empty
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 80, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
   emptySub: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
   emptyBtn: {
@@ -278,4 +295,59 @@ const s = StyleSheet.create({
     paddingHorizontal: 24, paddingVertical: 13,
   },
   emptyBtnText: { fontSize: 14, fontWeight: '700', color: colors.background },
+
+  // Stats tab
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  statCard: {
+    width: '47%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: 8,
+    ...elevation.raised,
+  },
+  statIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statVal: { fontSize: 24, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.8 },
+  statLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
+
+  section: { paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
+  sectionTitle: {
+    fontSize: 10, fontWeight: '800', color: colors.textTertiary,
+    letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12,
+  },
+
+  speciesCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    ...elevation.raised,
+  },
+  speciesRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: spacing.md, paddingVertical: 12,
+  },
+  speciesRowBorder: { borderTopWidth: 1, borderTopColor: colors.border },
+  speciesName: { width: 120, fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+  speciesBarWrap: {
+    flex: 1, height: 5, backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 3, overflow: 'hidden',
+  },
+  speciesBar: { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
+  speciesCount: { width: 28, fontSize: 13, fontWeight: '800', color: colors.primary, textAlign: 'right' },
 });
