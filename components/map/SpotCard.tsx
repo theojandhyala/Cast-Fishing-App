@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../ui/Icon';
 import { useRouter } from 'expo-router';
 import { WorldSpot } from '../../data/worldSpots';
 import { colors, radius, spacing, typography, fonts, elevation } from '../../constants/theme';

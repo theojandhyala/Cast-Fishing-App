@@ -8,7 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../ui/Icon';
 import { CastButton } from '../ui/CastButton';
 import { colors, radius, spacing } from '../../constants/theme';
 

@@ -9,6 +9,7 @@
     "@expo-google-fonts/syne": "^0.4.2",
     "@expo/metro-runtime": "~4.0.0",
     "@expo/vector-icons": "^14.0.0",
+    "@mdi/js": "^7.4.47",
     "@react-native-async-storage/async-storage": "2.1.0",
     "expo": "~54.0.0",
     "expo-av": "~15.0.0",

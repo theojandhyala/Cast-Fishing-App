@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCatchStore } from '../store/catchStore';
 import { colors, radius, spacing } from '../constants/theme';

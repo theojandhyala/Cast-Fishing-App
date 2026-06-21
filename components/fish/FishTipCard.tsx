@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../ui/Icon';
 import { Species } from '../../data/species';
 import { colors, radius, spacing } from '../../constants/theme';
 import { RarityBadge } from '../catches/RarityBadge';

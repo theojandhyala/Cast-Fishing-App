@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { WATER_CONDITIONS, SPECIES_IDEAL_CONDITIONS } from '../data/waterConditionsData';
 import { colors, radius, spacing } from '../constants/theme';
 

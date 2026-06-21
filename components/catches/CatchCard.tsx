@@ -6,7 +6,7 @@ import {
   StyleSheet,
   Image,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../ui/Icon';
 import { useRouter } from 'expo-router';
 import { Catch } from '../../store/catchStore';
 import { colors, radius, spacing, fonts, elevation } from '../../constants/theme';

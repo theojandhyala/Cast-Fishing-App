@@ -8,7 +8,7 @@ import {
   Alert,
   SafeAreaView,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { TACKLE_SHOPS } from '../data/tackleShopsData';
 import { colors, radius, spacing } from '../constants/theme';
 

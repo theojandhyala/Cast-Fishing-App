@@ -8,7 +8,7 @@ import {
   Alert,
   SafeAreaView,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { COMPETITIONS, PAST_RESULTS, COMMUNITY_MATCH_LEADERBOARD } from '../data/competitionsData';
 import { colors, radius, spacing } from '../constants/theme';
 

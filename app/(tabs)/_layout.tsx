@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius, spacing } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';

@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { WEEKLY_CHALLENGES, MONTHLY_CHALLENGES, SPECIAL_CHALLENGES, PAST_CHALLENGES } from '../data/challengesData';
 import { colors, radius, spacing } from '../constants/theme';
 
