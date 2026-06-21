@@ -1,15 +1,19 @@
+import { useEffect } from 'react';
 import { View } from 'react-native';
-import { Redirect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 
 export default function Index() {
   const { isAuthenticated, isLoading } = useAuthStore();
+  const router = useRouter();
 
-  if (isLoading) return <View style={{ flex: 1, backgroundColor: '#0A0E1A' }} />;
+  useEffect(() => {
+    if (!isLoading) {
+      router.replace(isAuthenticated ? '/(tabs)' : '/(auth)/login');
+    }
+  }, [isLoading, isAuthenticated]);
 
-  if (isAuthenticated) {
-    return <Redirect href="/(tabs)" />;
-  }
-
-  return <Redirect href="/(auth)/login" />;
+  // Always render a dark view — never null — so there is no white flash
+  // while auth state resolves or while Expo Router navigates.
+  return <View style={{ flex: 1, backgroundColor: '#0A0E1A' }} />;
 }

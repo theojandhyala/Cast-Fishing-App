@@ -30,7 +30,11 @@ jobs:
       - name: Health check
         run: |
           sleep 20
-          echo "--- castfishingapp.com ---"
-          curl -sv --max-time 15 https://castfishingapp.com/ 2>&1 | grep -E "< HTTP|< CF-|title|CAST" | head -10
+          echo "--- castfishingapp.com status + bg check ---"
+          HTML=$(curl -s --max-time 15 https://castfishingapp.com/)
+          echo "$HTML" | grep -E "< HTTP|title" | head -5 || true
+          echo "HTTP: $(curl -o /dev/null -s -w '%{http_code}' https://castfishingapp.com/)"
+          echo "$HTML" | grep -c "0A0E1A" && echo "dark bg confirmed" || echo "WARN: no dark bg found"
+          echo "$HTML" | head -20
           echo "--- cast-fishing-app.pages.dev ---"
-          curl -sv --max-time 15 https://cast-fishing-app.pages.dev/ 2>&1 | grep -E "< HTTP|< CF-|title|CAST" | head -10
+          echo "HTTP: $(curl -o /dev/null -s -w '%{http_code}' https://cast-fishing-app.pages.dev/)"

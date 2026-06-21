@@ -56,9 +56,21 @@ html = p.read_text()
 #    This fixes "white flash" on slow connections and ensures iOS Safari sees
 #    the dark theme immediately from raw HTML.
 head_css = '''<style>
-  html,body{background:#0A0E1A!important;-webkit-background-size:cover;background-size:cover}
-</style>'''
+  html,body,#root{background:#0A0E1A!important}
+  html{min-height:-webkit-fill-available;min-height:100%}
+  body{min-height:-webkit-fill-available;min-height:100%}
+</style>
+<script>
+  /* Synchronous: run before any JS library loads to lock dark background */
+  document.documentElement.style.setProperty('background','#0A0E1A','important');
+  document.addEventListener('DOMContentLoaded',function(){
+    document.body.style.setProperty('background','#0A0E1A','important');
+    document.documentElement.style.setProperty('background','#0A0E1A','important');
+  });
+</script>'''
 html = html.replace('</head>', head_css + '\n</head>', 1)
+# Add inline style to body tag so even JS overrides can't remove it without effort
+html = html.replace('<body>', '<body style="background:#0A0E1A">', 1)
 
 # 2. Inject full-featured loading spinner + error recovery before </body>
 spinner = '''<style>
