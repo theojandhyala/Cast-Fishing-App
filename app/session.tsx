@@ -60,6 +60,7 @@ export default function SessionScreen() {
   const { weather } = useWeather(activeSession?.spotQuery);
   const [now, setNow] = useState(Date.now());
   const [logOpen, setLogOpen] = useState(false);
+  const [endConfirmOpen, setEndConfirmOpen] = useState(false);
   const [species, setSpecies] = useState('');
   const [weight, setWeight] = useState('');
   const [bait, setBait] = useState('');
@@ -80,14 +81,11 @@ export default function SessionScreen() {
   const w = weather ?? { temp: 18, wind: 12, pressure: 1016, description: 'Partly Cloudy' };
   const spotName = activeSession?.spotName || 'Rocky Point';
 
-  const handleEnd = () => {
-    Alert.alert('End Session', `End your session at ${spotName}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'End Session', style: 'destructive',
-        onPress: () => { endSession(); router.replace('/session-summary' as any); },
-      },
-    ]);
+  const handleEnd = () => setEndConfirmOpen(true);
+  const confirmEnd = () => {
+    setEndConfirmOpen(false);
+    endSession();
+    router.replace('/session-summary' as any);
   };
 
   const handleLogCatch = async () => {
@@ -535,6 +533,23 @@ export default function SessionScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* End Session Confirm Modal */}
+      <Modal visible={endConfirmOpen} transparent animationType="fade" onRequestClose={() => setEndConfirmOpen(false)}>
+        <View style={s.confirmOverlay}>
+          <View style={s.confirmBox}>
+            <MaterialCommunityIcons name="flag-checkered" size={36} color={colors.primary} style={{ marginBottom: 12 }} />
+            <Text style={s.confirmTitle}>End Session?</Text>
+            <Text style={s.confirmSub}>Finish your session at {spotName} and view your summary.</Text>
+            <TouchableOpacity style={s.confirmEndBtn} onPress={confirmEnd} activeOpacity={0.85}>
+              <Text style={s.confirmEndText}>End Session</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.confirmCancelBtn} onPress={() => setEndConfirmOpen(false)} activeOpacity={0.85}>
+              <Text style={s.confirmCancelText}>Keep Fishing</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -784,4 +799,12 @@ const s = StyleSheet.create({
     alignItems: 'center', paddingVertical: 15, marginTop: 8,
   },
   saveBtnText: { fontSize: 14, fontWeight: '800', color: '#0A0E1A', letterSpacing: 1 },
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', padding: 32 },
+  confirmBox: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 28, width: '100%', maxWidth: 360, alignItems: 'center' },
+  confirmTitle: { fontSize: 22, fontWeight: '800', color: colors.textPrimary, marginBottom: 8 },
+  confirmSub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  confirmEndBtn: { backgroundColor: '#E53E3E', borderRadius: radius.full, alignItems: 'center', paddingVertical: 14, width: '100%', marginBottom: 10 },
+  confirmEndText: { fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  confirmCancelBtn: { alignItems: 'center', paddingVertical: 10, width: '100%' },
+  confirmCancelText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
 });

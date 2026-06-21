@@ -75,6 +75,7 @@ export default function RootLayout() {
     // Must be loaded explicitly on web — font name must match exactly what
     // @expo/vector-icons uses internally to resolve icon glyphs
     'material-community': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
+    MaterialCommunityIcons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
   });
 
   useEffect(() => {
