@@ -117,11 +117,10 @@ export default function ProfileScreen() {
           <Text style={s.displayName}>{displayName}</Text>
           <Text style={s.handle}>{handle}</Text>
 
-          {isPro && (
-            <View style={s.proBadge}>
-              <Text style={s.proBadgeText}>Pro Member</Text>
-            </View>
-          )}
+          <View style={s.proBadge}>
+            <MaterialCommunityIcons name="crown" size={12} color={colors.primary} />
+            <Text style={s.proBadgeText}>{isPro ? 'Pro Member' : 'Free Plan'}</Text>
+          </View>
         </View>
 
         {/* 4-stat row */}
@@ -160,9 +159,7 @@ export default function ProfileScreen() {
               onPress={() => router.push(item.route as any)}
               activeOpacity={0.75}
             >
-              <View style={s.menuIcon}>
-                <MaterialCommunityIcons name={item.icon as any} size={20} color={colors.textSecondary} />
-              </View>
+              <MaterialCommunityIcons name={item.icon as any} size={20} color={colors.textSecondary} />
               <Text style={s.menuLabel}>{item.label}</Text>
               <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textTertiary} />
             </TouchableOpacity>
@@ -235,6 +232,9 @@ const s = StyleSheet.create({
   },
   proBadge: {
     marginTop: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     backgroundColor: 'rgba(0,212,170,0.12)',
     borderRadius: radius.full,
     borderWidth: 1,
@@ -258,7 +258,7 @@ const s = StyleSheet.create({
     ...elevation.raised,
   },
   statItem: { flex: 1, alignItems: 'center', gap: 4 },
-  statVal: { fontSize: 22, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.8 },
+  statVal: { fontSize: 26, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.8 },
   statLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
   statDivider: { width: 1, height: 32, backgroundColor: colors.border },
 

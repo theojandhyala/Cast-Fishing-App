@@ -262,7 +262,7 @@ const s = StyleSheet.create({
   },
 
   // Catch rows
-  separator: { height: 1, backgroundColor: colors.border, marginLeft: 90 },
+  separator: { height: 1, backgroundColor: colors.border },
   catchRow: {
     flexDirection: 'row',
     alignItems: 'center',

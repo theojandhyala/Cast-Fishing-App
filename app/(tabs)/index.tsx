@@ -71,11 +71,11 @@ export default function HomeScreen() {
 
   const nearMe = !!gpsLocation;
 
-  // Chart data - 8 bars representing 3-hour blocks
-  const chartData = [0, 3, 6, 9, 12, 15, 18, 21].map(h => ({
+  // Chart data - 24 bars (one per hour)
+  const chartData = HOURLY_ACTIVITY.map((activity, h) => ({
     hour: h,
-    label: h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`,
-    activity: HOURLY_ACTIVITY[h],
+    label: h === 0 ? '12AM' : h === 6 ? '6AM' : h === 12 ? '12PM' : h === 18 ? '6PM' : '',
+    activity,
   }));
   const maxActivity = Math.max(...chartData.map(d => d.activity));
 
@@ -385,10 +385,10 @@ const s = StyleSheet.create({
   chart: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 4,
-    height: 88,
+    gap: 2,
+    height: 80,
   },
-  chartCol: { flex: 1, alignItems: 'center', gap: 4 },
+  chartCol: { flex: 1, alignItems: 'center', gap: 3 },
   chartBarWrap: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -396,12 +396,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   chartBar: {
-    width: '80%',
-    borderRadius: 3,
-    minHeight: 4,
+    width: 4,
+    borderRadius: 2,
+    minHeight: 3,
   },
   chartLabel: {
-    fontSize: 8,
+    fontSize: 7,
     color: colors.textTertiary,
     textAlign: 'center',
     fontWeight: '600',
