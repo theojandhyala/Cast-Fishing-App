@@ -27,14 +27,49 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: 0e58fe4a2ba9eabd4aa4e029b8b5ed85
 
-      - name: Health check
+      - name: Health check + browser render test
         run: |
-          sleep 20
-          echo "--- castfishingapp.com status + bg check ---"
+          sleep 25
+          echo "--- HTML check ---"
           HTML=$(curl -s --max-time 15 https://castfishingapp.com/)
-          echo "$HTML" | grep -E "< HTTP|title" | head -5 || true
           echo "HTTP: $(curl -o /dev/null -s -w '%{http_code}' https://castfishingapp.com/)"
-          echo "$HTML" | grep -c "0A0E1A" && echo "dark bg confirmed" || echo "WARN: no dark bg found"
-          echo "$HTML" | head -20
-          echo "--- cast-fishing-app.pages.dev ---"
-          echo "HTTP: $(curl -o /dev/null -s -w '%{http_code}' https://cast-fishing-app.pages.dev/)"
+          echo "$HTML" | grep -c "0A0E1A" && echo "dark bg in HTML: YES" || echo "dark bg in HTML: NO"
+
+          echo "--- Playwright browser render test ---"
+          npx playwright install chromium --with-deps 2>/dev/null || true
+          node - <<'JSEOF'
+          const { chromium } = require('playwright');
+          (async () => {
+            let browser;
+            try {
+              browser = await chromium.launch();
+              const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+              await page.goto('https://castfishingapp.com/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+              // Wait up to 8s for React to mount
+              await page.waitForFunction(() => {
+                const root = document.getElementById('root');
+                return root && root.children.length > 0;
+              }, { timeout: 8000 }).catch(() => console.log('React did not mount in 8s'));
+              const bg = await page.evaluate(() => window.getComputedStyle(document.body).backgroundColor);
+              const rootBg = await page.evaluate(() => {
+                const root = document.getElementById('root');
+                return root ? window.getComputedStyle(root).backgroundColor : 'no root';
+              });
+              const rootChildren = await page.evaluate(() => {
+                const root = document.getElementById('root');
+                return root ? root.children.length : -1;
+              });
+              const loaderVisible = await page.evaluate(() => !!document.getElementById('cast-loader'));
+              console.log('body background:', bg);
+              console.log('#root background:', rootBg);
+              console.log('#root children:', rootChildren, '(>0 = React mounted)');
+              console.log('cast-loader visible:', loaderVisible);
+              await page.screenshot({ path: 'render-test.png', fullPage: false });
+              console.log('Screenshot saved as render-test.png');
+            } catch (e) {
+              console.error('Browser test error:', e.message);
+            } finally {
+              if (browser) await browser.close();
+            }
+          })();
+          JSEOF
