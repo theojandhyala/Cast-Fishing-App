@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  FlatList, TouchableOpacity, Image,
+  FlatList, TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,7 +9,6 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCatchStore } from '../../store/catchStore';
 import { colors, radius, spacing, elevation } from '../../constants/theme';
-import { getSpeciesImage } from '../../constants/spotImages';
 
 const TABS = ['My Catches', 'Statistics'] as const;
 type Tab = typeof TABS[number];
@@ -19,6 +18,30 @@ const CATCH_GRADS: [string, string][] = [
   ['#221010', '#110808'], ['#0F1C0F', '#070D07'],
   ['#201A08', '#100D04'], ['#0F0F24', '#070710'],
 ];
+
+function getSpeciesIcon(species: string): string {
+  const s = species.toLowerCase();
+  if (s.includes('bass')) return 'fish';
+  if (s.includes('trout') || s.includes('salmon')) return 'fish-off';
+  if (s.includes('pike') || s.includes('perch')) return 'fish';
+  if (s.includes('carp')) return 'fish';
+  if (s.includes('tuna') || s.includes('marlin')) return 'sail-boat';
+  if (s.includes('shark')) return 'fish';
+  if (s.includes('catfish')) return 'fish';
+  if (s.includes('bream')) return 'fish';
+  return 'fish';
+}
+
+function getSpeciesColor(species: string): string {
+  const s = species.toLowerCase();
+  if (s.includes('bass')) return colors.primary;
+  if (s.includes('trout')) return '#60A5FA';
+  if (s.includes('salmon')) return '#F472B6';
+  if (s.includes('pike')) return '#34D399';
+  if (s.includes('carp')) return colors.secondary;
+  if (s.includes('tuna')) return '#2DD4FF';
+  return 'rgba(0,212,170,0.7)';
+}
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -106,14 +129,15 @@ export default function CatchesScreen() {
                     activeOpacity={0.85}
                   >
                     {/* Fish photo */}
-                    <View style={s.catchPhoto}>
-                      <LinearGradient colors={grad} style={StyleSheet.absoluteFillObject} />
-                      <Image
-                        source={{ uri: getSpeciesImage(item.species) }}
-                        style={[StyleSheet.absoluteFillObject, { opacity: 0.75 }]}
-                        resizeMode="cover"
-                      />
-                    </View>
+                    <LinearGradient colors={grad} style={s.catchPhoto}>
+                      <View style={s.catchPhotoIcon}>
+                        <MaterialCommunityIcons
+                          name={getSpeciesIcon(item.species) as any}
+                          size={28}
+                          color={getSpeciesColor(item.species)}
+                        />
+                      </View>
+                    </LinearGradient>
 
                     {/* Info */}
                     <View style={s.catchBody}>
@@ -276,7 +300,16 @@ const s = StyleSheet.create({
     height: 68,
     borderRadius: radius.sm,
     overflow: 'hidden',
-    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catchPhotoIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   catchBody: { flex: 1, gap: 4 },
   catchSpecies: { fontSize: 15, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.3 },

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, Image, Dimensions,
+  TouchableOpacity, Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -15,7 +15,24 @@ import { useLocation } from '../../hooks/useLocation';
 import { colors, spacing, radius, elevation } from '../../constants/theme';
 import { WORLD_SPOTS } from '../../data/worldSpots';
 import { haversineKm, formatDistance } from '../../utils/distance';
-import { getSpotImage } from '../../constants/spotImages';
+function getSpotIcon(type: string): string {
+  switch (type) {
+    case 'river': return 'waves';
+    case 'lake': return 'water';
+    case 'ocean': return 'anchor';
+    case 'reef': return 'fish';
+    case 'estuary': return 'water-outline';
+    default: return 'map-marker-outline';
+  }
+}
+
+const SPOT_GRADS: Record<string, [string, string]> = {
+  river: ['#0C2340', '#051218'],
+  lake:  ['#0A1F30', '#051015'],
+  ocean: ['#081830', '#030C18'],
+  reef:  ['#0F1A20', '#050D10'],
+  estuary: ['#102015', '#05100A'],
+};
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -209,20 +226,32 @@ export default function HomeScreen() {
               onPress={() => router.push({ pathname: '/spot-details', params: { id: spot.id } } as any)}
               activeOpacity={0.85}
             >
-              <Image
-                source={{ uri: getSpotImage(spot) }}
-                style={StyleSheet.absoluteFillObject}
-                resizeMode="cover"
-              />
               <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.82)']}
-                style={[StyleSheet.absoluteFillObject]}
+                colors={SPOT_GRADS[spot.type] ?? ['#0C1A28', '#050C14']}
+                style={StyleSheet.absoluteFillObject}
               />
+              {/* Decorative watermark icon */}
+              <View style={s.spotIconBg}>
+                <MaterialCommunityIcons
+                  name={getSpotIcon(spot.type) as any}
+                  size={64}
+                  color="rgba(0,212,170,0.07)"
+                />
+              </View>
+              {/* Distance badge */}
               <View style={s.spotBadge}>
-                <MaterialCommunityIcons name="map-marker" size={10} color="#fff" />
+                <MaterialCommunityIcons name="map-marker" size={10} color={colors.primary} />
                 {spot._distKm !== undefined && (
                   <Text style={s.spotBadgeText}>{formatDistance(spot._distKm)}</Text>
                 )}
+              </View>
+              {/* Spot type icon */}
+              <View style={s.spotTypeIcon}>
+                <MaterialCommunityIcons
+                  name={getSpotIcon(spot.type) as any}
+                  size={22}
+                  color={colors.primary}
+                />
               </View>
               <View style={s.spotInfo}>
                 <Text style={s.spotName} numberOfLines={1}>{spot.name.split(',')[0]}</Text>
@@ -439,17 +468,35 @@ const s = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
     ...elevation.raised,
   },
+  spotIconBg: {
+    position: 'absolute',
+    bottom: 32,
+    right: -8,
+  },
+  spotTypeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    backgroundColor: 'rgba(0,212,170,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,170,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
   spotBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
     alignSelf: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     borderRadius: radius.full,
     paddingHorizontal: 8,
     paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,170,0.2)',
   },
-  spotBadgeText: { fontSize: 10, color: '#fff', fontWeight: '700' },
+  spotBadgeText: { fontSize: 10, color: colors.primary, fontWeight: '700' },
   spotInfo: { gap: 4 },
   spotName: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
   spotMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
