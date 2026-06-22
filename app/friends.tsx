@@ -21,7 +21,7 @@ const requestTime = (value: string) => {
 
 function FriendRow({ friend, onRemove }: { friend: Friend; onRemove: (friend: Friend) => void }) {
   return (
-    <View style={styles.card}>
+    <View className="flex-row items-center gap-3 rounded-card border border-white/10 bg-cast-900 p-3.5" style={styles.card}>
       <SocialAvatar name={friend.name} color={friend.avatarColor} isOnline={friend.isOnline} />
       <View style={styles.cardBody}>
         <View style={styles.nameRow}>
@@ -46,7 +46,7 @@ function FriendRow({ friend, onRemove }: { friend: Friend; onRemove: (friend: Fr
 
 function DiscoverRow({ friend, onAdd }: { friend: Friend; onAdd: (friend: Friend) => void }) {
   return (
-    <View style={styles.card}>
+    <View className="flex-row items-center gap-3 rounded-card border border-white/10 bg-cast-900 p-3.5" style={styles.card}>
       <SocialAvatar name={friend.name} color={friend.avatarColor} isOnline={friend.isOnline} />
       <View style={styles.cardBody}>
         <View style={styles.nameRow}>
@@ -66,7 +66,7 @@ function DiscoverRow({ friend, onAdd }: { friend: Friend; onAdd: (friend: Friend
 function RequestRow({ request, onAccept, onDecline }: { request: FriendRequest; onAccept: () => void; onDecline: () => void }) {
   const outgoing = request.type === 'outgoing';
   return (
-    <View style={styles.card}>
+    <View className="flex-row items-center gap-3 rounded-card border border-white/10 bg-cast-900 p-3.5" style={styles.card}>
       <SocialAvatar name={request.fromName} color={request.avatarColor} />
       <View style={styles.cardBody}>
         <View style={styles.nameRow}>
@@ -86,7 +86,7 @@ function RequestRow({ request, onAccept, onDecline }: { request: FriendRequest; 
   );
 }
 
-export default function FriendsScreen() {
+export default function FriendsScreen({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const [tab, setTab] = useState<FriendsTab>('friends');
   const [friendQuery, setFriendQuery] = useState('');
@@ -125,10 +125,10 @@ export default function FriendsScreen() {
   }, [removeFriend]);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Go back" hitSlop={10} onPress={() => router.back()} style={styles.headerButton}>
-          <Icon name="chevron-left" size={28} color={colors.textPrimary} />
+    <SafeAreaView className="flex-1 bg-cast-950" style={styles.container} edges={['top']}>
+      <View className="flex-row items-center px-3.5 py-2" style={styles.header}>
+        <Pressable accessibilityRole="button" accessibilityLabel={embedded ? 'Open profile' : 'Go back'} hitSlop={10} onPress={() => embedded ? router.push('/profile') : router.back()} style={styles.headerButton}>
+          <Icon name={embedded ? 'account-circle-outline' : 'chevron-left'} size={embedded ? 23 : 28} color={embedded ? colors.primary : colors.textPrimary} />
         </Pressable>
         <View style={styles.headerTitleBlock}>
           <Text style={styles.title}>Fishing friends</Text>
@@ -138,7 +138,7 @@ export default function FriendsScreen() {
           <Icon name="earth" size={22} color={colors.primary} />
         </Pressable>
       </View>
-      <View style={styles.addPanel}>
+      <View className="mx-5 rounded-card border border-white/10 bg-cast-900 p-2" style={styles.addPanel}>
         <View style={styles.searchRow}>
           <Icon name="account-search-outline" size={20} color={colors.textTertiary} />
           <TextInput
@@ -160,7 +160,7 @@ export default function FriendsScreen() {
           <Text style={styles.inviteText}>Share an invite</Text>
         </Pressable>
       </View>
-      <View style={styles.tabs} accessibilityRole="tablist">
+      <View className="m-5 mb-2 flex-row rounded-card border border-white/10 bg-cast-900 p-1" style={styles.tabs} accessibilityRole="tablist">
         {(['friends', 'discover', 'requests'] as FriendsTab[]).map((item) => (
           <Pressable key={item} accessibilityRole="tab" accessibilityState={{ selected: tab === item }} onPress={() => setTab(item)} style={[styles.tab, tab === item && styles.tabActive]}>
             <Text style={[styles.tabText, tab === item && styles.tabTextActive]}>{item === 'friends' ? 'Friends' : item === 'discover' ? 'Discover' : 'Requests'}</Text>

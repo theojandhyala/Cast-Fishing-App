@@ -1,4 +1,5 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativewind } = require('nativewind/metro');
 
 const config = getDefaultConfig(__dirname);
 
@@ -24,4 +25,4 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return resolved;
 };
 
-module.exports = config;
+module.exports = withNativewind(config);

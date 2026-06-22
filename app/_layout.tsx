@@ -1,4 +1,5 @@
 import { useEffect, useState, Component, ReactNode } from 'react';
+import '../global.css';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { Stack } from 'expo-router';
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';

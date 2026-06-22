@@ -9,6 +9,10 @@ export interface User {
   name: string;
   email: string;
   isPro: boolean;
+  proStatus?: string;
+  proPlan?: 'monthly' | 'annual' | null;
+  proCurrentPeriodEnd?: string | null;
+  proCancelAtPeriodEnd?: boolean;
   xp: number;
   level: number;
   streak: number;

@@ -7,12 +7,13 @@
  * Endpoints (POST):
  *   /advisor             { messages: [{role, content}], system?: string }
  *   /identify            { image: "<base64 jpeg>" }
- *   /create-checkout     { email: string, plan: 'monthly' | 'annual' }
- *   /verify-subscription { email: string }
+ *   /billing/*           Authenticated Stripe subscription lifecycle
+ *   /stripe/webhook      Signed Stripe event receiver
  *
  * Secrets (set via Cloudflare dashboard or wrangler secret put):
  *   ANTHROPIC_API_KEY — Anthropic API for fish ID and advisor
  *   STRIPE_SECRET_KEY — Stripe secret key for subscription payments
+ *   STRIPE_WEBHOOK_SECRET — Stripe webhook signing secret
  */
 
 const ALLOWED_ORIGINS = [
@@ -84,6 +85,10 @@ function safeUser(row) {
     regionId: row.region_id || '',
     hasCompletedOnboarding: Boolean(row.onboarding_complete),
     isPro: Boolean(row.is_pro),
+    proStatus: row.subscription_status || (row.is_pro ? 'active' : 'free'),
+    proPlan: row.subscription_plan || null,
+    proCurrentPeriodEnd: row.subscription_current_period_end || null,
+    proCancelAtPeriodEnd: Boolean(row.subscription_cancel_at_period_end),
     xp: Number(row.xp || 0),
     level: Number(row.level || 1),
     streak: Number(row.streak || 0),
@@ -125,6 +130,96 @@ function friendShape(row) {
     lastActive: 'CAST angler',
     mutualFriends: 0,
   };
+}
+
+const STRIPE_API = 'https://api.stripe.com/v1';
+const PRO_PLANS = {
+  monthly: { amount: 499, interval: 'month', label: 'CAST Pro Monthly' },
+  annual: { amount: 2999, interval: 'year', label: 'CAST Pro Annual' },
+};
+
+async function stripeRequest(env, path, method = 'GET', params) {
+  if (!env.STRIPE_SECRET_KEY) throw new Error('Stripe billing is not configured yet.');
+  const response = await fetch(`${STRIPE_API}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
+      ...(params ? { 'Content-Type': 'application/x-www-form-urlencoded' } : {}),
+    },
+    body: params ? params.toString() : undefined,
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body?.error?.message || 'Stripe could not complete that request.');
+  return body;
+}
+
+function stripeId(value) {
+  return typeof value === 'string' ? value : value?.id || null;
+}
+
+function stripeDate(seconds) {
+  return Number(seconds) > 0 ? new Date(Number(seconds) * 1000).toISOString() : null;
+}
+
+async function updateSubscription(db, userId, values) {
+  const status = String(values.status || 'free');
+  const isPro = status === 'active' || status === 'trialing';
+  await db.prepare(`UPDATE users SET is_pro=?, stripe_customer_id=COALESCE(?, stripe_customer_id),
+    stripe_subscription_id=COALESCE(?, stripe_subscription_id), subscription_status=?,
+    subscription_plan=COALESCE(?, subscription_plan), subscription_current_period_end=?,
+    subscription_cancel_at_period_end=?, updated_at=? WHERE id=?`)
+    .bind(isPro ? 1 : 0, values.customerId || null, values.subscriptionId || null, status,
+      values.plan || null, values.currentPeriodEnd || null, values.cancelAtPeriodEnd ? 1 : 0,
+      new Date().toISOString(), userId).run();
+}
+
+function hex(bytes) {
+  return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
+async function verifyStripeSignature(rawBody, signatureHeader, secret) {
+  if (!signatureHeader || !secret) return false;
+  const parts = signatureHeader.split(',').map((part) => part.trim().split('='));
+  const timestamp = parts.find(([key]) => key === 't')?.[1];
+  const signatures = parts.filter(([key]) => key === 'v1').map(([, value]) => value);
+  if (!timestamp || signatures.length === 0 || Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) return false;
+  const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const digestBytes = new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(`${timestamp}.${rawBody}`)));
+  const expected = hex(digestBytes);
+  return signatures.some((signature) => signature.length === expected.length
+    && signature.split('').reduce((difference, char, index) => difference | (char.charCodeAt(0) ^ expected.charCodeAt(index)), 0) === 0);
+}
+
+async function handleStripeWebhook(request, env, origin) {
+  if (!env.DB || !env.STRIPE_WEBHOOK_SECRET) return json({ error: 'Stripe webhook is not configured.' }, 503, origin);
+  const rawBody = await request.text();
+  const valid = await verifyStripeSignature(rawBody, request.headers.get('Stripe-Signature'), env.STRIPE_WEBHOOK_SECRET);
+  if (!valid) return json({ error: 'Invalid Stripe signature.' }, 400, origin);
+  const event = JSON.parse(rawBody);
+  const alreadyProcessed = await env.DB.prepare('SELECT 1 AS yes FROM stripe_events WHERE event_id=?').bind(event.id).first();
+  if (alreadyProcessed) return json({ received: true }, 200, origin);
+
+  const object = event.data?.object || {};
+  if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+    const userId = object.client_reference_id || object.metadata?.user_id;
+    if (userId) await updateSubscription(env.DB, userId, {
+      status: 'trialing', customerId: stripeId(object.customer), subscriptionId: stripeId(object.subscription),
+      plan: object.metadata?.plan || null,
+    });
+  } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
+    const userId = object.metadata?.user_id
+      || (await env.DB.prepare('SELECT id FROM users WHERE stripe_subscription_id=? OR stripe_customer_id=? LIMIT 1')
+        .bind(object.id, stripeId(object.customer)).first())?.id;
+    if (userId) await updateSubscription(env.DB, userId, {
+      status: event.type === 'customer.subscription.deleted' ? 'canceled' : object.status,
+      customerId: stripeId(object.customer), subscriptionId: object.id, plan: object.metadata?.plan || null,
+      currentPeriodEnd: stripeDate(object.current_period_end), cancelAtPeriodEnd: object.cancel_at_period_end,
+    });
+  }
+
+  await env.DB.prepare('INSERT INTO stripe_events (event_id,event_type,processed_at) VALUES (?,?,?)')
+    .bind(event.id, event.type, new Date().toISOString()).run();
+  return json({ received: true }, 200, origin);
 }
 
 async function handleApi(request, env, url, origin, payload) {
@@ -194,6 +289,75 @@ async function handleApi(request, env, url, origin, payload) {
     }
     const updated = await db.prepare('SELECT * FROM users WHERE id = ?').bind(user.id).first();
     return json({ user: safeUser(updated) }, 200, origin);
+  }
+
+  if (url.pathname === '/billing/status' && request.method === 'GET') {
+    return json({
+      stripeConfigured: Boolean(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET),
+      isPro: Boolean(user.is_pro),
+      status: user.subscription_status || (user.is_pro ? 'active' : 'free'),
+      plan: user.subscription_plan || null,
+      currentPeriodEnd: user.subscription_current_period_end || null,
+      cancelAtPeriodEnd: Boolean(user.subscription_cancel_at_period_end),
+      canManage: Boolean(user.stripe_customer_id),
+    }, 200, origin);
+  }
+
+  if (url.pathname === '/billing/checkout' && request.method === 'POST') {
+    if (!env.STRIPE_SECRET_KEY) return json({ error: 'Secure Stripe checkout is not connected yet.' }, 503, origin);
+    if (user.is_pro) return json({ error: 'CAST Pro is already active on this account.' }, 409, origin);
+    const planId = payload?.plan === 'monthly' ? 'monthly' : 'annual';
+    const plan = PRO_PLANS[planId];
+    const appUrl = String(env.PUBLIC_APP_URL || 'https://castfishingapp.com').replace(/\/$/, '');
+    const params = new URLSearchParams();
+    params.set('mode', 'subscription');
+    params.set('success_url', `${appUrl}/pro?checkout=success&session_id={CHECKOUT_SESSION_ID}`);
+    params.set('cancel_url', `${appUrl}/pro?checkout=cancelled`);
+    params.set('client_reference_id', user.id);
+    params.set('allow_promotion_codes', 'true');
+    params.set('billing_address_collection', 'auto');
+    params.set('line_items[0][quantity]', '1');
+    params.set('line_items[0][price_data][currency]', 'gbp');
+    params.set('line_items[0][price_data][unit_amount]', String(plan.amount));
+    params.set('line_items[0][price_data][recurring][interval]', plan.interval);
+    params.set('line_items[0][price_data][product_data][name]', plan.label);
+    params.set('line_items[0][price_data][product_data][description]', 'Advanced conditions, unlimited CAST Lens, analytics, alerts and cloud backup.');
+    params.set('metadata[user_id]', user.id);
+    params.set('metadata[plan]', planId);
+    params.set('subscription_data[metadata][user_id]', user.id);
+    params.set('subscription_data[metadata][plan]', planId);
+    params.set('subscription_data[trial_period_days]', '7');
+    if (user.stripe_customer_id) params.set('customer', user.stripe_customer_id);
+    else params.set('customer_email', user.email);
+    const session = await stripeRequest(env, '/checkout/sessions', 'POST', params);
+    return json({ checkoutUrl: session.url }, 201, origin);
+  }
+
+  if (url.pathname === '/billing/confirm' && request.method === 'POST') {
+    const sessionId = String(payload?.sessionId || '');
+    if (!/^cs_[A-Za-z0-9_]+$/.test(sessionId)) return json({ error: 'Invalid checkout session.' }, 400, origin);
+    const session = await stripeRequest(env, `/checkout/sessions/${encodeURIComponent(sessionId)}?expand[]=subscription`);
+    if (session.client_reference_id !== user.id || session.status !== 'complete') {
+      return json({ error: 'Checkout has not completed for this account.' }, 409, origin);
+    }
+    const subscription = typeof session.subscription === 'object' ? session.subscription : null;
+    await updateSubscription(db, user.id, {
+      status: subscription?.status || 'trialing', customerId: stripeId(session.customer),
+      subscriptionId: stripeId(session.subscription), plan: session.metadata?.plan || null,
+      currentPeriodEnd: stripeDate(subscription?.current_period_end), cancelAtPeriodEnd: subscription?.cancel_at_period_end,
+    });
+    const updated = await db.prepare('SELECT * FROM users WHERE id=?').bind(user.id).first();
+    return json({ user: safeUser(updated) }, 200, origin);
+  }
+
+  if (url.pathname === '/billing/portal' && request.method === 'POST') {
+    if (!user.stripe_customer_id) return json({ error: 'No Stripe billing profile exists for this account.' }, 404, origin);
+    const appUrl = String(env.PUBLIC_APP_URL || 'https://castfishingapp.com').replace(/\/$/, '');
+    const params = new URLSearchParams();
+    params.set('customer', user.stripe_customer_id);
+    params.set('return_url', `${appUrl}/pro`);
+    const portal = await stripeRequest(env, '/billing_portal/sessions', 'POST', params);
+    return json({ portalUrl: portal.url }, 201, origin);
   }
 
   if (url.pathname === '/friends' && request.method === 'GET') {
@@ -330,6 +494,10 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders(origin) });
     }
     const url = new URL(request.url);
+    if (url.pathname === '/stripe/webhook' && request.method === 'POST') {
+      try { return await handleStripeWebhook(request, env, origin); }
+      catch (error) { return json({ error: error?.message || 'Stripe webhook failed.' }, 500, origin); }
+    }
     let payloadIn;
     if (request.method === 'POST' || request.method === 'PATCH') {
       try {
@@ -340,7 +508,8 @@ export default {
     }
 
     try {
-      if (url.pathname.startsWith('/auth/') || url.pathname === '/profile' || url.pathname.startsWith('/friends')) {
+      if (url.pathname.startsWith('/auth/') || url.pathname === '/profile'
+        || url.pathname.startsWith('/friends') || url.pathname.startsWith('/billing/')) {
         return await handleApi(request, env, url, origin, payloadIn);
       }
       if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405, origin);
@@ -392,67 +561,6 @@ Rules:
           messages: messages.slice(-12),
         });
         return json({ reply: text }, 200, origin);
-      }
-
-      if (url.pathname.endsWith('/create-checkout')) {
-        if (!env.STRIPE_SECRET_KEY) return json({ error: 'Payments not configured' }, 503, origin);
-        const { email, plan } = payloadIn;
-        if (!email || !plan) return json({ error: 'Missing email or plan' }, 400, origin);
-        const isAnnual = plan === 'annual';
-        const unitAmount = isAnnual ? 2999 : 499;
-        const interval = isAnnual ? 'year' : 'month';
-        const encodedEmail = encodeURIComponent(email);
-        const params = new URLSearchParams();
-        params.append('mode', 'subscription');
-        params.append('customer_email', email);
-        params.append('success_url', `https://cast-fishing-app.pages.dev/?pro=success&email=${encodedEmail}`);
-        params.append('cancel_url', 'https://cast-fishing-app.pages.dev/?pro=cancel');
-        params.append('line_items[0][price_data][currency]', 'gbp');
-        params.append('line_items[0][price_data][product_data][name]', 'CAST Pro');
-        params.append('line_items[0][price_data][unit_amount]', String(unitAmount));
-        params.append('line_items[0][price_data][recurring][interval]', interval);
-        params.append('line_items[0][quantity]', '1');
-        const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Basic ${btoa(env.STRIPE_SECRET_KEY + ':')}`,
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: params.toString(),
-        });
-        const session = await stripeRes.json();
-        if (!stripeRes.ok) return json({ error: session?.error?.message || 'Stripe error' }, 502, origin);
-        return json({ url: session.url }, 200, origin);
-      }
-
-      if (url.pathname.endsWith('/verify-subscription')) {
-        if (!env.STRIPE_SECRET_KEY) return json({ active: false }, 200, origin);
-        const { email } = payloadIn;
-        if (!email) return json({ active: false }, 200, origin);
-        try {
-          const custRes = await fetch(`https://api.stripe.com/v1/customers?email=${encodeURIComponent(email)}`, {
-            headers: { 'Authorization': `Basic ${btoa(env.STRIPE_SECRET_KEY + ':')}` },
-          });
-          const custData = await custRes.json();
-          if (!custRes.ok || !custData.data || custData.data.length === 0) {
-            return json({ active: false }, 200, origin);
-          }
-          for (const customer of custData.data) {
-            const subRes = await fetch(`https://api.stripe.com/v1/subscriptions?customer=${customer.id}&status=active`, {
-              headers: { 'Authorization': `Basic ${btoa(env.STRIPE_SECRET_KEY + ':')}` },
-            });
-            const subData = await subRes.json();
-            if (subRes.ok && subData.data && subData.data.length > 0) {
-              const sub = subData.data[0];
-              const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
-              const plan = interval === 'year' ? 'annual' : 'monthly';
-              return json({ active: true, plan }, 200, origin);
-            }
-          }
-          return json({ active: false }, 200, origin);
-        } catch {
-          return json({ active: false }, 200, origin);
-        }
       }
 
       return json({ error: 'Unknown endpoint' }, 404, origin);

@@ -153,14 +153,15 @@ export default function TabsLayout() {
           }}
         />
         <Tabs.Screen
-          name="profile"
+          name="friends"
           options={{
-            title: 'Profile',
+            title: 'Friends',
             tabBarIcon: ({ color, focused }) => (
-              <TabIcon name={focused ? 'account-circle' : 'account-circle-outline'} color={color} focused={focused} label="Profile" />
+              <TabIcon name={focused ? 'account-group' : 'account-group-outline'} color={color} focused={focused} label="Friends" />
             ),
           }}
         />
+        <Tabs.Screen name="profile" options={{ href: null }} />
         <Tabs.Screen name="more" options={{ href: null }} />
         <Tabs.Screen name="tips" options={{ href: null }} />
         <Tabs.Screen name="social" options={{ href: null }} />

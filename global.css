@@ -1,0 +1,34 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+@import "nativewind/theme";
+
+@source "./app/**/*.{js,jsx,ts,tsx}";
+@source "./components/**/*.{js,jsx,ts,tsx}";
+
+@theme {
+  --color-cast-950: #020b11;
+  --color-cast-900: #071a24;
+  --color-cast-850: #0a2330;
+  --color-cast-700: #15565d;
+  --color-cast-aqua: #44d2cb;
+  --color-cast-blue: #5adbd7;
+  --color-cast-gold: #f4c95d;
+  --color-cast-ink: #f4fbfb;
+  --color-cast-muted: #91a7ad;
+  --color-cast-dim: #58727a;
+  --font-sans: "Inter_400Regular", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Inter_700Bold", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Inter_600SemiBold", ui-monospace, monospace;
+  --radius-card: 13px;
+}
+
+@layer base {
+  html, body, #root {
+    background: var(--color-cast-950);
+    color: var(--color-cast-ink);
+  }
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
