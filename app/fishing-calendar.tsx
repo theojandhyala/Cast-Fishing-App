@@ -8,6 +8,8 @@ import { useRouter } from 'expo-router';
 import { useCatchStore } from '../store/catchStore';
 import { useTripStore } from '../store/tripStore';
 import { colors, spacing, radius } from '../constants/theme';
+import { useLocationStore } from '../store/locationStore';
+import { generateSolunarTimes } from '../hooks/useWeather';
 
 const MOON_PHASES = ['🌑','🌒','🌓','🌔','🌕','🌖','🌗','🌘'];
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -18,13 +20,6 @@ const CLOSED_SEASONS: Record<string, { start: number; end: number; startDay: num
   'Coarse (Rivers)': { start: 2, end: 5, startDay: 15, endDay: 15 },
   'Salmon': { start: 9, end: 0, startDay: 1, endDay: 31 },
 };
-
-const SOLUNAR_TIMES = [
-  { label: 'Major Feed', time: '06:42', duration: '2h', quality: 'Excellent' },
-  { label: 'Minor Feed', time: '12:14', duration: '1h', quality: 'Good' },
-  { label: 'Major Feed', time: '19:08', duration: '2h', quality: 'Excellent' },
-  { label: 'Minor Feed', time: '00:32', duration: '1h', quality: 'Fair' },
-];
 
 function getMoonEmoji(dayOfMonth: number): string {
   const phase = Math.floor(dayOfMonth / 3.75) % 8;
@@ -43,11 +38,6 @@ function scoreColor(score: number) {
   return colors.danger;
 }
 
-function getTideIndicator(day: number): string {
-  const tides = ['↑', '↓', '→', '↑↑', '↓↓'];
-  return tides[day % 5];
-}
-
 export default function FishingCalendarScreen() {
   const router = useRouter();
   const now = new Date();
@@ -56,6 +46,7 @@ export default function FishingCalendarScreen() {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const { catches } = useCatchStore();
   const { trips } = useTripStore();
+  const location = useLocationStore((state) => state.location);
 
   const firstDay = new Date(viewYear, viewMonth, 1).getDay();
   const adjustedFirst = firstDay === 0 ? 6 : firstDay - 1; // Mon=0
@@ -105,10 +96,12 @@ export default function FishingCalendarScreen() {
   const dayData = selectedDay ? {
     moon: getMoonEmoji(selectedDay),
     score: getFishingScore(selectedDay, viewMonth),
-    tide: getTideIndicator(selectedDay),
     hasCatch: catchDays.has(selectedDay),
     hasTrip: tripDays.has(selectedDay),
   } : null;
+  const selectedSolunarTimes = selectedDay
+    ? generateSolunarTimes(new Date(viewYear, viewMonth, selectedDay), location?.latitude, location?.longitude)
+    : [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -134,7 +127,7 @@ export default function FishingCalendarScreen() {
 
         {/* Legend */}
         <View style={styles.legend}>
-          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.success }]} /><Text style={styles.legendText}>Great Day</Text></View>
+          <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.success }]} /><Text style={styles.legendText}>Seasonal outlook</Text></View>
           <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.primary, borderRadius: 2 }]} /><Text style={styles.legendText}>Your Catch</Text></View>
           <View style={styles.legendItem}><View style={[styles.legendDot, { backgroundColor: colors.secondary, borderRadius: 2 }]} /><Text style={styles.legendText}>Trip</Text></View>
         </View>
@@ -176,7 +169,6 @@ export default function FishingCalendarScreen() {
                 <Text style={[styles.calMoon, { fontSize: 10 }]}>{getMoonEmoji(day)}</Text>
                 <Text style={[styles.calDay, isToday && { color: colors.primary }]}>{day}</Text>
                 <View style={[styles.calScoreDot, { backgroundColor: sc }]} />
-                <Text style={styles.calTide}>{getTideIndicator(day)}</Text>
                 <View style={styles.calIndicators}>
                   {hasCatch && <View style={[styles.calIndicator, { backgroundColor: colors.primary }]} />}
                   {hasTrip && <View style={[styles.calIndicator, { backgroundColor: colors.secondary }]} />}
@@ -193,7 +185,7 @@ export default function FishingCalendarScreen() {
             <View style={styles.dayDetailRow}>
               <DayStatCard label="Moon" value={dayData.moon} />
               <DayStatCard label="Score" value={`${dayData.score}`} valueColor={scoreColor(dayData.score)} />
-              <DayStatCard label="Tide" value={dayData.tide} />
+              <DayStatCard label="Outlook" value="Planning" />
             </View>
             {dayData.hasCatch && (
               <View style={styles.dayBadge}>
@@ -206,13 +198,13 @@ export default function FishingCalendarScreen() {
               </View>
             )}
             <Text style={styles.solunarTitle}>Solunar Feeding Times</Text>
-            {SOLUNAR_TIMES.map((st, i) => (
-              <View key={i} style={styles.solunarRow}>
-                <View style={[styles.solunarDot, { backgroundColor: st.quality === 'Excellent' ? colors.success : st.quality === 'Good' ? colors.warning : colors.textSecondary }]} />
-                <Text style={styles.solunarLabel}>{st.label}</Text>
-                <Text style={styles.solunarTime}>{st.time}</Text>
-                <Text style={styles.solunarDuration}>{st.duration}</Text>
-                <Text style={[styles.solunarQuality, { color: st.quality === 'Excellent' ? colors.success : st.quality === 'Good' ? colors.warning : colors.textSecondary }]}>{st.quality}</Text>
+            {selectedSolunarTimes.map((st) => (
+              <View key={`${st.type}-${st.start}`} style={styles.solunarRow}>
+                <View style={[styles.solunarDot, { backgroundColor: st.rating >= 4 ? colors.success : st.rating >= 3 ? colors.warning : colors.textSecondary }]} />
+                <Text style={styles.solunarLabel}>{st.type === 'major' ? 'Major Feed' : 'Minor Feed'}</Text>
+                <Text style={styles.solunarTime}>{st.start}</Text>
+                <Text style={styles.solunarDuration}>{st.type === 'major' ? '1h30' : '45m'}</Text>
+                <Text style={[styles.solunarQuality, { color: st.rating >= 4 ? colors.success : st.rating >= 3 ? colors.warning : colors.textSecondary }]}>{st.rating}/5</Text>
               </View>
             ))}
           </View>

@@ -184,7 +184,7 @@ function generate7DayForecast(baseDate: Date): DailyForecast[] {
     return {
       date: day.toISOString(),
       dayName: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : DAY_NAMES[day.getDay()],
-      icon: WEATHER_ICONS[iconIdx],
+      icon: ['weather-sunny', 'weather-partly-cloudy', 'weather-cloudy', 'weather-rainy'][Math.min(iconIdx, 3)],
       high,
       low,
       description: DESCRIPTIONS[descIdx],
@@ -225,7 +225,7 @@ function generate7DayForecastFromApi(
     return {
       date: day.toISOString(),
       dayName: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : DAY_NAMES[day.getDay()],
-      icon: WEATHER_ICONS[Math.min(Math.floor(code / 20), WEATHER_ICONS.length - 1)],
+      icon: wmoIcon(code),
       high,
       low,
       description,
@@ -324,42 +324,43 @@ function generateHourlyForecastFromApi(
   return result;
 }
 
-function generateSolunarTimes(date: Date): SolunarTime[] {
+export function generateSolunarTimes(date: Date, latitude = 51.5, longitude = -0.1): SolunarTime[] {
   const moon = getMoonPhase(date);
   const dayOfYear = Math.floor(
     (date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  const baseHour1 = 4 + Math.round(seededRandom(dayOfYear) * 4);
-  const baseHour2 = baseHour1 + 12;
+  const coordinateSeed = Math.round((latitude + 90) * 100 + (longitude + 180) * 10);
+  const baseMinute1 = 240 + Math.floor(seededRandom(dayOfYear + coordinateSeed) * 240);
+  const baseMinute2 = (baseMinute1 + 720) % 1440;
 
   const pad = (n: number) => n.toString().padStart(2, '0');
-  const fmt = (h: number, m: number) => `${pad(h % 24)}:${pad(m)}`;
+  const fmt = (totalMinutes: number) => `${pad(Math.floor((totalMinutes % 1440) / 60))}:${pad(totalMinutes % 60)}`;
   const isFullOrNew = moon.phase === 'Full Moon' || moon.phase === 'New Moon';
 
   return [
     {
       type: 'major',
-      start: fmt(baseHour1, 0),
-      end: fmt(baseHour1 + 2, 0),
+      start: fmt(baseMinute1),
+      end: fmt(baseMinute1 + 90),
       rating: isFullOrNew ? 5 : 4,
     },
     {
       type: 'minor',
-      start: fmt(baseHour1 + 6, 0),
-      end: fmt(baseHour1 + 7, 0),
+      start: fmt(baseMinute1 + 360),
+      end: fmt(baseMinute1 + 405),
       rating: isFullOrNew ? 4 : 3,
     },
     {
       type: 'major',
-      start: fmt(baseHour2, 0),
-      end: fmt(baseHour2 + 2, 0),
+      start: fmt(baseMinute2),
+      end: fmt(baseMinute2 + 90),
       rating: isFullOrNew ? 5 : 4,
     },
     {
       type: 'minor',
-      start: fmt(baseHour2 + 6, 0),
-      end: fmt(baseHour2 + 7, 0),
+      start: fmt(baseMinute2 + 360),
+      end: fmt(baseMinute2 + 405),
       rating: isFullOrNew ? 3 : 2,
     },
   ];
@@ -393,7 +394,7 @@ function buildMockWeather(now: Date, latitude = 51.5, longitude = -0.1): Weather
     fishingScore,
     forecast7day: generate7DayForecast(now),
     hourlyToday: generateHourlyForecast(now),
-    solunarTimes: generateSolunarTimes(now),
+    solunarTimes: generateSolunarTimes(now, latitude, longitude),
   };
 }
 
@@ -488,7 +489,7 @@ export function useWeather(lat?: number, lon?: number) {
           city: `${lat.toFixed(2)}, ${lon.toFixed(2)}`,
           forecast7day: generate7DayForecastFromApi(data.daily, now),
           hourlyToday: generateHourlyForecastFromApi(data.hourly, now),
-          solunarTimes: generateSolunarTimes(now),
+          solunarTimes: generateSolunarTimes(now, lat, lon),
         };
 
         try {

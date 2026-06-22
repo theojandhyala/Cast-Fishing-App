@@ -20,8 +20,6 @@ import { colors, radius, spacing, elevation } from '../constants/theme';
 import { useSessionStore } from '../store/sessionStore';
 import { useCatchStore } from '../store/catchStore';
 import { useWeather } from '../hooks/useWeather';
-import { useSolunar } from '../hooks/useSolunar';
-import { useForecast } from '../hooks/useForecast';
 import { useTides } from '../hooks/useTides';
 
 const { width } = Dimensions.get('window');
@@ -54,8 +52,6 @@ export default function SessionScreen() {
   const { activeSession, addCatchToSession, endSession, sessionHistory } = useSessionStore();
   const { addCatch, catches } = useCatchStore();
   const { weather } = useWeather(activeSession?.latitude, activeSession?.longitude);
-  const solunar = useSolunar(activeSession?.latitude ?? 51.5, activeSession?.longitude ?? -0.1);
-  const forecast = useForecast(activeSession?.latitude ?? 51.5, activeSession?.longitude ?? -0.1);
   const tides = useTides(activeSession?.latitude, activeSession?.longitude);
   const [now, setNow] = useState(Date.now());
   const [logOpen, setLogOpen] = useState(false);
@@ -77,14 +73,12 @@ export default function SessionScreen() {
     [catches, activeSession]
   );
 
-  const w = weather ?? { temp: 18, wind: 12, pressure: 1016, description: 'Partly Cloudy', humidity: 75 };
+  const w = weather ?? { temp: 18, wind: 12, pressure: 1016, description: 'Partly Cloudy' };
   const currentHour = new Date().getHours();
-  const barData = solunar.hourlyActivity.slice(0, 24).map(v => v / 100);
-  const majorWindows = solunar.windows.filter(win => win.quality === 'major').slice(0, 2);
-  const todayScore = forecast.days[0]?.score ?? 5;
-  const tomorrowScore = forecast.days[1]?.score ?? 5;
-  // Convert 1–10 score to 1–5 stars (halves allowed)
-  function scoreToStars(score: number): number { return Math.round(score / 2 * 2) / 2; } // nearest 0.5
+  const barData = weather?.hourlyToday.map((hour) => hour.fishingScore / 100) ?? Array.from({ length: 24 }, () => 0.08);
+  const todayStars = Math.max(1, Math.round((weather?.fishingScore ?? 0) / 20));
+  const tomorrowStars = Math.max(1, Math.round((weather?.forecast7day[1]?.fishingScore ?? 0) / 20));
+  const majorWindows = weather?.solunarTimes.filter((window) => window.type === 'major') ?? [];
   const spotName = activeSession?.spotName || 'Rocky Point';
 
   const handleEnd = () => setEndConfirmOpen(true);
@@ -233,11 +227,11 @@ export default function SessionScreen() {
               <View style={s.condGrid}>
                 {[
                   { icon: 'thermometer', val: `${w.temp}°C`, label: w.description },
-                  { icon: 'weather-windy', val: `${w.wind} km/h`, label: 'NW Wind' },
+                  { icon: 'weather-windy', val: `${w.wind} km/h`, label: weather ? `${weather.windDirection}° Wind` : 'Wind' },
                   { icon: 'waves', val: `${tides.currentHeight.toFixed(1)} m`, label: tides.trend === 'rising' ? 'Rising Tide' : tides.trend === 'falling' ? 'Falling Tide' : 'Slack Tide' },
                   { icon: 'gauge', val: `${w.pressure} hPa`, label: 'Pressure' },
-                  { icon: 'water-percent', val: `${w.humidity ?? 75}%`, label: 'Humidity' },
-                  { icon: 'arrow-expand-vertical', val: '8–15 m', label: 'Depth' },
+                  { icon: 'water-percent', val: weather ? `${weather.humidity}%` : '—', label: 'Humidity' },
+                  { icon: 'arrow-expand-vertical', val: `${Math.abs(tides.nextHigh.height - tides.nextLow.height).toFixed(1)} m`, label: 'Tidal range' },
                 ].map((item, i) => (
                   <View key={i} style={s.condItem}>
                     <View style={s.condItemTop}>
@@ -263,21 +257,17 @@ export default function SessionScreen() {
             <View style={s.starsRow}>
               <Text style={s.starsLabel}>Today</Text>
               <View style={s.stars}>
-                {[1,2,3,4,5].map(i => {
-                  const stars = scoreToStars(todayScore);
-                  const name = i <= Math.floor(stars) ? 'star' : i === Math.ceil(stars) && stars % 1 !== 0 ? 'star-half-full' : 'star-outline';
-                  return <MaterialCommunityIcons key={i} name={name as any} size={12} color={colors.secondary} />;
-                })}
+                {[1,2,3,4,5].map(i => (
+                  <MaterialCommunityIcons key={i} name={i <= todayStars ? 'star' : 'star-outline'} size={12} color={colors.secondary} />
+                ))}
               </View>
             </View>
             <View style={[s.starsRow, { marginBottom: 10 }]}>
               <Text style={s.starsLabel}>Tomorrow</Text>
               <View style={s.stars}>
-                {[1,2,3,4,5].map(i => {
-                  const stars = scoreToStars(tomorrowScore);
-                  const name = i <= Math.floor(stars) ? 'star' : i === Math.ceil(stars) && stars % 1 !== 0 ? 'star-half-full' : 'star-outline';
-                  return <MaterialCommunityIcons key={i} name={name as any} size={12} color={colors.secondary} />;
-                })}
+                {[1,2,3,4,5].map(i => (
+                  <MaterialCommunityIcons key={i} name={i <= tomorrowStars ? 'star' : 'star-outline'} size={12} color={colors.secondary} />
+                ))}
               </View>
             </View>
             {/* Bar chart */}
@@ -319,17 +309,17 @@ export default function SessionScreen() {
             <View style={s.ringContainer}>
               <View style={s.ringOuter}>
                 <View style={s.ringInner}>
-                  <Text style={s.ringPct}>{solunar.score}%</Text>
-                  <Text style={s.ringLabel}>{solunar.scoreLabel}</Text>
+                  <Text style={s.ringPct}>{weather?.fishingScore ?? '—'}{weather ? '%' : ''}</Text>
+                  <Text style={s.ringLabel}>{!weather ? 'Loading' : weather.fishingScore >= 75 ? 'High' : weather.fishingScore >= 50 ? 'Moderate' : 'Low'}</Text>
                 </View>
               </View>
             </View>
             {/* Major times */}
             <Text style={s.majorTimesTitle}>MAJOR TIMES</Text>
-            {majorWindows.length > 0 ? majorWindows.map(win => (
-              <View key={win.time} style={s.majorTimeRow}>
-                <Text style={s.majorTimeText}>{win.time} – {win.endTime}</Text>
-                <MaterialCommunityIcons name="star" size={12} color={win.isActive ? colors.primary : colors.secondary} />
+            {majorWindows.length > 0 ? majorWindows.map((window) => (
+              <View key={window.start} style={s.majorTimeRow}>
+                <Text style={s.majorTimeText}>{window.start} – {window.end}</Text>
+                <MaterialCommunityIcons name="star" size={12} color={colors.secondary} />
               </View>
             )) : (
               <Text style={s.majorTimeText}>No major windows today</Text>

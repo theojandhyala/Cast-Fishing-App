@@ -11,8 +11,13 @@ import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { getMoonPhase } from '../data/fishingTimes';
 import { colors, radius, spacing, elevation } from '../constants/theme';
+import { useLocationStore } from '../store/locationStore';
+import { useLocation } from '../hooks/useLocation';
+import { generateSolunarTimes, useWeather } from '../hooks/useWeather';
+import { useMarineConditions } from '../hooks/useMarineConditions';
+import { fishingWindowQuality, selectPrimaryFishingWindow } from '../utils/fishingWindows';
 
-const PERIODS = ['Today', 'Tomorrow', 'This Week'];
+const PERIODS = ['Today', 'Tomorrow'];
 
 const MOON_PHASE_ICONS: Record<string, string> = {
   'New Moon': 'moon-new',
@@ -24,12 +29,6 @@ const MOON_PHASE_ICONS: Record<string, string> = {
   'Last Quarter': 'moon-last-quarter',
   'Waning Crescent': 'moon-waning-crescent',
 };
-
-// Simple tide curve approximation (normalized heights spanning 24h)
-const TIDE_POINTS = [
-  0.5, 0.62, 0.74, 0.85, 0.93, 0.98, 0.97, 0.9, 0.78, 0.64, 0.5, 0.36, 0.23,
-  0.13, 0.06, 0.03, 0.05, 0.12, 0.24, 0.38, 0.52, 0.66, 0.78, 0.88, 0.94,
-];
 
 const HOUR_MARKS = ['00:00', '12:00', '18:00', '24:00'];
 
@@ -51,8 +50,25 @@ function StarRating({ count, max = 4 }: { count: number; max?: number }) {
 export default function FishTipsScreen() {
   const [activePeriod, setActivePeriod] = useState(0);
   const router = useRouter();
-  const now = new Date();
-  const moon = useMemo(() => getMoonPhase(now), []);
+  const manualLocation = useLocationStore((state) => state.location);
+  const { location: gpsLocation } = useLocation();
+  const latitude = manualLocation?.latitude ?? gpsLocation?.latitude;
+  const longitude = manualLocation?.longitude ?? gpsLocation?.longitude;
+  const { weather } = useWeather(latitude, longitude);
+  const { marine } = useMarineConditions(latitude, longitude);
+  const selectedDate = useMemo(() => new Date(Date.now() + activePeriod * 86_400_000), [activePeriod]);
+  const moon = useMemo(() => getMoonPhase(selectedDate), [selectedDate]);
+  const windows = useMemo(() => generateSolunarTimes(selectedDate, latitude, longitude), [selectedDate, latitude, longitude]);
+  const windowReference = useMemo(() => activePeriod === 0 ? new Date() : new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate()), [activePeriod, selectedDate]);
+  const primaryWindow = selectPrimaryFishingWindow(windows, windowReference);
+  const secondaryWindow = windows.find((window) => window !== primaryWindow && window.type === 'major') ?? windows.find((window) => window !== primaryWindow);
+  const tidePoints = useMemo(() => {
+    const values = marine?.tideSeries.map((point) => point.heightM) ?? [];
+    if (!values.length) return [];
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    return values.map((value) => max === min ? 0.5 : 0.1 + ((value - min) / (max - min)) * 0.9);
+  }, [marine?.tideSeries]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -86,18 +102,18 @@ export default function FishTipsScreen() {
         <Text style={styles.sectionLabel}>Best Bite Windows</Text>
         <View style={[styles.biteCard, styles.biteCardBest]}>
           <Text style={styles.biteCardBestLabel}>Best</Text>
-          <Text style={styles.biteCardBestTime}>18:30 - 20:00</Text>
+          <Text style={styles.biteCardBestTime}>{primaryWindow ? `${primaryWindow.start} - ${primaryWindow.end}` : 'Calculating…'}</Text>
           <View style={styles.biteCardRight}>
-            <Text style={styles.biteCardBestQuality}>Great</Text>
-            <StarRating count={4} />
+            <Text style={styles.biteCardBestQuality}>{primaryWindow ? fishingWindowQuality(primaryWindow) : '—'}</Text>
+            <StarRating count={primaryWindow?.rating ?? 0} max={5} />
           </View>
         </View>
         <View style={styles.biteCard}>
           <Text style={styles.biteCardLabel}>Good</Text>
-          <Text style={styles.biteCardTime}>05:30 - 07:30</Text>
+          <Text style={styles.biteCardTime}>{secondaryWindow ? `${secondaryWindow.start} - ${secondaryWindow.end}` : '—'}</Text>
           <View style={styles.biteCardRight}>
-            <Text style={styles.biteCardQuality}>Good</Text>
-            <StarRating count={2} />
+            <Text style={styles.biteCardQuality}>{secondaryWindow ? fishingWindowQuality(secondaryWindow) : '—'}</Text>
+            <StarRating count={secondaryWindow?.rating ?? 0} max={5} />
           </View>
         </View>
 
@@ -105,11 +121,11 @@ export default function FishTipsScreen() {
         <View style={styles.sunMoonRow}>
           <View style={styles.sunMoonItem}>
             <MaterialCommunityIcons name="weather-sunset-up" size={22} color={colors.secondary} />
-            <Text style={styles.sunMoonTime}>05:18</Text>
+            <Text style={styles.sunMoonTime}>{windows[0]?.start ?? '—'}</Text>
           </View>
           <View style={styles.sunMoonItem}>
             <MaterialCommunityIcons name="weather-sunset-down" size={22} color={colors.secondary} />
-            <Text style={styles.sunMoonTime}>20:42</Text>
+            <Text style={styles.sunMoonTime}>{windows[2]?.start ?? '—'}</Text>
           </View>
           <View style={styles.moonPhaseBox}>
             <Text style={styles.moonPhaseLabel}>Moon Phase</Text>
@@ -132,9 +148,9 @@ export default function FishTipsScreen() {
             <Text style={styles.tideLabel}>Low</Text>
           </View>
           <View style={styles.tideChart}>
-            {TIDE_POINTS.map((v, i) => (
+            {(tidePoints.length ? tidePoints : [0.08, 0.08, 0.08, 0.08]).map((v, i) => (
               <View key={i} style={styles.tideBarTrack}>
-                <View style={[styles.tideBar, { height: `${v * 100}%` }]} />
+                <View style={[styles.tideBar, { height: `${v * 100}%`, opacity: tidePoints.length ? 1 : 0.2 }]} />
               </View>
             ))}
           </View>
@@ -150,22 +166,22 @@ export default function FishTipsScreen() {
         <View style={styles.weatherRow}>
           <View style={styles.weatherItem}>
             <MaterialCommunityIcons name="thermometer" size={20} color={colors.primary} />
-            <Text style={styles.weatherValue}>18°C</Text>
+            <Text style={styles.weatherValue}>{weather ? `${weather.temp}°C` : '—'}</Text>
             <Text style={styles.weatherLabel}>Temp</Text>
           </View>
           <View style={styles.weatherItem}>
             <MaterialCommunityIcons name="weather-windy" size={20} color={colors.primary} />
-            <Text style={styles.weatherValue}>12 km/h</Text>
+            <Text style={styles.weatherValue}>{weather ? `${weather.wind} km/h` : '—'}</Text>
             <Text style={styles.weatherLabel}>Wind</Text>
           </View>
           <View style={styles.weatherItem}>
             <MaterialCommunityIcons name="water-percent" size={20} color={colors.primary} />
-            <Text style={styles.weatherValue}>76%</Text>
+            <Text style={styles.weatherValue}>{weather ? `${weather.humidity}%` : '—'}</Text>
             <Text style={styles.weatherLabel}>Humidity</Text>
           </View>
           <View style={styles.weatherItem}>
             <MaterialCommunityIcons name="gauge" size={20} color={colors.primary} />
-            <Text style={styles.weatherValue}>1016 hPa</Text>
+            <Text style={styles.weatherValue}>{weather ? `${weather.pressure} hPa` : '—'}</Text>
             <Text style={styles.weatherLabel}>Pressure</Text>
           </View>
         </View>

@@ -7,6 +7,7 @@ import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { useLocationStore } from '../store/locationStore';
 import { useWeather } from '../hooks/useWeather';
+import { useLocation } from '../hooks/useLocation';
 import { colors, spacing, radius } from '../constants/theme';
 
 const MOON_PHASES = [
@@ -26,17 +27,14 @@ const FORECAST_7DAY = [
 
 const PRESSURE_TREND = [1010, 1012, 1014, 1013, 1015, 1016, 1017, 1016, 1018, 1019, 1018, 1016];
 
-const SOLUNAR = [
-  { time: '06:42', label: 'Major Feed', duration: '2h', quality: 'Excellent' },
-  { time: '12:14', label: 'Minor Feed', duration: '1h', quality: 'Good' },
-  { time: '19:08', label: 'Major Feed', duration: '2h', quality: 'Excellent' },
-  { time: '00:32', label: 'Minor Feed', duration: '1h', quality: 'Fair' },
-];
-
 function scoreColor(score: number) {
   if (score >= 75) return colors.success;
   if (score >= 50) return colors.warning;
   return colors.danger;
+}
+
+function windCardinal(degrees: number) {
+  return ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(degrees / 45) % 8];
 }
 
 const now = new Date();
@@ -45,19 +43,39 @@ const currentHour = now.getHours();
 export default function WeatherDetailScreen() {
   const router = useRouter();
   const { location } = useLocationStore();
-  const { weather } = useWeather(location?.latitude, location?.longitude);
+  const { location: gpsLocation } = useLocation();
+  const { weather } = useWeather(location?.latitude ?? gpsLocation?.latitude, location?.longitude ?? gpsLocation?.longitude);
   const [selectedDay, setSelectedDay] = useState(0);
 
-  const bestDayIndex = FORECAST_7DAY.reduce((bestIdx, d, i) => d.fishScore > FORECAST_7DAY[bestIdx].fishScore ? i : bestIdx, 0);
+  const forecastDays = weather?.forecast7day.map((day) => ({
+    day: day.dayName,
+    icon: day.icon,
+    high: day.high,
+    low: day.low,
+    wind: day.wind,
+    windDir: windCardinal(weather.windDirection),
+    pressure: day.pressure,
+    fishScore: day.fishingScore,
+    description: day.description,
+  })) ?? FORECAST_7DAY;
+  const pressureData = weather?.hourlyToday.filter((_, index) => index % 2 === 0).map((hour) => hour.pressure) ?? PRESSURE_TREND;
+  const solunarData = weather?.solunarTimes.map((window) => ({
+    time: window.start,
+    label: window.type === 'major' ? 'Major Feed' : 'Minor Feed',
+    duration: window.type === 'major' ? '1h30' : '45m',
+    quality: window.rating >= 5 ? 'Excellent' : window.rating >= 4 ? 'Very good' : window.rating >= 3 ? 'Good' : 'Fair',
+  })) ?? [];
 
-  const pressureMin = Math.min(...PRESSURE_TREND);
-  const pressureMax = Math.max(...PRESSURE_TREND);
+  const bestDayIndex = forecastDays.reduce((bestIdx, d, i) => d.fishScore > forecastDays[bestIdx].fishScore ? i : bestIdx, 0);
+
+  const pressureMin = Math.min(...pressureData);
+  const pressureMax = Math.max(...pressureData);
   const pressureRange = pressureMax - pressureMin;
 
   const currentPressure = weather?.pressure || 1016;
   const pressureTrend = weather?.pressureTrend || 'steady';
 
-  const current = FORECAST_7DAY[selectedDay];
+  const current = forecastDays[Math.min(selectedDay, forecastDays.length - 1)];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -78,7 +96,7 @@ export default function WeatherDetailScreen() {
             <Text style={styles.pressureValue}>{currentPressure} hPa</Text>
           </View>
           <View style={styles.pressureGraph}>
-            {PRESSURE_TREND.map((p, i) => {
+            {pressureData.map((p, i) => {
               const h = pressureRange > 0 ? ((p - pressureMin) / pressureRange) * 40 + 5 : 20;
               const isNow = i === currentHour % 12;
               return (
@@ -106,7 +124,7 @@ export default function WeatherDetailScreen() {
         {/* 7-day forecast */}
         <Text style={[styles.sectionTitle, styles.sectionTitlePadded]}>7-Day Forecast</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.forecastScroll}>
-          {FORECAST_7DAY.map((f, i) => (
+          {forecastDays.map((f, i) => (
             <TouchableOpacity
               key={i}
               style={[styles.dayCard, selectedDay === i && styles.dayCardActive, i === bestDayIndex && styles.dayCardBest]}
@@ -191,7 +209,7 @@ export default function WeatherDetailScreen() {
             <MaterialCommunityIcons name="weather-night" size={18} color={colors.textPrimary} />
             <Text style={styles.sectionTitle}>Solunar Feeding Times</Text>
           </View>
-          {SOLUNAR.map((s, i) => (
+          {solunarData.map((s, i) => (
             <View key={i} style={styles.solunarRow}>
               <View style={[styles.solunarDot, { backgroundColor: s.quality === 'Excellent' ? colors.success : s.quality === 'Good' ? colors.warning : colors.textSecondary }]} />
               <Text style={styles.solunarTime}>{s.time}</Text>

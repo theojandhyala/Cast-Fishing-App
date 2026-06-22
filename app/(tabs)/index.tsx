@@ -18,6 +18,7 @@ import { haversineKm, formatDistance } from '../../utils/distance';
 import { SpotPhoto } from '../../components/map/SpotPhoto';
 import { useLocationStore } from '../../store/locationStore';
 import { FishSpeciesPhoto } from '../../components/fish/FishSpeciesPhoto';
+import { fishingWindowLabel, fishingWindowQuality, selectPrimaryFishingWindow } from '../../utils/fishingWindows';
 
 type SpotWithDist = FishingSpotRecord & { _distKm?: number };
 
@@ -31,14 +32,6 @@ function timeAgo(dateStr: string) {
 function getGreeting() {
   const h = new Date().getHours();
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-}
-
-function getBestWindow() {
-  const h = new Date().getHours();
-  if (h < 10) return { time: '05:30 – 08:00', label: 'Dawn — fish are most active', icon: 'weather-sunset-up' as const };
-  if (h < 15) return { time: '12:00 – 14:00', label: 'Midday activity window', icon: 'weather-sunny' as const };
-  if (h < 20) return { time: '18:30 – 20:30', label: 'Evening — prime feeding time', icon: 'weather-sunset-down' as const };
-  return { time: '21:00 – 23:00', label: 'Night session opportunity', icon: 'weather-night' as const };
 }
 
 function getScoreColor(score: number): string {
@@ -85,7 +78,6 @@ export default function HomeScreen() {
   );
 
   const firstName = user?.name?.split(' ')[0] || 'Angler';
-  const bestWindow = getBestWindow();
   const recentCatches = catches.slice(0, 3);
   const tip = getTipOfDay();
 
@@ -100,6 +92,7 @@ export default function HomeScreen() {
   const nearMe = !!gpsLocation && permissionGranted;
 
   const w = weather;
+  const primaryWindow = w ? selectPrimaryFishingWindow(w.solunarTimes) : null;
   const scoreColor = w ? getScoreColor(w.fishingScore) : '#F59E0B';
   const scoreInfo = w ? getScoreLabel(w.fishingScore) : { label: 'Unknown', color: '#F59E0B' };
 
@@ -193,10 +186,10 @@ export default function HomeScreen() {
 
                 {/* Best window */}
                 <View style={s.bestWindow}>
-                  <MaterialCommunityIcons name={getBestWindow().icon} size={16} color={colors.secondary} />
+                  <MaterialCommunityIcons name="chart-timeline-variant" size={16} color={colors.secondary} />
                   <View style={{ flex: 1 }}>
-                    <Text style={s.bestWindowTitle}>Best window today: {getBestWindow().time}</Text>
-                    <Text style={s.bestWindowSub}>{getBestWindow().label}</Text>
+                    <Text style={s.bestWindowTitle}>{primaryWindow ? `Primary activity window: ${fishingWindowLabel(primaryWindow)}` : 'Calculating activity window…'}</Text>
+                    <Text style={s.bestWindowSub}>{primaryWindow ? `${fishingWindowQuality(primaryWindow)} · ${primaryWindow.type} solunar period` : 'Uses the same data as Fish Activity'}</Text>
                   </View>
                 </View>
                 <View style={s.updateRow}>
