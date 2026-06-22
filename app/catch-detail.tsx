@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   TouchableOpacity,
   Alert,
 } from 'react-native';
@@ -12,6 +11,7 @@ import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCatchStore } from '../store/catchStore';
 import { colors, radius, spacing } from '../constants/theme';
+import { FishSpeciesPhoto } from '../components/fish/FishSpeciesPhoto';
 
 export default function CatchDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -61,13 +61,7 @@ export default function CatchDetailScreen() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Photo or emoji hero */}
-      {catchItem.photo ? (
-        <Image source={{ uri: catchItem.photo }} style={styles.photo} />
-      ) : (
-        <View style={styles.emojiHero}>
-          <MaterialCommunityIcons name="fish" size={80} color={colors.primary} />
-        </View>
-      )}
+      <FishSpeciesPhoto species={catchItem.species} photo={catchItem.photo} style={styles.photo} />
 
       {/* Header */}
       <View style={styles.header}>
@@ -162,13 +156,6 @@ const styles = StyleSheet.create({
   photo: {
     width: '100%',
     height: 280,
-  },
-  emojiHero: {
-    width: '100%',
-    height: 200,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',

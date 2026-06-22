@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  FlatList, TouchableOpacity,
+  FlatList, TouchableOpacity, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,9 +9,11 @@ import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { useCatchStore } from '../../store/catchStore';
 import { colors, radius, spacing, elevation } from '../../constants/theme';
+import { FishSpeciesPhoto } from '../../components/fish/FishSpeciesPhoto';
 
 const TABS = ['My Catches', 'Statistics'] as const;
 type Tab = typeof TABS[number];
+type SortMode = 'Newest' | 'Heaviest' | 'Longest';
 
 const CATCH_GRADS: [string, string][] = [
   ['#0F2A1C', '#061510'], ['#0F1E2E', '#060E18'],
@@ -58,12 +60,25 @@ export default function CatchesScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('My Catches');
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+  const [sortMode, setSortMode] = useState<SortMode>('Newest');
   const stats = getStats();
 
   const totalWeight = catches.reduce((sum, c) => sum + (c.weight || 0), 0);
   const speciesCount = Object.keys(stats.speciesCounts || {}).length;
   const topSpecies = Object.entries(stats.speciesCounts || {})
     .sort((a, b) => b[1] - a[1]);
+  const visibleCatches = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase();
+    const matches = query ? catches.filter((item) => [item.species, item.location, item.bait].some((value) => value?.toLocaleLowerCase().includes(query))) : [...catches];
+    return matches.sort((a, b) => sortMode === 'Heaviest'
+      ? (b.weight || 0) - (a.weight || 0)
+      : sortMode === 'Longest'
+        ? (b.length || 0) - (a.length || 0)
+        : new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [catches, search, sortMode]);
+
+  const cycleSort = () => setSortMode((current) => current === 'Newest' ? 'Heaviest' : current === 'Heaviest' ? 'Longest' : 'Newest');
 
   const toggleSaved = (id: string) => setSaved(prev => {
     const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
@@ -90,17 +105,15 @@ export default function CatchesScreen() {
         <>
           {/* Filter row */}
           <View style={s.filterRow}>
-            <TouchableOpacity style={s.filterPill}>
-              <Text style={s.filterPillText}>All Species</Text>
-              <MaterialCommunityIcons name="chevron-down" size={14} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={s.filterIcon}>
-              <MaterialCommunityIcons name="calendar-outline" size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={s.filterIcon}>
+            <View style={s.searchBox}>
+              <MaterialCommunityIcons name="magnify" size={17} color={colors.textSecondary} />
+              <TextInput value={search} onChangeText={setSearch} placeholder="Search catches..." placeholderTextColor={colors.textTertiary} style={s.searchInput} />
+            </View>
+            <TouchableOpacity style={s.filterIcon} onPress={cycleSort} accessibilityRole="button" accessibilityLabel={`Sort catches. Current sorting: ${sortMode}`}>
               <MaterialCommunityIcons name="sort-variant" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
+          <Text style={s.sortLabel}>Sorted by {sortMode.toLowerCase()}</Text>
 
           {catches.length === 0 ? (
             <View style={s.empty}>
@@ -114,13 +127,13 @@ export default function CatchesScreen() {
             </View>
           ) : (
             <FlatList
-              data={catches}
+              data={visibleCatches}
               keyExtractor={item => item.id}
-              contentContainerStyle={{ paddingBottom: 100 }}
+              numColumns={2}
+              columnWrapperStyle={s.catchGridRow}
+              contentContainerStyle={s.catchGrid}
               showsVerticalScrollIndicator={false}
-              ItemSeparatorComponent={() => <View style={s.separator} />}
-              renderItem={({ item, index }) => {
-                const grad = CATCH_GRADS[index % CATCH_GRADS.length];
+              renderItem={({ item }) => {
                 const isSaved = saved.has(item.id);
                 return (
                   <TouchableOpacity
@@ -129,15 +142,16 @@ export default function CatchesScreen() {
                     activeOpacity={0.85}
                   >
                     {/* Fish photo */}
-                    <LinearGradient colors={grad} style={s.catchPhoto}>
-                      <View style={s.catchPhotoIcon}>
-                        <MaterialCommunityIcons
-                          name={getSpeciesIcon(item.species) as any}
-                          size={28}
-                          color={getSpeciesColor(item.species)}
-                        />
-                      </View>
-                    </LinearGradient>
+                    <View style={s.photoWrap}>
+                      <FishSpeciesPhoto species={item.species} photo={item.photo} style={s.catchPhoto} />
+                      <TouchableOpacity
+                        style={s.bookmarkBtn}
+                        onPress={(event) => { event.stopPropagation(); toggleSaved(item.id); }}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      >
+                        <MaterialCommunityIcons name={isSaved ? 'bookmark' : 'bookmark-outline'} size={18} color={isSaved ? colors.primary : '#D7E4E6'} />
+                      </TouchableOpacity>
+                    </View>
 
                     {/* Info */}
                     <View style={s.catchBody}>
@@ -151,20 +165,8 @@ export default function CatchesScreen() {
                         </Text>
                       )}
                       <Text style={s.catchDate}>{formatDate(item.date)}</Text>
+                      {item.location ? <Text style={s.catchLocation} numberOfLines={1}>{item.location}</Text> : null}
                     </View>
-
-                    {/* Bookmark */}
-                    <TouchableOpacity
-                      style={s.bookmarkBtn}
-                      onPress={() => toggleSaved(item.id)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <MaterialCommunityIcons
-                        name={isSaved ? 'bookmark' : 'bookmark-outline'}
-                        size={20}
-                        color={isSaved ? colors.primary : colors.textSecondary}
-                      />
-                    </TouchableOpacity>
                   </TouchableOpacity>
                 );
               }}
@@ -261,7 +263,8 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.sm,
   },
-  filterPill: {
+  sortLabel: { color: colors.textTertiary, fontSize: 10, textAlign: 'right', marginHorizontal: spacing.lg, marginTop: -4, marginBottom: spacing.sm },
+  searchBox: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -273,7 +276,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  filterPillText: { flex: 1, fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
+  searchInput: { flex: 1, color: colors.textPrimary, fontSize: 12, paddingVertical: 0 },
   filterIcon: {
     width: 42,
     height: 42,
@@ -286,22 +289,20 @@ const s = StyleSheet.create({
   },
 
   // Catch rows
-  separator: { height: 1, backgroundColor: colors.border },
+  catchGrid: { paddingHorizontal: spacing.md, paddingBottom: 100, gap: spacing.sm },
+  catchGridRow: { gap: spacing.sm },
   catchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 12,
-    gap: 14,
-    backgroundColor: colors.background,
-  },
-  catchPhoto: {
-    width: 68,
-    height: 68,
-    borderRadius: radius.sm,
+    flex: 1,
+    minWidth: 0,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
     overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
+  },
+  photoWrap: { position: 'relative' },
+  catchPhoto: {
+    width: '100%', height: 128,
   },
   catchPhotoIcon: {
     width: 44,
@@ -311,11 +312,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  catchBody: { flex: 1, gap: 4 },
+  catchBody: { padding: 10, gap: 3 },
   catchSpecies: { fontSize: 15, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.3 },
   catchMeasure: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
   catchDate: { fontSize: 11, color: colors.textTertiary },
-  bookmarkBtn: { padding: 4 },
+  catchLocation: { fontSize: 10, color: colors.textSecondary },
+  bookmarkBtn: { position: 'absolute', top: 8, right: 8, width: 30, height: 30, borderRadius: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(2,11,17,0.72)' },
 
   // Empty
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 80, paddingHorizontal: 40 },

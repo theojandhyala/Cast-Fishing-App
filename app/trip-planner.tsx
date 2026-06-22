@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
   tripScoreBubble: { alignItems: 'center', backgroundColor: colors.surface2, borderRadius: radius.lg, padding: spacing.sm, minWidth: 60 },
   tripScore: { fontSize: 24, fontWeight: '800' },
   tripScoreLabel: { fontSize: 10, color: colors.textSecondary },
-  tripNotes: { fontSize: 13, color: colors.textSecondary, marginTop: spacing.sm, fontStyle: 'italic' },
+  tripNotes: { fontSize: 13, color: colors.textSecondary, marginTop: spacing.sm },
   tripFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
   statusBadge: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.full },
   statusContentRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },

@@ -42,7 +42,7 @@ export default function SessionSummaryScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.centered}>
           <Text style={typography.body}>No session recap available.</Text>
-          <CastButton title="Back to Map" onPress={handleClose} style={{ marginTop: spacing.md }} />
+          <CastButton title="Back to Spots" onPress={handleClose} style={{ marginTop: spacing.md }} />
         </View>
       </SafeAreaView>
     );

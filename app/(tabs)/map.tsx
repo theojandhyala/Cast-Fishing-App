@@ -1,36 +1,25 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useDeferredValue, useState, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Modal,
   TextInput,
   FlatList,
-  Animated,
+  Alert,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { WORLD_SPOTS, WorldSpot } from '../../data/worldSpots';
-import { SpotCard } from '../../components/map/SpotCard';
+import { FISHING_SPOTS } from '../../data/fishingSpots';
+import { FishingSpotRecord } from '../../types/fishingSpot';
 import { colors, radius, spacing, elevation } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
-import { useSocialStore, FriendActivity } from '../../store/socialStore';
-
-function getSpotPressure(spotId: string): { level: 'quiet' | 'moderate' | 'busy' | 'packed'; count: number; color: string } {
-  const hash = spotId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-  const n = hash % 4;
-  const levels = [
-    { level: 'quiet' as const, count: (hash % 3) + 1, color: '#22C55E' },
-    { level: 'moderate' as const, count: (hash % 5) + 3, color: '#F59E0B' },
-    { level: 'busy' as const, count: (hash % 8) + 6, color: '#F97316' },
-    { level: 'packed' as const, count: (hash % 12) + 10, color: '#EF4444' },
-  ];
-  return levels[n];
-}
+import { SpotPhoto } from '../../components/map/SpotPhoto';
+import { useSpotStore } from '../../store/spotStore';
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   beginner:     colors.success,
@@ -38,195 +27,87 @@ const DIFFICULTY_COLORS: Record<string, string> = {
   expert:       colors.danger,
 };
 
-const TYPE_FILTERS = ['All', 'Lake', 'River', 'Sea', 'Reservoir', 'Ocean'];
+const TYPE_FILTERS = ['All', 'Fishery', 'Lake', 'River', 'Sea', 'Reservoir', 'Ocean'];
 const TAG_FILTERS = ['Carp', 'Predator', 'Beginner'];
+const DISPLAY_MODES = ['List', 'Hotspots'] as const;
+type DisplayMode = typeof DISPLAY_MODES[number];
+const SEARCH_ROWS = FISHING_SPOTS.map((spot) => ({
+  spot,
+  name: spot.name.toLocaleLowerCase(),
+  haystack: [spot.name, spot.country, spot.region, ...spot.species].join(' ').toLocaleLowerCase(),
+}));
 
-const SPOT_GRADIENTS: Record<string, readonly [string, string]> = {
-  river:     ['#1a3a2a', '#0d1f16'],
-  lake:      ['#1a2a3a', '#0d1620'],
-  sea:       ['#132035', '#0a1525'],
-  reservoir: ['#1a2535', '#0f1928'],
-  ocean:     ['#0f1e30', '#0a1320'],
-  estuary:   ['#1a2a20', '#0f1a12'],
-  private:   ['#1a1a2a', '#0f0f1a'],
-};
+interface Coordinate { latitude: number; longitude: number }
 
-const TYPE_ICONS: Record<string, string> = {
-  river: 'waves', lake: 'water', sea: 'anchor',
-  reservoir: 'water-pump', ocean: 'sail-boat', estuary: 'water-outline', private: 'lock',
-};
-
-// ─── Friend Session Pins ──────────────────────────────────────────────────────
-
-function FriendPin({ activity }: { activity: FriendActivity }) {
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.6, duration: 900, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, []);
-
-  const initials = activity.displayName
-    .split(' ')
-    .map((n: string) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-
-  return (
-    <View style={fp.pinWrap}>
-      <Animated.View
-        style={[
-          fp.pulse,
-          {
-            backgroundColor: activity.avatarColor + '33',
-            transform: [{ scale: pulseAnim }],
-          },
-        ]}
-      />
-      <LinearGradient
-        colors={[activity.avatarColor, activity.avatarColor + 'CC']}
-        style={fp.pin}
-      >
-        <Text style={fp.initials}>{initials}</Text>
-      </LinearGradient>
-      <View style={fp.greenDot} />
-      <Text style={fp.name} numberOfLines={1}>{activity.username}</Text>
-    </View>
-  );
+function distanceKm(a: Coordinate, b: Coordinate) {
+  const toRadians = (degrees: number) => degrees * Math.PI / 180;
+  const dLat = toRadians(b.latitude - a.latitude);
+  const dLon = toRadians(b.longitude - a.longitude);
+  const lat1 = toRadians(a.latitude);
+  const lat2 = toRadians(b.latitude);
+  const value = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
 }
-
-const fp = StyleSheet.create({
-  pinWrap: { alignItems: 'center', width: 60 },
-  pulse: {
-    position: 'absolute',
-    top: -6,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-  },
-  pin: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  initials: { fontSize: 14, fontWeight: '800', color: '#fff' },
-  greenDot: {
-    position: 'absolute',
-    top: 28,
-    right: 8,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#22C55E',
-    borderWidth: 2,
-    borderColor: colors.background,
-  },
-  name: { fontSize: 9, fontWeight: '700', color: colors.textSecondary, marginTop: 6, maxWidth: 56, textAlign: 'center' },
-});
-
-// ─── Friend Sessions Banner ───────────────────────────────────────────────────
-
-function FriendSessionsBanner() {
-  const { feed } = useSocialStore();
-  const activeSessions = feed.filter(
-    (a: FriendActivity) => a.type === 'session_start' && Date.now() - new Date(a.timestamp).getTime() < 24 * 60 * 60 * 1000
-  );
-  // Deduplicate by userId – show only latest session per friend
-  const seen = new Set<string>();
-  const uniqueSessions = activeSessions.filter((a: FriendActivity) => {
-    if (seen.has(a.userId)) return false;
-    seen.add(a.userId);
-    return true;
-  });
-
-  if (uniqueSessions.length === 0) return null;
-
-  return (
-    <View style={fsBanner.wrap}>
-      <View style={fsBanner.header}>
-        <View style={fsBanner.dot} />
-        <Text style={fsBanner.title}>Friends Fishing Now</Text>
-        <Text style={fsBanner.count}>{uniqueSessions.length}</Text>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={fsBanner.scroll}>
-        {uniqueSessions.map((a: FriendActivity) => (
-          <FriendPin key={a.id} activity={a} />
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-const fsBanner = StyleSheet.create({
-  wrap: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.25)',
-    padding: spacing.md,
-    ...elevation.raised,
-  },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' },
-  title: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.textPrimary },
-  count: {
-    fontSize: 11, fontWeight: '800', color: '#22C55E',
-    backgroundColor: 'rgba(34,197,94,0.15)', borderRadius: radius.full,
-    paddingHorizontal: 8, paddingVertical: 2,
-    borderWidth: 1, borderColor: 'rgba(34,197,94,0.3)',
-  },
-  scroll: { gap: spacing.md, paddingVertical: 4 },
-});
 
 export default function SpotsScreen() {
   const router = useRouter();
   const { activeSession } = useSessionStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('List');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [selectedType, setSelectedType] = useState('All');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [selectedSpot, setSelectedSpot] = useState<WorldSpot | null>(null);
-  const [savedSpots, setSavedSpots] = useState<Set<string>>(new Set());
+  const { savedSpotIds, toggleSavedSpot } = useSpotStore();
+  const savedSpots = useMemo(() => new Set(savedSpotIds), [savedSpotIds]);
+  const [nearCoordinate, setNearCoordinate] = useState<Coordinate | null>(null);
+  const [locating, setLocating] = useState(false);
 
-  const filtered = useMemo(() => WORLD_SPOTS.filter((s) => {
-    const matchType = selectedType === 'All' || s.type === selectedType.toLowerCase();
-    const matchSearch = !searchQuery ||
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.country.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchTag = !selectedTag ||
-      (selectedTag === 'Beginner' && s.difficulty === 'beginner') ||
-      (selectedTag === 'Carp' && s.species.some(sp => sp.toLowerCase().includes('carp'))) ||
-      (selectedTag === 'Predator' && s.species.some(sp => ['pike', 'perch', 'zander', 'bass', 'predator'].some(p => sp.toLowerCase().includes(p))));
-    return matchType && matchSearch && matchTag;
-  }), [selectedType, searchQuery, selectedTag]);
+  const filtered = useMemo(() => {
+    const normalisedQuery = deferredSearchQuery.trim().toLocaleLowerCase();
+    return SEARCH_ROWS.filter(({ spot, haystack }) => {
+      const matchType = selectedType === 'All' || spot.type === selectedType.toLowerCase();
+      const matchSearch = !normalisedQuery || haystack.includes(normalisedQuery);
+      const matchTag = !selectedTag ||
+        (selectedTag === 'Beginner' && spot.difficulty === 'beginner') ||
+        (selectedTag === 'Carp' && spot.species.some((species) => species.toLowerCase().includes('carp'))) ||
+        (selectedTag === 'Predator' && spot.species.some((species) => ['pike', 'perch', 'zander', 'bass', 'predator'].some((predator) => species.toLowerCase().includes(predator))));
+      return matchType && matchSearch && matchTag;
+    }).sort((a, b) => {
+      if (nearCoordinate) return distanceKm(nearCoordinate, a.spot) - distanceKm(nearCoordinate, b.spot);
+      if (!normalisedQuery) return 0;
+      const aRank = a.name === normalisedQuery ? 0 : a.name.startsWith(normalisedQuery) ? 1 : 2;
+      const bRank = b.name === normalisedQuery ? 0 : b.name.startsWith(normalisedQuery) ? 1 : 2;
+      return aRank - bRank || a.name.localeCompare(b.name);
+    }).map(({ spot }) => spot);
+  }, [selectedType, deferredSearchQuery, selectedTag, nearCoordinate]);
 
-  const featuredSpot = WORLD_SPOTS.reduce((best, s) => s.rating > best.rating ? s : best, WORLD_SPOTS[0]);
+  const featuredSpot = FISHING_SPOTS.find((spot) => spot.id === 'curated-babbacombe-beach') ?? FISHING_SPOTS[0];
 
-  const toggleSaved = (id: string) => {
-    setSavedSpots(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
+  const handleNearMe = async () => {
+    if (nearCoordinate) {
+      setNearCoordinate(null);
+      return;
+    }
+    setLocating(true);
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Location needed', 'Allow location access to sort fishing spots by distance.');
+        return;
+      }
+      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setNearCoordinate({ latitude: current.coords.latitude, longitude: current.coords.longitude });
+    } catch {
+      Alert.alert('Location unavailable', 'CAST could not get your current position. Please try again.');
+    } finally {
+      setLocating(false);
+    }
   };
 
-  const renderSpot = ({ item: spot }: { item: WorldSpot }) => {
-    const grad = SPOT_GRADIENTS[spot.type] || ['#1a2a3a', '#0f1924'];
+  const renderSpot = ({ item: spot }: { item: FishingSpotRecord }) => {
     const isSaved = savedSpots.has(spot.id);
     const diffColor = DIFFICULTY_COLORS[spot.difficulty] || colors.primary;
-    const pressure = getSpotPressure(spot.id);
+    const distance = nearCoordinate ? distanceKm(nearCoordinate, spot) : null;
     return (
       <TouchableOpacity
         style={s.spotCard}
@@ -235,15 +116,13 @@ export default function SpotsScreen() {
         accessibilityRole="button"
         accessibilityLabel={`${spot.name}, ${spot.type} in ${spot.country}`}
       >
-        <LinearGradient colors={[...grad] as [string, string]} style={s.spotPhoto}>
-          <MaterialCommunityIcons name={TYPE_ICONS[spot.type] as any} size={24} color="rgba(255,255,255,0.3)" />
-        </LinearGradient>
+        <SpotPhoto spot={spot} style={s.spotPhoto} />
 
         <View style={s.spotBody}>
           <View style={s.spotTopRow}>
             <Text style={s.spotName} numberOfLines={1}>{spot.name}</Text>
             <TouchableOpacity
-              onPress={() => toggleSaved(spot.id)}
+              onPress={(event) => { event.stopPropagation(); toggleSavedSpot(spot.id); }}
               style={s.bookmarkBtn}
               accessibilityLabel={isSaved ? 'Remove from saved' : 'Save spot'}
               accessibilityRole="button"
@@ -256,20 +135,8 @@ export default function SpotsScreen() {
           </View>
 
           <Text style={s.spotMeta}>
-            {spot.type.charAt(0).toUpperCase() + spot.type.slice(1)} · {spot.country}
+            {spot.type.charAt(0).toUpperCase() + spot.type.slice(1)} · {spot.country}{distance != null ? ` · ${distance < 10 ? distance.toFixed(1) : Math.round(distance)} km` : ''}
           </Text>
-
-          <View style={s.pressureRow}>
-            <View style={[s.pressureDot, { backgroundColor: pressure.color }]} />
-            <Text style={s.pressureText}>
-              {pressure.level === 'quiet'
-                ? 'Quiet today'
-                : `${pressure.count} anglers today`}
-            </Text>
-            {pressure.level === 'packed' && (
-              <MaterialCommunityIcons name="alert" size={11} color={pressure.color} />
-            )}
-          </View>
 
           <View style={s.spotBottomRow}>
             <View style={s.speciesRow}>
@@ -283,13 +150,13 @@ export default function SpotsScreen() {
               )}
             </View>
             <View style={s.spotRightBadges}>
-              <View style={s.ratingPill}>
+              {spot.rating > 0 ? <View style={s.ratingPill}>
                 <MaterialCommunityIcons name="star" size={10} color={colors.secondary} />
                 <Text style={s.ratingText}>{spot.rating}</Text>
-              </View>
+              </View> : null}
               <View style={[s.diffBadge, { backgroundColor: diffColor + '22', borderColor: diffColor + '44' }]}>
                 <Text style={[s.diffText, { color: diffColor }]}>
-                  {spot.difficulty === 'beginner' ? 'B' : spot.difficulty === 'intermediate' ? 'I' : 'E'}
+                  {spot.difficulty === 'beginner' ? 'B' : spot.difficulty === 'intermediate' ? 'I' : spot.difficulty === 'expert' ? 'E' : '?'}
                 </Text>
               </View>
             </View>
@@ -301,7 +168,6 @@ export default function SpotsScreen() {
 
   const ListHeader = () => (
     <View>
-      <FriendSessionsBanner />
       {activeSession && (
         <TouchableOpacity style={s.sessionBanner} onPress={() => router.push('/session' as any)} activeOpacity={0.85}>
           <View style={s.sessionDot} />
@@ -316,10 +182,14 @@ export default function SpotsScreen() {
           <Text style={s.headerTitle}>Fishing Spots</Text>
           <Text style={s.headerSub}>{filtered.length} locations</Text>
         </View>
-        <TouchableOpacity style={s.nearBtn} accessibilityRole="button" accessibilityLabel="Near me">
+        <TouchableOpacity style={[s.nearBtn, nearCoordinate && s.nearBtnActive]} onPress={handleNearMe} disabled={locating} accessibilityRole="button" accessibilityLabel={nearCoordinate ? 'Stop sorting by distance' : 'Sort spots near me'}>
           <MaterialCommunityIcons name="crosshairs-gps" size={16} color={colors.primary} />
-          <Text style={s.nearText}>Near me</Text>
+          <Text style={s.nearText}>{locating ? 'Locating…' : nearCoordinate ? 'Nearest first' : 'Near me'}</Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={s.displayTabs} accessibilityRole="tablist">
+        {DISPLAY_MODES.map((mode) => <TouchableOpacity key={mode} accessibilityRole="tab" accessibilityState={{ selected: displayMode === mode }} style={[s.displayTab, displayMode === mode && s.displayTabActive]} onPress={() => setDisplayMode(mode)}><Text style={[s.displayTabText, displayMode === mode && s.displayTabTextActive]}>{mode}</Text></TouchableOpacity>)}
       </View>
 
       {/* Search */}
@@ -381,15 +251,7 @@ export default function SpotsScreen() {
             onPress={() => router.push({ pathname: '/spot-details', params: { id: featuredSpot.id } } as any)}
             activeOpacity={0.85}
           >
-            <LinearGradient
-              colors={[...(SPOT_GRADIENTS[featuredSpot.type] || ['#1a2a3a', '#0f1924'])] as [string, string]}
-              style={s.featuredGradient}
-            >
-              <MaterialCommunityIcons
-                name={TYPE_ICONS[featuredSpot.type] as any}
-                size={40} color="rgba(255,255,255,0.15)"
-              />
-            </LinearGradient>
+            <SpotPhoto spot={featuredSpot} variant="featured" />
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.85)']}
               style={s.featuredOverlay}
@@ -400,7 +262,7 @@ export default function SpotsScreen() {
                   <Text style={s.topRatedText}>{featuredSpot.rating} · Top Rated</Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => toggleSaved(featuredSpot.id)}
+                  onPress={(event) => { event.stopPropagation(); toggleSavedSpot(featuredSpot.id); }}
                   style={s.featuredBookmark}
                   accessibilityRole="button"
                 >
@@ -440,18 +302,28 @@ export default function SpotsScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <FlatList
-        data={filtered}
+        data={displayMode === 'Hotspots' ? filtered.filter((spot) => spot.rating >= 4) : filtered}
         keyExtractor={(item) => item.id}
         renderItem={renderSpot}
         ListHeaderComponent={ListHeader}
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={9}
+        removeClippedSubviews
+        ListEmptyComponent={(
+          <View style={s.emptyState}>
+            <MaterialCommunityIcons name="map-search-outline" size={36} color={colors.textTertiary} />
+            <Text style={s.emptyTitle}>No matching spots</Text>
+            <Text style={s.emptyText}>Try a shorter place, country or species name.</Text>
+            <TouchableOpacity onPress={() => { setSearchQuery(''); setSelectedType('All'); setSelectedTag(null); }} style={s.clearFiltersButton} accessibilityRole="button">
+              <Text style={s.clearFiltersText}>Clear filters</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       />
 
-      <Modal visible={!!selectedSpot} transparent animationType="slide" onRequestClose={() => setSelectedSpot(null)}>
-        <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={() => setSelectedSpot(null)} />
-        {selectedSpot && <SpotCard spot={selectedSpot} onClose={() => setSelectedSpot(null)} />}
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -482,6 +354,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.25)',
     marginTop: 4,
   },
+  nearBtnActive: { backgroundColor: 'rgba(0,212,170,0.18)', borderColor: colors.primary },
   nearText: { fontSize: 13, color: colors.primary, fontWeight: '700' },
 
   searchRow: {
@@ -494,6 +367,12 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.md, paddingVertical: 12,
   },
   searchInput: { flex: 1, fontSize: 14, color: colors.textPrimary },
+
+  displayTabs: { flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: 3, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
+  displayTab: { flex: 1, minHeight: 34, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
+  displayTabActive: { backgroundColor: colors.primary },
+  displayTabText: { color: colors.textSecondary, fontSize: 12, fontWeight: '700' },
+  displayTabTextActive: { color: colors.background },
 
   pillsRow: { paddingHorizontal: spacing.lg, gap: 8, paddingBottom: 8 },
   pill: {
@@ -517,6 +396,7 @@ const s = StyleSheet.create({
   tagPillTextActive: { color: colors.secondary },
 
   featuredSection: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
+  mapSection: { paddingHorizontal: spacing.md },
 
   sectionHeaderRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -532,6 +412,9 @@ const s = StyleSheet.create({
     ...elevation.card,
     height: 200,
   },
+  mapCard: { height: 430 },
+  mapMarker: { position: 'absolute', width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(20,104,109,0.88)', borderWidth: 1, borderColor: colors.primary, zIndex: 4 },
+  mapMarkerText: { color: colors.textPrimary, fontSize: 11, fontWeight: '800' },
   featuredGradient: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   featuredOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -575,10 +458,6 @@ const s = StyleSheet.create({
   spotName: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   bookmarkBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginRight: -8 },
   spotMeta: { fontSize: 12, color: colors.textSecondary, marginBottom: 8 },
-  pressureRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
-  pressureDot: { width: 7, height: 7, borderRadius: 4 },
-  pressureText: { fontSize: 11, color: colors.textSecondary, fontWeight: '600', flex: 1 },
-
   spotBottomRow: { flexDirection: 'row', alignItems: 'center' },
   speciesRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   speciesChip: {
@@ -601,6 +480,12 @@ const s = StyleSheet.create({
     borderWidth: 1,
   },
   diffText: { fontSize: 10, fontWeight: '800' },
+
+  emptyState: { alignItems: 'center', paddingHorizontal: 32, paddingVertical: 52 },
+  emptyTitle: { marginTop: 10, fontSize: 16, fontWeight: '800', color: colors.textPrimary },
+  emptyText: { marginTop: 5, fontSize: 13, color: colors.textSecondary, textAlign: 'center' },
+  clearFiltersButton: { marginTop: 16, borderRadius: radius.full, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 10 },
+  clearFiltersText: { color: colors.background, fontSize: 13, fontWeight: '800' },
 
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
 });

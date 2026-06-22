@@ -4,6 +4,7 @@ import { Icon as MaterialCommunityIcons } from '../ui/Icon';
 import { Species } from '../../data/species';
 import { colors, radius, spacing } from '../../constants/theme';
 import { RarityBadge } from '../catches/RarityBadge';
+import { FishSpeciesPhoto } from './FishSpeciesPhoto';
 
 interface FishTipCardProps {
   species: Species;
@@ -27,9 +28,7 @@ const typeLabels: Record<string, string> = {
 export function FishTipCard({ species, onPress }: FishTipCardProps) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-      <View style={styles.emojiContainer}>
-        <Text style={styles.emoji}>{species.emoji}</Text>
-      </View>
+      <FishSpeciesPhoto species={species.name} style={styles.fishPhoto} />
       <View style={styles.info}>
         <Text style={styles.name} numberOfLines={1}>{species.name}</Text>
         <Text style={styles.latin} numberOfLines={1}>{species.latinName}</Text>
@@ -82,18 +81,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  emojiContainer: {
-    width: 52,
-    height: 52,
-    backgroundColor: colors.surface2,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
-  emoji: {
-    fontSize: 26,
-  },
+  fishPhoto: { width: 76, height: 62, borderRadius: radius.md, marginRight: spacing.md },
   info: {
     flex: 1,
   },
@@ -105,7 +93,6 @@ const styles = StyleSheet.create({
   latin: {
     fontSize: 12,
     color: colors.textSecondary,
-    fontStyle: 'italic',
     marginTop: 2,
   },
   tags: {

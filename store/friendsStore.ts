@@ -1,7 +1,15 @@
-import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
+import {
+  DEMO_SESSION_PINS,
+  DEMO_SOCIAL_POSTS,
+  DEMO_SOCIAL_USERS,
+  FriendSessionPin,
+  ReactionType,
+  SocialCatchPost,
+} from '../data/socialData';
 
-const FRIENDS_KEY = '@cast_friends';
+const FRIENDS_KEY = '@cast_friends_v2';
 
 export interface Friend {
   id: string;
@@ -14,6 +22,10 @@ export interface Friend {
   isOnline: boolean;
   lastActive: string;
   mutualFriends: number;
+  handle?: string;
+  country?: string;
+  countryCode?: string;
+  isDemo?: boolean;
 }
 
 export interface FriendRequest {
@@ -25,212 +37,197 @@ export interface FriendRequest {
   avatarColor: string;
   sentAt: string;
   type: 'incoming' | 'outgoing';
+  countryCode?: string;
+  isDemo?: boolean;
 }
 
-interface FriendsState {
+interface PersistedFriendsState {
+  version: 2;
   friends: Friend[];
   requests: FriendRequest[];
   suggestedAnglers: Friend[];
+  reactionsByPost: Record<string, ReactionType>;
+}
+
+export interface FriendsState {
+  friends: Friend[];
+  requests: FriendRequest[];
+  suggestedAnglers: Friend[];
+  feed: SocialCatchPost[];
+  sessionPins: FriendSessionPin[];
+  reactionsByPost: Record<string, ReactionType>;
+  isHydrated: boolean;
   addFriend: (friend: Friend) => void;
   removeFriend: (id: string) => void;
   acceptRequest: (id: string) => void;
   declineRequest: (id: string) => void;
   sendRequest: (angler: Friend) => void;
+  reactToCatch: (postId: string, reaction: ReactionType) => void;
+  getActiveSessionPins: (at?: Date) => FriendSessionPin[];
+  hydrate: () => Promise<void>;
   load: () => Promise<void>;
   save: () => Promise<void>;
 }
 
-const INITIAL_FRIENDS: Friend[] = [
-  {
-    id: 'f1',
-    name: 'Jake Morrison',
-    level: 8,
-    catchCount: 142,
-    topSpecies: 'Carp',
-    streak: 5,
-    avatarColor: '#F97316',
-    isOnline: true,
-    lastActive: 'Now',
-    mutualFriends: 3,
-  },
-  {
-    id: 'f2',
-    name: 'Emma Clarke',
-    level: 5,
-    catchCount: 67,
-    topSpecies: 'Perch',
-    streak: 2,
-    avatarColor: '#EC4899',
-    isOnline: false,
-    lastActive: '2h ago',
-    mutualFriends: 1,
-  },
-  {
-    id: 'f3',
-    name: 'Tom Fisher',
-    level: 12,
-    catchCount: 389,
-    topSpecies: 'Pike',
-    streak: 14,
-    avatarColor: '#8B5CF6',
-    isOnline: true,
-    lastActive: 'Now',
-    mutualFriends: 5,
-  },
-];
+const toFriend = (user: (typeof DEMO_SOCIAL_USERS)[number]): Friend => ({
+  id: user.id,
+  name: user.name,
+  handle: user.handle,
+  country: user.country,
+  countryCode: user.countryCode,
+  level: user.level,
+  catchCount: user.catchCount,
+  topSpecies: user.topSpecies,
+  streak: user.streak,
+  avatarColor: user.avatarColor,
+  isOnline: user.isOnline,
+  lastActive: user.lastActive,
+  mutualFriends: user.mutualFriends,
+  isDemo: true,
+});
 
+const INITIAL_FRIENDS = DEMO_SOCIAL_USERS.slice(0, 5).map(toFriend);
+const INITIAL_SUGGESTED = DEMO_SOCIAL_USERS.slice(5).map(toFriend);
 const INITIAL_REQUESTS: FriendRequest[] = [
-  {
-    id: 'req1',
-    fromId: 'u10',
-    fromName: 'Ryan Hughes',
-    fromLevel: 6,
-    fromCatchCount: 88,
-    avatarColor: '#22C55E',
-    sentAt: '1d ago',
-    type: 'incoming',
-  },
-  {
-    id: 'req2',
-    fromId: 'u11',
-    fromName: 'Sophia Marsh',
-    fromLevel: 3,
-    fromCatchCount: 24,
-    avatarColor: '#3B82F6',
-    sentAt: '3d ago',
-    type: 'incoming',
-  },
+  { id: 'request-ravi', fromId: 'demo-ravi', fromName: 'Ravi Menon', fromLevel: 24, fromCatchCount: 143, avatarColor: '#2A9D8F', sentAt: '2h ago', type: 'incoming', countryCode: 'IN', isDemo: true },
 ];
 
-const INITIAL_SUGGESTED: Friend[] = [
-  {
-    id: 's1',
-    name: 'Dan Brookes',
-    level: 7,
-    catchCount: 110,
-    topSpecies: 'Trout',
-    streak: 3,
-    avatarColor: '#3B82F6',
-    isOnline: false,
-    lastActive: '5h ago',
-    mutualFriends: 2,
-  },
-  {
-    id: 's2',
-    name: 'Lucy Wade',
-    level: 4,
-    catchCount: 45,
-    topSpecies: 'Bass',
-    streak: 1,
-    avatarColor: '#EC4899',
-    isOnline: true,
-    lastActive: 'Now',
-    mutualFriends: 1,
-  },
-  {
-    id: 's3',
-    name: 'Marcus Bell',
-    level: 10,
-    catchCount: 253,
-    topSpecies: 'Pike',
-    streak: 9,
-    avatarColor: '#F97316',
-    isOnline: false,
-    lastActive: '1h ago',
-    mutualFriends: 4,
-  },
-  {
-    id: 's4',
-    name: 'Chloe Davis',
-    level: 3,
-    catchCount: 18,
-    topSpecies: 'Perch',
-    streak: 0,
-    avatarColor: '#22C55E',
-    isOnline: false,
-    lastActive: '2d ago',
-    mutualFriends: 0,
-  },
-];
+const persist = async (state: FriendsState) => {
+  const data: PersistedFriendsState = {
+    version: 2,
+    friends: state.friends,
+    requests: state.requests,
+    suggestedAnglers: state.suggestedAnglers,
+    reactionsByPost: state.reactionsByPost,
+  };
+  try {
+    await AsyncStorage.setItem(FRIENDS_KEY, JSON.stringify(data));
+  } catch {
+    // Social actions still work in memory when storage is unavailable.
+  }
+};
 
-export const useFriendsStore = create<FriendsState>((set, get) => ({
-  friends: INITIAL_FRIENDS,
-  requests: INITIAL_REQUESTS,
-  suggestedAnglers: INITIAL_SUGGESTED,
+export const selectActiveFriendSessionPins = (state: FriendsState): FriendSessionPin[] => {
+  const friendIds = new Set(state.friends.map((friend) => friend.id));
+  const now = Date.now();
+  return state.sessionPins.filter(
+    (pin) => friendIds.has(pin.friendId) && new Date(pin.expiresAt).getTime() > now,
+  );
+};
 
-  addFriend: (friend) => {
-    set((s) => ({ friends: [...s.friends, friend] }));
-    get().save();
-  },
+export const useFriendsStore = create<FriendsState>((set, get) => {
+  const updateAndPersist = (updater: (state: FriendsState) => Partial<FriendsState>) => {
+    set(updater);
+    void persist(get());
+  };
 
-  removeFriend: (id) => {
-    set((s) => ({ friends: s.friends.filter((f) => f.id !== id) }));
-    get().save();
-  },
+  return {
+    friends: INITIAL_FRIENDS,
+    requests: INITIAL_REQUESTS,
+    suggestedAnglers: INITIAL_SUGGESTED,
+    feed: DEMO_SOCIAL_POSTS,
+    sessionPins: DEMO_SESSION_PINS,
+    reactionsByPost: {},
+    isHydrated: false,
 
-  acceptRequest: (id) => {
-    const req = get().requests.find((r) => r.id === id);
-    if (!req) return;
-    const newFriend: Friend = {
-      id: req.fromId,
-      name: req.fromName,
-      level: req.fromLevel,
-      catchCount: req.fromCatchCount,
-      topSpecies: 'Carp',
-      streak: 0,
-      avatarColor: req.avatarColor,
-      isOnline: false,
-      lastActive: 'Just now',
-      mutualFriends: 0,
-    };
-    set((s) => ({
-      requests: s.requests.filter((r) => r.id !== id),
-      friends: [...s.friends, newFriend],
-    }));
-    get().save();
-  },
+    addFriend: (friend) => updateAndPersist((state) => ({
+      friends: state.friends.some((item) => item.id === friend.id)
+        ? state.friends
+        : [...state.friends, friend],
+      suggestedAnglers: state.suggestedAnglers.filter((item) => item.id !== friend.id),
+    })),
 
-  declineRequest: (id) => {
-    set((s) => ({ requests: s.requests.filter((r) => r.id !== id) }));
-    get().save();
-  },
+    removeFriend: (id) => updateAndPersist((state) => ({
+      friends: state.friends.filter((friend) => friend.id !== id),
+    })),
 
-  sendRequest: (angler) => {
-    const outgoing: FriendRequest = {
-      id: `out_${angler.id}`,
-      fromId: angler.id,
-      fromName: angler.name,
-      fromLevel: angler.level,
-      fromCatchCount: angler.catchCount,
-      avatarColor: angler.avatarColor,
-      sentAt: 'Just now',
-      type: 'outgoing',
-    };
-    set((s) => ({
-      requests: [...s.requests, outgoing],
-      suggestedAnglers: s.suggestedAnglers.filter((a) => a.id !== angler.id),
-    }));
-    get().save();
-  },
+    acceptRequest: (id) => updateAndPersist((state) => {
+      const request = state.requests.find((item) => item.id === id && item.type === 'incoming');
+      if (!request) return {};
+      const known = DEMO_SOCIAL_USERS.find((user) => user.id === request.fromId);
+      const friend: Friend = known ? toFriend(known) : {
+        id: request.fromId,
+        name: request.fromName,
+        level: request.fromLevel,
+        catchCount: request.fromCatchCount,
+        topSpecies: 'Not set',
+        streak: 0,
+        avatarColor: request.avatarColor,
+        isOnline: false,
+        lastActive: 'Recently',
+        mutualFriends: 0,
+        countryCode: request.countryCode,
+        isDemo: request.isDemo,
+      };
+      return {
+        requests: state.requests.filter((item) => item.id !== id),
+        friends: state.friends.some((item) => item.id === friend.id)
+          ? state.friends
+          : [...state.friends, friend],
+        suggestedAnglers: state.suggestedAnglers.filter((item) => item.id !== friend.id),
+      };
+    }),
 
-  load: async () => {
-    try {
-      const stored = await AsyncStorage.getItem(FRIENDS_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        set({
-          friends: parsed.friends ?? INITIAL_FRIENDS,
-          requests: parsed.requests ?? INITIAL_REQUESTS,
-          suggestedAnglers: parsed.suggestedAnglers ?? INITIAL_SUGGESTED,
-        });
+    declineRequest: (id) => updateAndPersist((state) => ({
+      requests: state.requests.filter((request) => request.id !== id),
+    })),
+
+    sendRequest: (angler) => updateAndPersist((state) => {
+      const requestId = `out_${angler.id}`;
+      if (state.requests.some((request) => request.id === requestId)) return {};
+      return {
+        requests: [...state.requests, {
+          id: requestId,
+          fromId: angler.id,
+          fromName: angler.name,
+          fromLevel: angler.level,
+          fromCatchCount: angler.catchCount,
+          avatarColor: angler.avatarColor,
+          sentAt: 'Just now',
+          type: 'outgoing' as const,
+          countryCode: angler.countryCode,
+          isDemo: angler.isDemo,
+        }],
+        suggestedAnglers: state.suggestedAnglers.filter((item) => item.id !== angler.id),
+      };
+    }),
+
+    reactToCatch: (postId, reaction) => updateAndPersist((state) => {
+      if (!state.feed.some((post) => post.id === postId)) return {};
+      const next = { ...state.reactionsByPost };
+      if (next[postId] === reaction) delete next[postId];
+      else next[postId] = reaction;
+      return { reactionsByPost: next };
+    }),
+
+    getActiveSessionPins: (at = new Date()) => {
+      const friendIds = new Set(get().friends.map((friend) => friend.id));
+      const timestamp = at.getTime();
+      return get().sessionPins.filter(
+        (pin) => friendIds.has(pin.friendId) && new Date(pin.expiresAt).getTime() > timestamp,
+      );
+    },
+
+    hydrate: async () => {
+      try {
+        const raw = await AsyncStorage.getItem(FRIENDS_KEY);
+        if (raw) {
+          const stored = JSON.parse(raw) as Partial<PersistedFriendsState>;
+          set({
+            friends: Array.isArray(stored.friends) ? stored.friends : INITIAL_FRIENDS,
+            requests: Array.isArray(stored.requests) ? stored.requests : INITIAL_REQUESTS,
+            suggestedAnglers: Array.isArray(stored.suggestedAnglers) ? stored.suggestedAnglers : INITIAL_SUGGESTED,
+            reactionsByPost: stored.reactionsByPost ?? {},
+          });
+        }
+      } catch {
+        // Keep safe demo defaults if stored data is malformed.
+      } finally {
+        set({ isHydrated: true });
       }
-    } catch {}
-  },
+    },
 
-  save: async () => {
-    try {
-      const { friends, requests, suggestedAnglers } = get();
-      await AsyncStorage.setItem(FRIENDS_KEY, JSON.stringify({ friends, requests, suggestedAnglers }));
-    } catch {}
-  },
-}));
+    load: async () => get().hydrate(),
+    save: async () => persist(get()),
+  };
+});

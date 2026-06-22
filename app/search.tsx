@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { WORLD_SPOTS } from '../data/worldSpots';
+import { queryFishingSpots } from '../utils/fishingSpotLookup';
 import { species as speciesData } from '../data/species';
 import { knots as KNOTS } from '../data/knots';
 import { BAITS as BAIT_DATA } from '../data/baitData';
@@ -58,15 +58,10 @@ export default function SearchScreen() {
 
   const q = query.toLowerCase().trim();
 
-  const spotResults = q
-    ? WORLD_SPOTS.filter(
-        (s) =>
-          s.name.toLowerCase().includes(q) ||
-          s.region.toLowerCase().includes(q) ||
-          s.country.toLowerCase().includes(q) ||
-          s.species.some((sp) => sp.toLowerCase().includes(q))
-      ).slice(0, 5)
-    : [];
+  const spotResults = useMemo(
+    () => (q ? queryFishingSpots({ text: q, limit: 8 }) : []),
+    [q]
+  );
 
   const speciesResults = q
     ? speciesData.filter(
@@ -186,7 +181,7 @@ export default function SearchScreen() {
                     style={styles.resultRow}
                     onPress={() => {
                       saveRecent(query.trim());
-                      router.push('/(tabs)/map' as any);
+                      router.push({ pathname: '/spot-details', params: { id: s.id } });
                     }}
                   >
                     <View style={[styles.resultIcon, { backgroundColor: 'rgba(0,212,170,0.1)' }]}>
@@ -194,7 +189,9 @@ export default function SearchScreen() {
                     </View>
                     <View style={styles.resultInfo}>
                       <Text style={styles.resultName}>{s.name}</Text>
-                      <Text style={styles.resultSub}>{s.country} · {s.type} · {s.rating}★</Text>
+                      <Text style={styles.resultSub}>
+                        {s.country} · {s.type} · {s.verification === 'verified' ? 'Verified source' : s.verification === 'partially_verified' ? 'Partially verified' : 'Demo data'}
+                      </Text>
                     </View>
                     <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textSecondary} />
                   </TouchableOpacity>

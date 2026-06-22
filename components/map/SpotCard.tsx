@@ -1,10 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Icon as MaterialCommunityIcons } from '../ui/Icon';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { WorldSpot } from '../../data/worldSpots';
-import { getSpotImage } from '../../constants/spotImages';
 import { colors, radius, spacing, typography, fonts, elevation } from '../../constants/theme';
 import { CastButton } from '../ui/CastButton';
 import { useSessionStore } from '../../store/sessionStore';
@@ -53,18 +51,6 @@ export function SpotCard({ spot, onClose, onNavigate }: SpotCardProps) {
   return (
     <View style={styles.container}>
       <View style={styles.handle} />
-      {/* Location photo */}
-      <View style={styles.photoContainer}>
-        <Image
-          source={{ uri: getSpotImage(spot.id) }}
-          style={styles.photo}
-          resizeMode="cover"
-        />
-        <LinearGradient
-          colors={['transparent', 'rgba(16,24,39,0.8)']}
-          style={StyleSheet.absoluteFillObject}
-        />
-      </View>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.iconBox}>
@@ -164,17 +150,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingTop: spacing.sm,
     ...elevation.card,
-  },
-  photoContainer: {
-    width: '100%',
-    height: 140,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-    marginBottom: spacing.md,
-  },
-  photo: {
-    width: '100%',
-    height: 140,
   },
   handle: {
     width: 32,
@@ -339,7 +314,6 @@ const styles = StyleSheet.create({
   reviewAuthor: {
     fontSize: 13,
     color: colors.textPrimary,
-    fontStyle: 'italic',
     lineHeight: 19,
   },
   reviewMeta: {

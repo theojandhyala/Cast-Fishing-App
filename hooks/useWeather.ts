@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface DailyForecast {
@@ -364,17 +365,29 @@ function generateSolunarTimes(date: Date): SolunarTime[] {
   ];
 }
 
-function buildMockWeather(now: Date): WeatherData {
+function buildMockWeather(now: Date, latitude = 51.5, longitude = -0.1): WeatherData {
+  const coordinateSeed = Math.round((latitude + 90) * 1000 + (longitude + 180) * 100);
+  const variation = seededRandom(coordinateSeed + Math.floor(now.getTime() / 86400000));
+  const temp = Math.round(7 + variation * 18);
+  const wind = Math.round(4 + seededRandom(coordinateSeed + 11) * 24);
+  const pressure = Math.round(995 + seededRandom(coordinateSeed + 29) * 35);
+  const pressureTrend: WeatherData['pressureTrend'] = seededRandom(coordinateSeed + 41) < 0.33 ? 'falling' : seededRandom(coordinateSeed + 41) > 0.66 ? 'rising' : 'stable';
   const moon = getMoonPhase(now);
   const fishingScore = calculateFishingScore({
-    pressure: MOCK_WEATHER.pressure,
-    pressureTrend: MOCK_WEATHER.pressureTrend,
-    wind: MOCK_WEATHER.wind,
+    pressure,
+    pressureTrend,
+    wind,
     description: MOCK_WEATHER.description,
     hour: now.getHours(),
   });
   return {
     ...MOCK_WEATHER,
+    temp,
+    feelsLike: temp - Math.round(wind / 12),
+    wind,
+    pressure,
+    pressureTrend,
+    city: `${latitude.toFixed(2)}, ${longitude.toFixed(2)}`,
     moonPhase: moon.phase,
     moonEmoji: moon.emoji,
     fishingScore,
@@ -388,6 +401,8 @@ export function useWeather(lat?: number, lon?: number) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   const hasCoords = lat !== undefined && lon !== undefined;
   const cacheKey = hasCoords ? `cast_weather_${lat.toFixed(3)}_${lon.toFixed(3)}` : 'cast_weather_mock';
@@ -401,8 +416,9 @@ export function useWeather(lat?: number, lon?: number) {
         const cached = await AsyncStorage.getItem(cacheKey);
         if (cached) {
           const { data, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < 30 * 60 * 1000) {
+          if (refreshToken === 0 && Date.now() - timestamp < 5 * 60 * 1000) {
             setWeather(data);
+            setUpdatedAt(new Date(timestamp));
             setLoading(false);
             return;
           }
@@ -413,6 +429,7 @@ export function useWeather(lat?: number, lon?: number) {
 
       if (!hasCoords) {
         setWeather(buildMockWeather(now));
+        setUpdatedAt(now);
         setLoading(false);
         return;
       }
@@ -440,12 +457,16 @@ export function useWeather(lat?: number, lon?: number) {
         const windDirection = Math.round(current.wind_direction_10m ?? 0);
         const humidity = Math.round(current.relative_humidity_2m ?? 70);
         const pressure = Math.round(current.surface_pressure ?? 1013);
+        const currentIndex = Math.max(0, data.hourly.time.findIndex((time: string) => time >= current.time));
+        const previousPressure = Number(data.hourly.surface_pressure[Math.max(0, currentIndex - 3)] ?? pressure);
+        const pressureDelta = pressure - previousPressure;
+        const pressureTrend: WeatherData['pressureTrend'] = pressureDelta > 0.8 ? 'rising' : pressureDelta < -0.8 ? 'falling' : 'stable';
 
         const moon = getMoonPhase(now);
 
         const fishingScore = calculateFishingScore({
           pressure,
-          pressureTrend: 'stable',
+          pressureTrend,
           wind,
           description,
           hour: now.getHours(),
@@ -460,7 +481,7 @@ export function useWeather(lat?: number, lon?: number) {
           windDirection,
           humidity,
           pressure,
-          pressureTrend: 'stable',
+          pressureTrend,
           moonPhase: moon.phase,
           moonEmoji: moon.emoji,
           fishingScore,
@@ -475,8 +496,10 @@ export function useWeather(lat?: number, lon?: number) {
         } catch {}
 
         setWeather(weatherData);
+        setUpdatedAt(now);
       } catch (e) {
-        setWeather(buildMockWeather(now));
+        setWeather(buildMockWeather(now, lat, lon));
+        setUpdatedAt(now);
         setError('Using offline data');
       } finally {
         setLoading(false);
@@ -484,7 +507,20 @@ export function useWeather(lat?: number, lon?: number) {
     }
 
     fetchWeather();
-  }, [lat, lon]);
+  }, [lat, lon, refreshToken]);
 
-  return { weather, loading, error };
+  useEffect(() => {
+    const interval = setInterval(() => setRefreshToken((token) => token + 1), 5 * 60 * 1000);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setRefreshToken((token) => token + 1);
+    });
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
+  }, []);
+
+  const refresh = useCallback(() => setRefreshToken((token) => token + 1), []);
+
+  return { weather, loading, error, refresh, updatedAt };
 }

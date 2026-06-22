@@ -288,5 +288,5 @@ const styles = StyleSheet.create({
   closedTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.sm },
   closedCard: { backgroundColor: 'rgba(239,68,68,0.08)', borderRadius: radius.lg, padding: spacing.md, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)' },
   closedItem: { fontSize: 13, color: colors.textPrimary, marginBottom: spacing.xs },
-  closedNote: { fontSize: 12, color: colors.textSecondary, marginTop: spacing.xs, fontStyle: 'italic' },
+  closedNote: { fontSize: 12, color: colors.textSecondary, marginTop: spacing.xs },
 });

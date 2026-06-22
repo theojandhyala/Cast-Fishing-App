@@ -4,12 +4,12 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Image,
 } from 'react-native';
 import { Icon as MaterialCommunityIcons } from '../ui/Icon';
 import { useRouter } from 'expo-router';
 import { Catch } from '../../store/catchStore';
 import { colors, radius, spacing, fonts, elevation } from '../../constants/theme';
+import { FishSpeciesPhoto } from '../fish/FishSpeciesPhoto';
 
 interface CatchCardProps {
   item: Catch;
@@ -31,9 +31,7 @@ export function CatchCard({ item, mode = 'grid' }: CatchCardProps) {
   if (mode === 'list') {
     return (
       <TouchableOpacity style={[styles.listCard, elevation.raised]} onPress={handlePress} activeOpacity={0.85}>
-        <View style={styles.listEmoji}>
-          <MaterialCommunityIcons name="fish" size={22} color={colors.primary} />
-        </View>
+        <FishSpeciesPhoto species={item.species} photo={item.photo} style={styles.listEmoji} />
         <View style={styles.listInfo}>
           <Text style={styles.species}>{item.species}</Text>
           <Text style={styles.weight}>{item.weight}kg</Text>
@@ -60,13 +58,7 @@ export function CatchCard({ item, mode = 'grid' }: CatchCardProps) {
 
   return (
     <TouchableOpacity style={[styles.gridCard, elevation.raised]} onPress={handlePress} activeOpacity={0.85}>
-      {item.photo ? (
-        <Image source={{ uri: item.photo }} style={styles.photo} />
-      ) : (
-        <View style={styles.photoPlaceholder}>
-          <MaterialCommunityIcons name="fish" size={36} color={colors.primary} />
-        </View>
-      )}
+      <FishSpeciesPhoto species={item.species} photo={item.photo} style={styles.photo} />
       <View style={styles.gridInfo}>
         <Text style={styles.species} numberOfLines={1}>{item.species}</Text>
         <Text style={styles.weight}>{item.weight}kg</Text>
@@ -89,13 +81,6 @@ const styles = StyleSheet.create({
   photo: {
     width: '100%',
     height: 120,
-  },
-  photoPlaceholder: {
-    width: '100%',
-    height: 120,
-    backgroundColor: colors.surface2,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   gridInfo: {
     padding: spacing.sm,

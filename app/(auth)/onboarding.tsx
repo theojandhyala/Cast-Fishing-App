@@ -1,564 +1,319 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Dimensions,
-  TouchableOpacity,
-  TextInput,
   Animated,
+  Image,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Icon } from '../../components/ui/Icon';
+import { colors, fonts, radius, spacing } from '../../constants/theme';
 import { useAuthStore } from '../../store/authStore';
-import { useLocationStore } from '../../store/locationStore';
-import { CastButton } from '../../components/ui/CastButton';
-import { colors, radius, spacing } from '../../constants/theme';
+import { useProfileStore } from '../../store/profileStore';
 
-const { width } = Dimensions.get('window');
 const TOTAL_STEPS = 5;
 
-const SPECIES = [
-  { id: 'carp', name: 'Carp', icon: 'fish' },
-  { id: 'pike', name: 'Pike', icon: 'fish' },
-  { id: 'perch', name: 'Perch', icon: 'fish' },
-  { id: 'tench', name: 'Tench', icon: 'fish' },
-  { id: 'bream', name: 'Bream', icon: 'fish' },
-  { id: 'roach', name: 'Roach', icon: 'fish' },
-  { id: 'barbel', name: 'Barbel', icon: 'fish' },
-  { id: 'chub', name: 'Chub', icon: 'fish' },
-  { id: 'salmon', name: 'Salmon', icon: 'fish' },
-  { id: 'seabass', name: 'Sea Bass', icon: 'fish' },
-  { id: 'trout', name: 'Trout', icon: 'fish' },
-  { id: 'zander', name: 'Zander', icon: 'fish' },
-];
+const REGIONS = [
+  { id: 'uk-ie', label: 'UK & Ireland', icon: 'waves' },
+  { id: 'europe', label: 'Europe', icon: 'compass-outline' },
+  { id: 'north-america', label: 'North America', icon: 'pine-tree' },
+  { id: 'australia', label: 'Australia', icon: 'island' },
+  { id: 'new-zealand', label: 'New Zealand', icon: 'terrain' },
+  { id: 'south-africa', label: 'South Africa', icon: 'weather-sunny' },
+  { id: 'japan', label: 'Japan', icon: 'torii-gate' },
+  { id: 'brazil-amazon', label: 'Brazil & Amazon', icon: 'forest' },
+  { id: 'india', label: 'India', icon: 'water' },
+  { id: 'global', label: 'Worldwide', icon: 'earth' },
+] as const;
 
-const LEVELS = [
-  { id: 'beginner', label: 'Beginner', desc: 'Just starting out or less than 1 year fishing', icon: 'sprout' },
-  { id: 'intermediate', label: 'Intermediate', desc: '1–5 years, comfortable with most techniques', icon: 'fish' },
-  { id: 'expert', label: 'Expert', desc: '5+ years, advanced angler', icon: 'trophy' },
-];
+const SPECIES = [
+  { id: 'carp', name: 'Carp', group: 'Freshwater' },
+  { id: 'largemouth-bass', name: 'Largemouth Bass', group: 'Freshwater' },
+  { id: 'trout', name: 'Trout', group: 'Freshwater' },
+  { id: 'salmon', name: 'Salmon', group: 'Migratory' },
+  { id: 'northern-pike', name: 'Northern Pike', group: 'Predator' },
+  { id: 'catfish', name: 'Catfish', group: 'Freshwater' },
+  { id: 'perch', name: 'Perch', group: 'Freshwater' },
+  { id: 'barramundi', name: 'Barramundi', group: 'Estuary' },
+  { id: 'sea-bass', name: 'Sea Bass', group: 'Saltwater' },
+  { id: 'snapper', name: 'Snapper', group: 'Saltwater' },
+  { id: 'tuna', name: 'Tuna', group: 'Offshore' },
+  { id: 'marlin', name: 'Marlin', group: 'Big game' },
+  { id: 'mahi-mahi', name: 'Mahi-mahi', group: 'Offshore' },
+  { id: 'tarpon', name: 'Tarpon', group: 'Saltwater' },
+  { id: 'giant-trevally', name: 'Giant Trevally', group: 'Saltwater' },
+  { id: 'yellowtail', name: 'Yellowtail', group: 'Offshore' },
+] as const;
 
 export default function OnboardingScreen() {
-  const [step, setStep] = useState(0);
-  const [name, setName] = useState('');
-  const [selectedSpecies, setSelectedSpecies] = useState<string[]>([]);
-  const [selectedLevel, setSelectedLevel] = useState('');
-  const [hasLicence, setHasLicence] = useState('');
-  const [fishingSpot, setFishingSpot] = useState('');
-  const { completeOnboarding, user } = useAuthStore();
-  const { setLocation } = useLocationStore();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
+  const entrance = useRef(new Animated.Value(1)).current;
+  const authUser = useAuthStore((state) => state.user);
+  const completeAuthOnboarding = useAuthStore((state) => state.completeOnboarding);
+  const saveProfile = useProfileStore((state) => state.setOnboardingProfile);
 
-  // Animations
-  const fishBounce = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const btnPulse = useRef(new Animated.Value(1)).current;
-  const dotScales = useRef(Array.from({ length: TOTAL_STEPS }, () => new Animated.Value(1))).current;
+  const [step, setStep] = useState(0);
+  const [username, setUsername] = useState(authUser?.name ?? '');
+  const [photoUri, setPhotoUri] = useState<string | null>(authUser?.avatar ?? null);
+  const [regionId, setRegionId] = useState('');
+  const [targetSpecies, setTargetSpecies] = useState<string[]>([]);
+  const [usernameTouched, setUsernameTouched] = useState(false);
 
-  useEffect(() => {
-    // Fish bounce loop
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(fishBounce, { toValue: -12, duration: 600, useNativeDriver: true }),
-        Animated.timing(fishBounce, { toValue: 0, duration: 600, useNativeDriver: true }),
-      ])
-    ).start();
+  const usernameValid = username.trim().length >= 2 && username.trim().length <= 24;
+  const canContinue = useMemo(() => {
+    if (step === 1) return usernameValid;
+    if (step === 3) return Boolean(regionId);
+    if (step === 4) return targetSpecies.length > 0;
+    return true;
+  }, [regionId, step, targetSpecies.length, usernameValid]);
 
-    // Button pulse loop
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(btnPulse, { toValue: 0.92, duration: 900, useNativeDriver: true }),
-        Animated.timing(btnPulse, { toValue: 1, duration: 900, useNativeDriver: true }),
-      ])
-    ).start();
-
-    animateIn();
-  }, []);
-
-  const animateIn = () => {
-    slideAnim.setValue(30);
-    fadeAnim.setValue(0);
-    Animated.parallel([
-      Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
-      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
-    ]).start();
+  const animateScreen = () => {
+    entrance.setValue(0);
+    Animated.spring(entrance, { toValue: 1, damping: 16, stiffness: 150, useNativeDriver: true }).start();
   };
 
-  const animateDots = (newStep: number) => {
-    dotScales.forEach((scale, i) => {
-      Animated.spring(scale, {
-        toValue: i === newStep ? 1.4 : 1,
-        useNativeDriver: true,
-        bounciness: 8,
-      }).start();
+  const goTo = (nextStep: number) => {
+    const safeStep = Math.max(0, Math.min(TOTAL_STEPS - 1, nextStep));
+    setStep(safeStep);
+    scrollRef.current?.scrollTo({ x: safeStep * width, animated: true });
+    animateScreen();
+  };
+
+  const pickPhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
     });
+    if (!result.canceled) setPhotoUri(result.assets[0].uri);
   };
 
-  const goToStep = (s: number) => {
-    setStep(s);
-    scrollRef.current?.scrollTo({ x: s * width, animated: true });
-    animateIn();
-    animateDots(s);
+  const toggleSpecies = (speciesId: string) => {
+    setTargetSpecies((selected) => selected.includes(speciesId)
+      ? selected.filter((id) => id !== speciesId)
+      : [...selected, speciesId]);
   };
 
-  const toggleSpecies = (id: string) => {
-    setSelectedSpecies((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    );
-  };
-
-  const handleComplete = () => {
-    const finalName = name.trim() || user?.name || 'Angler';
-    if (fishingSpot.trim()) {
-      setLocation({ name: fishingSpot.trim(), query: fishingSpot.trim() });
-    }
-    completeOnboarding(finalName, selectedSpecies);
+  const finish = () => {
+    if (!usernameValid || !regionId || targetSpecies.length === 0) return;
+    const cleanUsername = username.trim();
+    saveProfile({ username: cleanUsername, photoUri, regionId, targetSpecies });
+    completeAuthOnboarding(cleanUsername, targetSpecies);
     router.replace('/(tabs)');
   };
 
+  const next = () => {
+    if (step === 1) setUsernameTouched(true);
+    if (!canContinue) return;
+    if (step === TOTAL_STEPS - 1) finish();
+    else goTo(step + 1);
+  };
+
+  const animatedStyle = {
+    opacity: entrance,
+    transform: [{ translateY: entrance.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
+  };
+
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <LinearGradient colors={['#0B2930', colors.background, colors.background]} style={StyleSheet.absoluteFill} />
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+        <View style={styles.brand}>
+          <View style={styles.brandMark}><Icon name="fish" size={18} color={colors.background} /></View>
+          <Text style={styles.brandText}>CAST</Text>
+        </View>
+        <Text style={styles.stepLabel}>{step + 1} / {TOTAL_STEPS}</Text>
+      </View>
+
+      <View style={styles.progressTrack}>
+        <Animated.View style={[styles.progressFill, { width: `${((step + 1) / TOTAL_STEPS) * 100}%` }]} />
+      </View>
+
       <ScrollView
         ref={scrollRef}
         horizontal
         pagingEnabled
+        scrollEnabled={false}
         showsHorizontalScrollIndicator={false}
-        scrollEnabled={true}
-        style={styles.slides}
-        onMomentumScrollEnd={(e) => {
-          const newStep = Math.round(e.nativeEvent.contentOffset.x / width);
-          if (newStep !== step) {
-            setStep(newStep);
-            animateIn();
-            animateDots(newStep);
-          }
-        }}
+        keyboardShouldPersistTaps="handled"
+        style={styles.pager}
       >
-        {/* Slide 1: Welcome */}
-        <View style={[styles.slide, { width }]}>
-          <LinearGradient colors={['rgba(0,212,170,0.25)', 'transparent']} style={styles.slideGradient} />
-          <Animated.View style={{ transform: [{ translateY: fishBounce }] }}>
-            <MaterialCommunityIcons name="fish" size={64} color={colors.primary} style={styles.slideIcon} />
-          </Animated.View>
-          <Text style={styles.slideTitle}>Welcome to CAST</Text>
-          <Text style={styles.slideSubtitle}>
-            The UK's most advanced fishing companion. Track catches, plan trips, get AI advice, and become a better angler.
-          </Text>
-          <View style={styles.features}>
-            {[
-              { icon: 'robot', text: 'AI Fishing Advisor — ask anything' },
-              { icon: 'map-marker', text: '500+ UK fishing spots' },
-              { icon: 'weather-night', text: 'Solunar times & moon phases' },
-              { icon: 'trophy', text: 'Track PBs vs UK records' },
-              { icon: 'hook', text: '20 essential knots with guides' },
-              { icon: 'bug', text: 'Full bait guide & matcher' },
-            ].map((f) => (
-              <View key={f.text} style={styles.featureRow}>
-                <MaterialCommunityIcons name={f.icon as any} size={20} color={colors.primary} style={styles.featureIcon} />
-                <Text style={styles.featureText}>{f.text}</Text>
-              </View>
-            ))}
-          </View>
-          <Animated.View style={[styles.slideBtn, { transform: [{ scale: btnPulse }] }]}>
-            <CastButton title="Get Started →" onPress={() => goToStep(1)} fullWidth size="lg" />
-          </Animated.View>
-        </View>
-
-        {/* Slide 2: Where do you fish? */}
-        <View style={[styles.slide, { width }]}>
-          <MaterialCommunityIcons name="map-marker" size={64} color={colors.primary} style={styles.slideIcon} />
-          <Text style={styles.slideTitle}>Where do you fish?</Text>
-          <Text style={styles.slideSubtitle}>
-            Tell us your usual fishing spot — a lake, river, coast or town. We'll show local weather, conditions and what's biting.
-          </Text>
-          <View style={styles.locationCard}>
-            <Text style={styles.locationTitle}>Your fishing location</Text>
-            <TextInput
-              style={styles.locationInput}
-              placeholder="e.g. Port de Sóller, River Wye, Chesil Beach..."
-              placeholderTextColor="#4B5563"
-              value={fishingSpot}
-              onChangeText={setFishingSpot}
-              returnKeyType="done"
-            />
-            <Text style={styles.locationSkip}>You can change this anytime from the home screen</Text>
-          </View>
-          <View style={styles.slideActions}>
-            <CastButton title="Back" onPress={() => goToStep(0)} variant="ghost" style={{ flex: 1 }} />
-            <CastButton title="Next →" onPress={() => goToStep(2)} style={{ flex: 2 }} />
-          </View>
-        </View>
-
-        {/* Slide 3: Species */}
-        <View style={[styles.slide, { width }]}>
-          <MaterialCommunityIcons name="fish" size={64} color={colors.primary} style={styles.slideIcon} />
-          <Text style={styles.slideTitle}>What do you fish for?</Text>
-          <Text style={styles.slideSubtitle}>
-            Select your target species — we'll personalise tips, alerts and conditions for you.
-          </Text>
-          <View style={styles.speciesGrid}>
-            {SPECIES.map((s) => (
-              <TouchableOpacity
-                key={s.id}
-                style={[styles.speciesChip, selectedSpecies.includes(s.id) && styles.speciesChipActive]}
-                onPress={() => toggleSpecies(s.id)}
-              >
-                <MaterialCommunityIcons name={s.icon as any} size={16} color={selectedSpecies.includes(s.id) ? colors.primary : colors.textSecondary} />
-                <Text style={[styles.speciesName, selectedSpecies.includes(s.id) && styles.speciesNameActive]}>
-                  {s.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.slideActions}>
-            <CastButton title="Back" onPress={() => goToStep(1)} variant="ghost" style={{ flex: 1 }} />
-            <CastButton title="Next →" onPress={() => goToStep(3)} style={{ flex: 2 }} />
-          </View>
-        </View>
-
-        {/* Slide 4: Experience level */}
-        <View style={[styles.slide, { width }]}>
-          <MaterialCommunityIcons name="medal" size={64} color={colors.primary} style={styles.slideIcon} />
-          <Text style={styles.slideTitle}>Your Experience</Text>
-          <Text style={styles.slideSubtitle}>
-            This helps us tailor tips, rig complexity, and species suggestions to your skill level.
-          </Text>
-          <View style={styles.levelCards}>
-            {LEVELS.map((l) => (
-              <TouchableOpacity
-                key={l.id}
-                style={[styles.levelCard, selectedLevel === l.id && styles.levelCardActive]}
-                onPress={() => setSelectedLevel(l.id)}
-              >
-                <MaterialCommunityIcons name={l.icon as any} size={32} color={selectedLevel === l.id ? colors.primary : colors.textSecondary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.levelLabel, selectedLevel === l.id && { color: colors.primary }]}>{l.label}</Text>
-                  <Text style={styles.levelDesc}>{l.desc}</Text>
-                </View>
-                {selectedLevel === l.id && (
-                  <MaterialCommunityIcons name="check" size={20} color={colors.primary} />
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.slideActions}>
-            <CastButton title="Back" onPress={() => goToStep(2)} variant="ghost" style={{ flex: 1 }} />
-            <CastButton title="Next →" onPress={() => goToStep(4)} style={{ flex: 2 }} />
-          </View>
-        </View>
-
-        {/* Slide 5: Licence */}
-        <View style={[styles.slide, { width }]}>
-          <MaterialCommunityIcons name="file-document" size={64} color={colors.primary} style={styles.slideIcon} />
-          <Text style={styles.slideTitle}>Rod Licence</Text>
-          <Text style={styles.slideSubtitle}>
-            In England & Wales, you need an EA rod licence to fish for freshwater fish. Do you have one?
-          </Text>
-          <View style={styles.licenceOptions}>
-            {[
-              { id: 'yes', label: 'Yes, I have a licence', icon: 'check-circle', desc: 'Great — you\'re legal to fish!' },
-              { id: 'no', label: 'No, not yet', icon: 'close-circle', desc: 'You\'ll need one before fishing' },
-              { id: 'notsure', label: 'Not sure', icon: 'help-circle', desc: 'We\'ll help you check' },
-            ].map((opt) => (
-              <TouchableOpacity
-                key={opt.id}
-                style={[styles.licenceOption, hasLicence === opt.id && styles.licenceOptionActive]}
-                onPress={() => setHasLicence(opt.id)}
-              >
-                <MaterialCommunityIcons name={opt.icon as any} size={28} color={hasLicence === opt.id ? colors.primary : colors.textSecondary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.licenceLabel, hasLicence === opt.id && { color: colors.primary }]}>{opt.label}</Text>
-                  <Text style={styles.licenceDesc}>{opt.desc}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-          {(hasLicence === 'no' || hasLicence === 'notsure') && (
-            <View style={styles.licenceAlert}>
-              <Text style={styles.licenceAlertText}>
-                A 1-day licence costs just £6. Buy at gov.uk/get-a-fishing-licence or through the free NI Angler app.
-              </Text>
+        <View style={[styles.page, { width }]}>
+          <Animated.View style={[styles.pageContent, styles.welcomeContent, animatedStyle]}>
+            <View style={styles.heroVisual}>
+              <View style={styles.heroGlow} />
+              <View style={styles.heroRing}><Icon name="fish" size={76} color={colors.primary} /></View>
+              <View style={[styles.floatingPill, styles.pillLeft]}><Icon name="map-marker" size={16} color={colors.accentBlue} /><Text style={styles.pillText}>Find waters</Text></View>
+              <View style={[styles.floatingPill, styles.pillRight]}><Icon name="trophy-outline" size={16} color={colors.secondary} /><Text style={styles.pillText}>Earn XP</Text></View>
             </View>
-          )}
-          <View style={styles.slideActions}>
-            <CastButton title="Back" onPress={() => goToStep(3)} variant="ghost" style={{ flex: 1 }} />
-            <CastButton title="Start Fishing!" onPress={handleComplete} style={{ flex: 2 }} />
-          </View>
+            <Text style={styles.kicker}>YOUR WATER. YOUR STORY.</Text>
+            <Text style={styles.title}>Every great catch starts with a cast.</Text>
+            <Text style={styles.subtitle}>Build your angling profile, discover what’s biting, and turn every session into progress.</Text>
+          </Animated.View>
+        </View>
+
+        <View style={[styles.page, { width }]}>
+          <Animated.View style={[styles.pageContent, animatedStyle]}>
+            <View style={styles.stepIcon}><Icon name="account-outline" size={28} color={colors.primary} /></View>
+            <Text style={styles.kicker}>MAKE IT YOURS</Text>
+            <Text style={styles.title}>What should anglers call you?</Text>
+            <Text style={styles.subtitle}>This is how your name appears on catches, leaderboards, and shared cards.</Text>
+            <View style={[styles.inputShell, usernameTouched && !usernameValid && styles.inputError]}>
+              <TextInput
+                autoCapitalize="words"
+                autoCorrect={false}
+                accessibilityLabel="Angler username"
+                maxLength={24}
+                onBlur={() => setUsernameTouched(true)}
+                onChangeText={setUsername}
+                onSubmitEditing={next}
+                placeholder="e.g. RiverRover"
+                placeholderTextColor={colors.textTertiary}
+                returnKeyType="next"
+                style={styles.input}
+                value={username}
+              />
+              <Text style={styles.characterCount}>{username.trim().length}/24</Text>
+            </View>
+            {usernameTouched && !usernameValid ? <Text style={styles.errorText}>Use between 2 and 24 characters.</Text> : null}
+          </Animated.View>
+        </View>
+
+        <View style={[styles.page, { width }]}>
+          <Animated.View style={[styles.pageContent, styles.centeredContent, animatedStyle]}>
+            <Text style={styles.kicker}>PUT A FACE TO THE CATCH</Text>
+            <Text style={styles.title}>Add a profile photo</Text>
+            <Text style={styles.subtitle}>Optional, but it makes your catch cards unmistakably yours.</Text>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Choose profile photo" activeOpacity={0.85} onPress={pickPhoto} style={styles.photoButton}>
+              {photoUri ? <Image source={{ uri: photoUri }} style={styles.photo} /> : <Icon name="camera-plus-outline" size={48} color={colors.primary} />}
+              <View style={styles.photoEdit}><Icon name="pencil" size={16} color={colors.background} /></View>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={pickPhoto} style={styles.textButton}><Text style={styles.textButtonLabel}>{photoUri ? 'Choose a different photo' : 'Choose from library'}</Text></TouchableOpacity>
+            <Text style={styles.optionalText}>You can always add one later.</Text>
+          </Animated.View>
+        </View>
+
+        <View style={[styles.page, { width }]}>
+          <Animated.View style={[styles.pageContent, animatedStyle]}>
+            <View style={styles.stepIcon}><Icon name="earth" size={28} color={colors.primary} /></View>
+            <Text style={styles.kicker}>SET YOUR HOME WATERS</Text>
+            <Text style={styles.title}>Where do you fish?</Text>
+            <Text style={styles.subtitle}>We’ll tune species, seasons, units, and nearby water recommendations.</Text>
+            <ScrollView contentContainerStyle={styles.optionGrid} showsVerticalScrollIndicator={false}>
+              {REGIONS.map((region) => {
+                const selected = regionId === region.id;
+                return (
+                  <TouchableOpacity key={region.id} accessibilityRole="radio" accessibilityState={{ selected }} activeOpacity={0.8} onPress={() => setRegionId(region.id)} style={[styles.regionCard, selected && styles.selectedCard]}>
+                    <Icon name={region.icon as any} size={22} color={selected ? colors.primary : colors.textSecondary} />
+                    <Text style={[styles.regionLabel, selected && styles.selectedText]}>{region.label}</Text>
+                    {selected ? <Icon name="check-circle" size={18} color={colors.primary} /> : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </Animated.View>
+        </View>
+
+        <View style={[styles.page, { width }]}>
+          <Animated.View style={[styles.pageContent, animatedStyle]}>
+            <View style={styles.stepIcon}><Icon name="target" size={28} color={colors.primary} /></View>
+            <Text style={styles.kicker}>CHOOSE YOUR CHASE</Text>
+            <Text style={styles.title}>What are you after?</Text>
+            <Text style={styles.subtitle}>Pick one or more. Your feed and fishing intel will start here.</Text>
+            <ScrollView contentContainerStyle={styles.speciesGrid} showsVerticalScrollIndicator={false}>
+              {SPECIES.map((species) => {
+                const selected = targetSpecies.includes(species.id);
+                return (
+                  <TouchableOpacity key={species.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} activeOpacity={0.8} onPress={() => toggleSpecies(species.id)} style={[styles.speciesCard, selected && styles.selectedCard]}>
+                    <View style={[styles.fishIcon, selected && styles.fishIconSelected]}><Icon name="fish" size={23} color={selected ? colors.background : colors.textSecondary} /></View>
+                    <View style={styles.speciesCopy}><Text style={[styles.speciesName, selected && styles.selectedText]}>{species.name}</Text><Text style={styles.speciesGroup}>{species.group}</Text></View>
+                    {selected ? <Icon name="check-circle" size={19} color={colors.primary} /> : null}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </Animated.View>
         </View>
       </ScrollView>
 
-      {/* Dots */}
-      <View style={styles.dots}>
-        {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-          <TouchableOpacity key={i} onPress={() => goToStep(i)}>
-            <Animated.View
-              style={[
-                styles.dot,
-                step === i && styles.dotActive,
-                { transform: [{ scale: dotScales[i] }] },
-              ]}
-            />
-          </TouchableOpacity>
-        ))}
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+        {step > 0 ? <TouchableOpacity accessibilityRole="button" onPress={() => goTo(step - 1)} style={styles.backButton}><Icon name="arrow-left" size={21} color={colors.textPrimary} /></TouchableOpacity> : null}
+        <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: !canContinue }} activeOpacity={0.85} disabled={!canContinue} onPress={next} style={[styles.nextButton, !canContinue && styles.nextButtonDisabled]}>
+          <Text style={styles.nextButtonText}>{step === 0 ? 'Start your journey' : step === TOTAL_STEPS - 1 ? 'Build my profile' : step === 2 && !photoUri ? 'Skip for now' : 'Continue'}</Text>
+          <Icon name={step === TOTAL_STEPS - 1 ? 'check' : 'arrow-right'} size={20} color={colors.background} />
+        </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  slides: {
-    flex: 1,
-  },
-  slide: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-    paddingTop: 60,
-    paddingBottom: spacing.xxl,
-    alignItems: 'center',
-  },
-  slideGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 300,
-  },
-  slideIcon: {
-    marginBottom: spacing.lg,
-  },
-  slideTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  slideSubtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: spacing.xl,
-  },
-  features: {
-    width: '100%',
-    marginBottom: spacing.xl,
-    gap: spacing.sm,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  featureIcon: {
-    width: 20,
-  },
-  featureText: {
-    fontSize: 14,
-    color: colors.textPrimary,
-    fontWeight: '500',
-  },
-  slideBtn: {
-    marginTop: 'auto' as any,
-  },
-  slideActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    width: '100%',
-    marginTop: 'auto' as any,
-  },
-  // Location slide
-  locationCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    width: '100%',
-    marginBottom: spacing.md,
-    gap: spacing.xs,
-  },
-  locationTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  locationBenefit: {
-    fontSize: 14,
-    color: colors.textPrimary,
-    paddingVertical: 3,
-  },
-  locationButtons: {
-    width: '100%',
-    marginBottom: spacing.md,
-    gap: spacing.xs,
-  },
-  enableBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.lg,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-  },
-  enableBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#0A0E1A',
-  },
-  locationInput: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: colors.textPrimary,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    marginBottom: 10,
-  },
-  locationSkip: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  // Species
-  speciesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    justifyContent: 'center',
-    marginBottom: spacing.lg,
-    width: '100%',
-  },
-  speciesChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.surface,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  speciesChipActive: {
-    backgroundColor: 'rgba(0,212,170,0.15)',
-    borderColor: colors.primary,
-  },
-  speciesName: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  speciesNameActive: {
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  // Level
-  levelCards: {
-    width: '100%',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  levelCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    borderWidth: 2,
-    borderColor: colors.border,
-  },
-  levelCardActive: {
-    borderColor: colors.primary,
-    backgroundColor: 'rgba(0,212,170,0.08)',
-  },
-  levelLabel: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  levelDesc: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  // Licence
-  licenceOptions: {
-    width: '100%',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  licenceOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    borderWidth: 2,
-    borderColor: colors.border,
-  },
-  licenceOptionActive: {
-    borderColor: colors.primary,
-    backgroundColor: 'rgba(0,212,170,0.08)',
-  },
-  licenceLabel: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  licenceDesc: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  licenceAlert: {
-    backgroundColor: 'rgba(0,212,170,0.1)',
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,170,0.2)',
-    width: '100%',
-  },
-  licenceAlertText: {
-    fontSize: 13,
-    color: colors.textPrimary,
-    lineHeight: 20,
-  },
-  // Dots
-  dots: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingBottom: spacing.xl,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.surface2,
-  },
-  dotActive: {
-    backgroundColor: colors.primary,
-    width: 24,
-  },
+  root: { flex: 1, backgroundColor: colors.background },
+  header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  brandMark: { width: 30, height: 30, borderRadius: 9, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  brandText: { color: colors.textPrimary, fontFamily: fonts.display, letterSpacing: 2, fontSize: 17 },
+  stepLabel: { color: colors.textSecondary, fontFamily: fonts.mono, fontSize: 12 },
+  progressTrack: { height: 2, marginHorizontal: spacing.lg, backgroundColor: colors.borderStrong, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: colors.primary, borderRadius: 2 },
+  pager: { flex: 1 },
+  page: { flex: 1 },
+  pageContent: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.xl, paddingBottom: spacing.md },
+  welcomeContent: { justifyContent: 'center', paddingBottom: spacing.xxl },
+  centeredContent: { alignItems: 'center', paddingTop: 58 },
+  heroVisual: { height: 230, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xl },
+  heroGlow: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(0,212,170,0.07)' },
+  heroRing: { width: 156, height: 156, borderRadius: 78, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,212,170,0.08)', borderWidth: 1, borderColor: 'rgba(0,212,170,0.28)' },
+  floatingPill: { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.full, paddingHorizontal: 12, paddingVertical: 8 },
+  pillLeft: { left: 2, bottom: 38 },
+  pillRight: { right: 2, top: 30 },
+  pillText: { color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 12 },
+  kicker: { color: colors.primary, fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 2.2, marginBottom: spacing.sm },
+  title: { color: colors.textPrimary, fontFamily: fonts.display, fontSize: 34, lineHeight: 40, letterSpacing: -0.6, maxWidth: 500 },
+  subtitle: { color: colors.textSecondary, fontFamily: fonts.body, fontSize: 15, lineHeight: 23, marginTop: 12, maxWidth: 500 },
+  stepIcon: { width: 54, height: 54, borderRadius: 18, backgroundColor: 'rgba(0,212,170,0.09)', borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
+  inputShell: { height: 62, borderRadius: radius.md, borderWidth: 1, borderColor: colors.borderStrong, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', marginTop: spacing.xl, paddingHorizontal: spacing.md },
+  inputError: { borderColor: colors.danger },
+  input: { flex: 1, color: colors.textPrimary, fontFamily: fonts.bodySemi, fontSize: 17, height: '100%' },
+  characterCount: { color: colors.textTertiary, fontFamily: fonts.mono, fontSize: 11 },
+  errorText: { color: colors.danger, fontFamily: fonts.body, fontSize: 12, marginTop: spacing.sm },
+  photoButton: { width: 174, height: 174, borderRadius: 87, marginTop: 42, backgroundColor: colors.surface, borderWidth: 2, borderColor: 'rgba(0,212,170,0.42)', borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
+  photo: { width: '100%', height: '100%', borderRadius: 87 },
+  photoEdit: { position: 'absolute', right: 4, bottom: 10, width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: colors.background },
+  textButton: { padding: spacing.md, marginTop: spacing.md },
+  textButtonLabel: { color: colors.primary, fontFamily: fonts.bodySemi, fontSize: 14 },
+  optionalText: { color: colors.textTertiary, fontFamily: fonts.body, fontSize: 12 },
+  optionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingTop: spacing.lg, paddingBottom: spacing.xl },
+  regionCard: { width: '48.5%', minHeight: 76, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: 12, paddingVertical: 14, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  regionLabel: { flex: 1, color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 },
+  selectedCard: { borderColor: colors.primary, backgroundColor: 'rgba(0,212,170,0.09)' },
+  selectedText: { color: colors.textPrimary },
+  speciesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingTop: spacing.lg, paddingBottom: spacing.xl },
+  speciesCard: { width: '48.5%', minHeight: 78, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  fishIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' },
+  fishIconSelected: { backgroundColor: colors.primary },
+  speciesCopy: { flex: 1 },
+  speciesName: { color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 },
+  speciesGroup: { color: colors.textTertiary, fontFamily: fonts.body, fontSize: 10, marginTop: 2 },
+  footer: { flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.md, paddingHorizontal: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: 'rgba(10,14,26,0.96)' },
+  backButton: { width: 54, minHeight: 54, borderRadius: radius.md, borderWidth: 1, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
+  nextButton: { flex: 1, minHeight: 54, borderRadius: radius.md, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
+  nextButtonDisabled: { opacity: 0.35 },
+  nextButtonText: { color: colors.background, fontFamily: fonts.bodyBold, fontSize: 15 },
 });

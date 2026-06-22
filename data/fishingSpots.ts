@@ -1,0 +1,93 @@
+import { WORLD_SPOTS, WorldSpot } from './worldSpots';
+import { CURATED_FISHING_SPOTS } from './fishingSpotsCurated';
+import { OSM_FISHING_SPOTS, OsmFishingSpotTuple } from './osmFishingSpots.generated';
+import { FishingSpotRecord, SpotDatasetMetadata } from '../types/fishingSpot';
+
+function inferCoverage(spot: WorldSpot): FishingSpotRecord['coverageRegion'] {
+  if (spot.country === 'UK' || spot.country === 'Ireland') return 'uk_ireland';
+  if (spot.country === 'Japan') return 'japan';
+  if (spot.country === 'India') return 'india';
+  if (spot.country === 'South Africa') return 'south_africa';
+  if (spot.country === 'Brazil') return 'brazil_amazon';
+  if (spot.country === 'Australia' || spot.country === 'New Zealand') return 'australia_nz';
+  if (spot.country === 'USA' || spot.country === 'Canada' || spot.country === 'Mexico') return 'north_america';
+  if (spot.continent === 'Europe') return 'europe';
+  return 'oceans';
+}
+
+export function adaptLegacyWorldSpot(spot: WorldSpot): FishingSpotRecord {
+  return {
+    ...spot,
+    coverageRegion: inferCoverage(spot),
+    coordinatePrecision: 'regional_centroid',
+    access: { summary: 'Legacy demo access claim; verify with the relevant authority.', permit: 'unknown' },
+    verification: 'unverified_demo',
+    verificationNotes: 'Migrated from the original demo dataset. Name, coordinates, species, ratings, access and tips have not completed source review.',
+    sources: [], dataset: 'legacy_demo', updatedAt: '2026-06-22',
+  };
+}
+
+function coverageFromCoordinate(latitude: number, longitude: number): FishingSpotRecord['coverageRegion'] {
+  if (latitude >= 49 && latitude <= 61 && longitude >= -11 && longitude <= 2) return 'uk_ireland';
+  if (latitude >= 30 && latitude <= 46 && longitude >= 129 && longitude <= 146) return 'japan';
+  if (latitude >= 6 && latitude <= 37 && longitude >= 68 && longitude <= 98) return 'india';
+  if (latitude >= -36 && latitude <= -22 && longitude >= 16 && longitude <= 33) return 'south_africa';
+  if (latitude >= -35 && latitude <= 6 && longitude >= -74 && longitude <= -34) return 'brazil_amazon';
+  if (latitude >= -48 && latitude <= -10 && longitude >= 110 && longitude <= 180) return 'australia_nz';
+  if (latitude >= 5 && latitude <= 85 && longitude >= -170 && longitude <= -50) return 'north_america';
+  if (latitude >= 34 && latitude <= 72 && longitude >= -25 && longitude <= 45) return 'europe';
+  return 'oceans';
+}
+
+function adaptOsmFishingSpot(tuple: OsmFishingSpotTuple): FishingSpotRecord {
+  const [id, name, latitude, longitude, type, area, speciesList, accessTag] = tuple;
+  const [, osmType, osmId] = id.match(/^osm-(node|way|relation)-(\d+)$/) ?? [];
+  const species = speciesList ? speciesList.split('|').map((item) => item.trim()).filter(Boolean) : [];
+  const isPrivate = accessTag === 'private' || type === 'private';
+  return {
+    id, name, country: area, region: area, coverageRegion: coverageFromCoordinate(latitude, longitude), continent: area,
+    type, latitude, longitude, coordinatePrecision: 'named_feature', species, bestBait: [], bestSeason: [], difficulty: 'unknown',
+    access: {
+      summary: isPrivate
+        ? 'OpenStreetMap marks this fishing feature as private. Obtain explicit permission before visiting.'
+        : 'Named fishing feature from OpenStreetMap. Access, licences, fees and local restrictions must be checked before visiting.',
+      permit: isPrivate ? 'required' : 'unknown',
+    },
+    description: 'A named OpenStreetMap feature explicitly tagged for fishing.',
+    tips: 'Conditions are fetched from this feature’s coordinates. Treat the pin as a named-feature location, not guaranteed legal bank access.',
+    facilities: [], verification: 'partially_verified',
+    verificationNotes: 'OpenStreetMap supports the name, fishing tag and coordinate. Species, access, regulations and difficulty have not been independently verified.',
+    sources: osmType && osmId ? [{ title: `OpenStreetMap ${osmType} ${osmId}`, url: `https://www.openstreetmap.org/${osmType}/${osmId}`, publisher: 'OpenStreetMap contributors', checkedAt: '2026-06-22', supports: ['identity', 'coordinates'] }] : [],
+    dataset: 'imported', updatedAt: '2026-06-22', rating: 0, permitRequired: isPrivate,
+  };
+}
+
+export const FISHING_SPOTS: FishingSpotRecord[] = [
+  ...CURATED_FISHING_SPOTS,
+  ...OSM_FISHING_SPOTS.map(adaptOsmFishingSpot),
+  ...WORLD_SPOTS.map(adaptLegacyWorldSpot),
+];
+
+const COVERAGE_LABELS: Record<FishingSpotRecord['coverageRegion'], string> = {
+  uk_ireland: 'UK & Ireland', europe: 'Europe', north_america: 'North America', australia_nz: 'Australia & New Zealand', south_africa: 'South Africa', japan: 'Japan', brazil_amazon: 'Brazil & Amazon', india: 'India', oceans: 'Oceans',
+};
+
+const REGION_TARGETS: Record<FishingSpotRecord['coverageRegion'], number> = {
+  uk_ireland: 1800, europe: 1700, north_america: 2000, australia_nz: 1200, south_africa: 600, japan: 600, brazil_amazon: 700, india: 600, oceans: 800,
+};
+
+export const FISHING_SPOTS_METADATA: SpotDatasetMetadata = {
+  version: '1.0.0-osm', releasedAt: '2026-06-22', targetCount: 10000,
+  totalAvailable: FISHING_SPOTS.length,
+  curatedCount: CURATED_FISHING_SPOTS.length,
+  verifiedCount: FISHING_SPOTS.filter((s) => s.verification === 'verified').length,
+  partiallyVerifiedCount: FISHING_SPOTS.filter((s) => s.verification === 'partially_verified').length,
+  unverifiedDemoCount: FISHING_SPOTS.filter((s) => s.verification === 'unverified_demo').length,
+  disclaimer: 'Includes 10,000 named OpenStreetMap features explicitly tagged for fishing, plus curated and legacy records. An OSM fishing tag is not proof of current public access: always confirm licences, fees, seasons, closures and safe access locally.',
+  coverage: (Object.keys(COVERAGE_LABELS) as FishingSpotRecord['coverageRegion'][]).map((id) => {
+    const rows = FISHING_SPOTS.filter((s) => s.coverageRegion === id);
+    return { id, label: COVERAGE_LABELS[id], target: REGION_TARGETS[id], curated: rows.filter((s) => s.dataset === 'curated_seed').length, verified: rows.filter((s) => s.verification === 'verified').length, partial: rows.filter((s) => s.verification === 'partially_verified').length, demo: rows.filter((s) => s.verification === 'unverified_demo').length };
+  }),
+};
+
+export { CURATED_FISHING_SPOTS };

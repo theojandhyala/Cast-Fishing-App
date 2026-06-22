@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CONFIG } from '../constants/config';
+import { GLOBAL_FISH_DATABASE } from '../data/globalFishDatabase';
 
 export interface FishIdentificationResult {
   species: string;
@@ -13,195 +14,94 @@ export interface FishIdentificationResult {
   notes: string;
   tips: string;
   alternatives: string[];
-  isDemo?: boolean; // true when returned from demo/offline mode
-}
-
-// Required fields that must be present for a valid response
-const REQUIRED_FIELDS: (keyof FishIdentificationResult)[] = [
-  'species', 'confidence', 'commonName', 'latinName',
-  'estimatedWeight', 'estimatedLength', 'notes', 'alternatives',
-];
-
-function isValidResult(obj: unknown): obj is FishIdentificationResult {
-  if (!obj || typeof obj !== 'object') return false;
-  const r = obj as Record<string, unknown>;
-  return REQUIRED_FIELDS.every((f) => f in r) &&
-    typeof r.species === 'string' && r.species.length > 0 &&
-    typeof r.confidence === 'number' &&
-    Array.isArray(r.alternatives);
-}
-
-function sanitiseResult(r: FishIdentificationResult): FishIdentificationResult {
-  return {
-    ...r,
-    confidence: Math.max(0, Math.min(100, Math.round(r.confidence))),
-    legalSize: typeof r.legalSize === 'number' ? r.legalSize : 0,
-    isLegal: typeof r.isLegal === 'boolean' ? r.isLegal : true,
-    tips: r.tips ?? '',
-    alternatives: Array.isArray(r.alternatives) ? r.alternatives.slice(0, 5) : [],
-  };
-}
-
-async function fetchWithRetry(url: string, body: string, maxRetries = 2): Promise<Response> {
-  let lastError: Error = new Error('Unknown error');
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body,
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      return res;
-    } catch (e) {
-      lastError = e instanceof Error ? e : new Error(String(e));
-      if (attempt < maxRetries) {
-        await new Promise((r) => setTimeout(r, 1000 * (attempt + 1))); // 1s, 2s backoff
-      }
-    }
-  }
-  throw lastError;
 }
 
 export function useFishIdentifier() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<FishIdentificationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isDemo, setIsDemo] = useState(false);
 
-  const identify = async (base64Image: string): Promise<FishIdentificationResult | null> => {
-    if (!base64Image || base64Image.length < 100) {
-      setError('Image data is missing or too small. Please try again.');
-      setLoading(false);
-      return null;
-    }
-
+  const identify = async (base64Image: string, mediaType = 'image/jpeg'): Promise<FishIdentificationResult | null> => {
     setLoading(true);
     setError(null);
     setResult(null);
-    setIsDemo(false);
-
-    const workerUrl = CONFIG.AI_WORKER_URL;
-
-    if (!workerUrl) {
-      // Demo mode — no worker URL configured
-      await new Promise((r) => setTimeout(r, 1500));
-      const demos = getDemoResults();
-      const demo = { ...demos[Math.floor(Math.random() * demos.length)], isDemo: true };
-      setResult(demo);
-      setIsDemo(true);
-      setLoading(false);
-      return demo;
-    }
 
     try {
-      const res = await fetchWithRetry(
-        `${workerUrl}/identify`,
-        JSON.stringify({ image: base64Image }),
-        2 // up to 2 retries = 3 total attempts
-      );
+      if (!base64Image) throw new Error('The selected photo could not be read. Please try another image.');
+      if (!CONFIG.AI_WORKER_URL) throw new Error('Fish scanning is not configured.');
+      let res: Response | null = null;
+      let lastRequestError: unknown;
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 25_000);
+        try {
+          res = await fetch(`${CONFIG.AI_WORKER_URL}/identify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64Image, mediaType }),
+            signal: controller.signal,
+          });
+          if (res.ok || res.status < 500) break;
+        } catch (requestError) {
+          lastRequestError = requestError;
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
+      if (!res) throw lastRequestError instanceof Error ? lastRequestError : new Error('The scanner could not connect. Please try again.');
 
       const text = await res.text();
+      if (!res.ok) throw new Error(text || 'Identification failed');
 
-      if (!res.ok) {
-        // Surface the actual server error — don't hide it behind demo data
-        const serverMsg = text?.slice(0, 200) || `HTTP ${res.status}`;
-        throw new Error(`Identification service error: ${serverMsg}`);
+      // Worker returns the model's raw JSON; strip any stray markdown fences.
+      const clean = text.replace(/```json\s*|```/gi, '').trim();
+      const objectStart = clean.indexOf('{');
+      const objectEnd = clean.lastIndexOf('}');
+      if (objectStart < 0 || objectEnd < objectStart) throw new Error('The scanner returned an unreadable result.');
+      const raw = JSON.parse(clean.slice(objectStart, objectEnd + 1));
+      if (String(raw.species || '').toLowerCase().includes('no fish')) {
+        throw new Error('No fish was detected. Try a clear, well-lit photo showing the whole fish.');
       }
-
-      // Strip markdown code fences if model returned them
-      let clean = text.replace(/^```(?:json)?\s*/m, '').replace(/\s*```$/m, '').trim();
-
-      // Handle cases where the model wrapped results in an outer key
-      if (clean.startsWith('{"result"')) {
-        try {
-          const wrapper = JSON.parse(clean);
-          clean = JSON.stringify(wrapper.result ?? wrapper);
-        } catch {}
-      }
-
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(clean);
-      } catch {
-        throw new Error('Response was not valid JSON. The identification service may be misconfigured.');
-      }
-
-      if (!isValidResult(parsed)) {
-        throw new Error('Response was missing required fields. Got: ' + Object.keys(parsed as object).join(', '));
-      }
-
-      const final = sanitiseResult(parsed);
-      setResult(final);
-      setIsDemo(false);
-      setLoading(false);
-      return final;
-
+      if (!raw.commonName && !raw.species) throw new Error('The fish species could not be identified.');
+      const rawName = String(raw.commonName || raw.species).trim();
+      const normalized = rawName.toLowerCase();
+      const databaseFish = GLOBAL_FISH_DATABASE.find((fish) => {
+        const names = [fish.name, fish.commonName, fish.latinName].map((name) => name.toLowerCase());
+        return names.some((name) => name === normalized || name.includes(normalized) || normalized.includes(name));
+      });
+      const confidence = Math.max(0, Math.min(100, Number(raw.confidence) || 0));
+      if (confidence < 35) throw new Error('The photo is too ambiguous for a reliable identification. Try a clearer side-on photo of the whole fish.');
+      const legalSize = databaseFish?.legalSize ?? Math.max(0, Number(raw.legalSize) || 0);
+      const lengthNumbers = String(raw.estimatedLength || '').match(/\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+      const estimatedMinimumLength = lengthNumbers.length ? Math.min(...lengthNumbers) : 0;
+      const parsed: FishIdentificationResult = {
+        species: databaseFish?.name ?? rawName,
+        commonName: databaseFish?.commonName ?? rawName,
+        latinName: databaseFish?.latinName ?? String(raw.latinName || 'Scientific name unavailable'),
+        confidence,
+        legalSize,
+        estimatedWeight: String(raw.estimatedWeight || 'Not estimated'),
+        estimatedLength: String(raw.estimatedLength || 'Not estimated'),
+        isLegal: legalSize > 0 && estimatedMinimumLength >= legalSize,
+        notes: databaseFish?.description ?? String(raw.notes || 'Check the visible markings against a local identification guide.'),
+        tips: databaseFish?.tip ?? String(raw.tips || 'Check local regulations before keeping any fish.'),
+        alternatives: Array.isArray(raw.alternatives) ? raw.alternatives.map(String).slice(0, 4) : [],
+      };
+      setResult(parsed);
+      return parsed;
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Identification failed';
-      setError(msg);
-      setResult(null); // Do NOT silently return demo data — show the error
-      setLoading(false);
+      const errorMsg = e instanceof Error ? e.message : 'Identification failed';
+      setError(errorMsg);
       return null;
+    } finally {
+      setLoading(false);
     }
   };
 
   const reset = () => {
     setResult(null);
     setError(null);
-    setIsDemo(false);
   };
 
-  return { identify, loading, result, error, isDemo, reset };
-}
-
-// Demo results shown only when no worker URL is configured (dev/offline mode)
-function getDemoResults(): FishIdentificationResult[] {
-  return [
-    {
-      species: 'Common Carp',
-      confidence: 94,
-      commonName: 'Common Carp',
-      latinName: 'Cyprinus carpio',
-      legalSize: 38,
-      estimatedWeight: '4–7 kg',
-      estimatedLength: '55–70 cm',
-      isLegal: true,
-      notes: 'A healthy common carp. The large scales and distinctive deep body profile are characteristic. Demo result — configure AI_WORKER_URL for real identification.',
-      tips: 'Carp are highly intelligent — vary your rigs and baits to keep catching.',
-      alternatives: ['Mirror Carp', 'Leather Carp', 'Crucian Carp'],
-      isDemo: true,
-    },
-    {
-      species: 'European Perch',
-      confidence: 89,
-      commonName: 'European Perch',
-      latinName: 'Perca fluviatilis',
-      legalSize: 25,
-      estimatedWeight: '0.5–1.2 kg',
-      estimatedLength: '25–35 cm',
-      isLegal: true,
-      notes: 'A fine perch with distinctive green vertical bars and red-orange pectoral fins. Demo result.',
-      tips: 'Drop shotting small plastics is devastating for big perch. Target structure.',
-      alternatives: ['Zander', 'Ruffe', 'Largemouth Bass'],
-      isDemo: true,
-    },
-    {
-      species: 'Northern Pike',
-      confidence: 97,
-      commonName: 'Northern Pike',
-      latinName: 'Esox lucius',
-      legalSize: 45,
-      estimatedWeight: '3–6 kg',
-      estimatedLength: '65–80 cm',
-      isLegal: true,
-      notes: 'A substantial pike with classic green-gold torpedo body and large jaws. Demo result.',
-      tips: 'Always use forceps and a wire trace. Support the full body weight when handling.',
-      alternatives: ['Chain Pickerel', 'Muskellunge'],
-      isDemo: true,
-    },
-  ];
+  return { identify, loading, result, error, reset };
 }

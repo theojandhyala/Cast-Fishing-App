@@ -2,6 +2,9 @@ name = "cast-ai"
 main = "index.js"
 compatibility_date = "2024-09-01"
 
+[ai]
+binding = "AI"
+
 # The ANTHROPIC_API_KEY is NOT stored here. Add it as a secret:
 #   cd worker && npx wrangler secret put ANTHROPIC_API_KEY
 # (paste your key when prompted — it stays server-side, never in the bundle)

@@ -45,7 +45,7 @@ const currentHour = now.getHours();
 export default function WeatherDetailScreen() {
   const router = useRouter();
   const { location } = useLocationStore();
-  const { weather } = useWeather(location?.query);
+  const { weather } = useWeather(location?.latitude, location?.longitude);
   const [selectedDay, setSelectedDay] = useState(0);
 
   const bestDayIndex = FORECAST_7DAY.reduce((bestIdx, d, i) => d.fishScore > FORECAST_7DAY[bestIdx].fishScore ? i : bestIdx, 0);
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
   pressureBar: { width: '100%', borderRadius: 2, minHeight: 5 },
   pressureHour: { fontSize: 8, color: colors.textSecondary, marginTop: 2 },
   pressureTrendRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
-  pressureTrendText: { flex: 1, fontSize: 13, color: colors.textPrimary, fontStyle: 'italic', lineHeight: 18 },
+  pressureTrendText: { flex: 1, fontSize: 13, color: colors.textPrimary, lineHeight: 18 },
   forecastScroll: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   dayCard: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.sm, marginRight: spacing.sm, alignItems: 'center', minWidth: 80, borderWidth: 1, borderColor: colors.border },
   dayCardActive: { borderColor: colors.primary, backgroundColor: 'rgba(0,212,170,0.1)' },

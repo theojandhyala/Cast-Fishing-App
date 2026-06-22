@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, Image,
+  TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
@@ -12,11 +12,14 @@ import { useCatchStore } from '../../store/catchStore';
 import { useWeather } from '../../hooks/useWeather';
 import { useLocation } from '../../hooks/useLocation';
 import { colors, spacing, radius, elevation } from '../../constants/theme';
-import { WORLD_SPOTS, WorldSpot } from '../../data/worldSpots';
+import { FISHING_SPOTS } from '../../data/fishingSpots';
+import { FishingSpotRecord } from '../../types/fishingSpot';
 import { haversineKm, formatDistance } from '../../utils/distance';
-import { getSpotPhoto } from '../../constants/spotPhotos';
+import { SpotPhoto } from '../../components/map/SpotPhoto';
+import { useLocationStore } from '../../store/locationStore';
+import { FishSpeciesPhoto } from '../../components/fish/FishSpeciesPhoto';
 
-type SpotWithDist = WorldSpot & { _distKm?: number };
+type SpotWithDist = FishingSpotRecord & { _distKm?: number };
 
 function timeAgo(dateStr: string) {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
@@ -71,11 +74,12 @@ export default function HomeScreen() {
   const { user } = useAuthStore();
   const { catches } = useCatchStore();
   const router = useRouter();
-  const { location: gpsLocation } = useLocation();
+  const { location: gpsLocation, permissionGranted } = useLocation();
+  const setDataLocation = useLocationStore((state) => state.setLocation);
 
-  const [selectedSpot, setSelectedSpot] = useState<WorldSpot | null>(null);
+  const [selectedSpot, setSelectedSpot] = useState<FishingSpotRecord | null>(FISHING_SPOTS[0] ?? null);
 
-  const { weather } = useWeather(
+  const { weather, loading: weatherLoading, error: weatherError, refresh, updatedAt } = useWeather(
     selectedSpot?.latitude,
     selectedSpot?.longitude
   );
@@ -86,14 +90,14 @@ export default function HomeScreen() {
   const tip = getTipOfDay();
 
   const spots: SpotWithDist[] = useMemo(() => {
-    if (!gpsLocation) return WORLD_SPOTS.slice(0, 6);
-    return [...WORLD_SPOTS]
+    if (!gpsLocation || !permissionGranted) return FISHING_SPOTS.slice(0, 6);
+    return FISHING_SPOTS
       .map(s => ({ ...s, _distKm: haversineKm(gpsLocation.latitude, gpsLocation.longitude, s.latitude, s.longitude) }))
       .sort((a, b) => a._distKm! - b._distKm!)
       .slice(0, 6);
-  }, [gpsLocation]);
+  }, [gpsLocation, permissionGranted]);
 
-  const nearMe = !!gpsLocation;
+  const nearMe = !!gpsLocation && permissionGranted;
 
   const w = weather;
   const scoreColor = w ? getScoreColor(w.fishingScore) : '#F59E0B';
@@ -105,9 +109,11 @@ export default function HomeScreen() {
 
         {/* ── Header ── */}
         <View style={s.header}>
-          <View>
+          <TouchableOpacity style={s.menuButton} onPress={() => router.push('/community' as any)} accessibilityRole="button" accessibilityLabel="Open community and friends">
+            <MaterialCommunityIcons name="menu" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <View style={s.brandBlock}>
             <Text style={s.logo}>CAST</Text>
-            <View style={s.logoUnderline} />
           </View>
           <TouchableOpacity
             style={s.bellWrap}
@@ -123,37 +129,6 @@ export default function HomeScreen() {
           <Text style={s.greetLine}>{getGreeting()}, {firstName}</Text>
           <Text style={s.greetSub}>Here's what the water looks like today.</Text>
         </View>
-
-        {/* ── START FISHING CTA ── */}
-        <TouchableOpacity
-          style={s.ctaWrap}
-          onPress={() => router.push('/(tabs)/session' as any)}
-          activeOpacity={0.88}
-          accessibilityRole="button" accessibilityLabel="Start fishing session"
-        >
-          <LinearGradient colors={['#00D4AA', '#00B88A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.ctaGrad}>
-            <MaterialCommunityIcons name="fish" size={19} color="#031A12" />
-            <Text style={s.ctaText}>START FISHING</Text>
-            <MaterialCommunityIcons name="arrow-right" size={16} color="#031A12" />
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* ── No Spot Selected Prompt ── */}
-        {!selectedSpot && (
-          <View style={s.chooseSpotCard}>
-            <Text style={s.chooseSpotLabel}>SELECT A SPOT</Text>
-            <Text style={s.chooseSpotText}>
-              Pick where you're fishing to get real-time conditions, tides and fishing forecast
-            </Text>
-            <TouchableOpacity
-              style={s.chooseSpotBtn}
-              onPress={() => router.push('/(tabs)/map' as any)}
-              activeOpacity={0.85}
-            >
-              <Text style={s.chooseSpotBtnText}>Choose Spot →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* ── Conditions Card (only when spot selected) ── */}
         {selectedSpot && (
@@ -173,9 +148,12 @@ export default function HomeScreen() {
                 )}
                 <TouchableOpacity
                   style={s.changeBtn}
-                  onPress={() => setSelectedSpot(null)}
+                  onPress={refresh}
+                  disabled={weatherLoading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Refresh live conditions"
                 >
-                  <Text style={s.changeBtnText}>Change</Text>
+                  <Text style={s.changeBtnText}>{weatherLoading ? 'Updating…' : 'Refresh'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -221,6 +199,12 @@ export default function HomeScreen() {
                     <Text style={s.bestWindowSub}>{getBestWindow().label}</Text>
                   </View>
                 </View>
+                <View style={s.updateRow}>
+                  <MaterialCommunityIcons name={weatherError ? 'wifi-off' : 'update'} size={13} color={colors.textTertiary} />
+                  <Text style={s.updateText}>
+                    {weatherError ? 'Live service unavailable · location-based estimate' : `Live data · updated ${updatedAt?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? 'now'}`}
+                  </Text>
+                </View>
               </>
             ) : (
               <View style={s.loadingRow}>
@@ -254,15 +238,13 @@ export default function HomeScreen() {
               style={[s.spotCard, selectedSpot?.id === spot.id && s.spotCardSelected]}
               onPress={() => {
                 setSelectedSpot(spot);
-                router.push({ pathname: '/spot-details', params: { id: spot.id } } as any);
+                setDataLocation({ name: spot.name, query: spot.name, latitude: spot.latitude, longitude: spot.longitude });
               }}
+              accessibilityRole="button"
+              accessibilityLabel={`Show conditions for ${spot.name}`}
               activeOpacity={0.85}
             >
-              <Image
-                source={{ uri: getSpotPhoto(spot) }}
-                style={StyleSheet.absoluteFillObject}
-                resizeMode="cover"
-              />
+              <SpotPhoto spot={spot} variant="featured" style={StyleSheet.absoluteFillObject} />
               <LinearGradient
                 colors={['transparent', 'rgba(3,8,18,0.92)']}
                 style={StyleSheet.absoluteFillObject}
@@ -302,6 +284,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </ScrollView>
+        <Text style={s.spotSelectorHint}>Tap a spot to preview its conditions. This does not start a fishing session.</Text>
 
         {/* ── Tip of the Day ── */}
         <View style={s.tipCard}>
@@ -343,9 +326,7 @@ export default function HomeScreen() {
                 onPress={() => router.push({ pathname: '/catch-detail', params: { id: c.id } } as any)}
                 activeOpacity={0.85}
               >
-                <LinearGradient colors={['#0F2A1A', '#081610']} style={s.catchThumb}>
-                  <MaterialCommunityIcons name="fish" size={18} color="rgba(0,212,170,0.6)" />
-                </LinearGradient>
+                <FishSpeciesPhoto species={c.species} photo={c.photo} style={s.catchThumb} />
                 <View style={s.catchInfo}>
                   <Text style={s.catchSpecies}>{c.species}</Text>
                   <Text style={s.catchMeta}>
@@ -389,19 +370,19 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
   header: {
-    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
+    flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 4,
   },
-  logo: { fontSize: 22, fontWeight: '900', color: colors.primary, letterSpacing: 4 },
-  logoUnderline: { width: 28, height: 2, backgroundColor: colors.primary, borderRadius: 1, marginTop: 3 },
+  menuButton: { width: 34, height: 34, alignItems: 'flex-start', justifyContent: 'center' },
+  brandBlock: { flex: 1 },
+  logo: { fontSize: 20, fontWeight: '900', color: colors.primary, letterSpacing: 1 },
   bellWrap: {
-    width: 40, height: 40, borderRadius: radius.sm,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    width: 34, height: 34, borderRadius: radius.sm,
     alignItems: 'center', justifyContent: 'center',
   },
 
   greet: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.lg },
-  greetLine: { fontSize: 22, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.5 },
+  greetLine: { fontSize: 18, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.3 },
   greetSub: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
 
   ctaWrap: {
@@ -489,6 +470,8 @@ const s = StyleSheet.create({
   },
   bestWindowTitle: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
   bestWindowSub: { fontSize: 12, color: colors.textSecondary },
+  updateRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -7 },
+  updateText: { flex: 1, fontSize: 10, color: colors.textTertiary },
 
   loadingRow: { alignItems: 'center', padding: 20 },
   loadingText: { fontSize: 13, color: colors.textTertiary },
@@ -509,7 +492,14 @@ const s = StyleSheet.create({
   nearBadgeText: { fontSize: 9, color: colors.primary, fontWeight: '700' },
   seeAll: { fontSize: 13, color: colors.primary, fontWeight: '600' },
 
-  spotsScroll: { paddingHorizontal: spacing.lg, gap: 10, paddingBottom: 4, marginBottom: 28 },
+  spotsScroll: { paddingHorizontal: spacing.lg, gap: 10, paddingBottom: 4, marginBottom: 8 },
+  spotSelectorHint: {
+    marginHorizontal: spacing.lg,
+    marginBottom: 28,
+    color: colors.textTertiary,
+    fontSize: 10,
+    lineHeight: 15,
+  },
   spotCard: {
     width: 140, height: 185, borderRadius: radius.md, overflow: 'hidden',
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)',

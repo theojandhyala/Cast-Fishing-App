@@ -9,7 +9,7 @@ import {
   Alert,
   Image,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -29,8 +29,10 @@ interface HistoryItem {
 
 export default function IdentifierScreen() {
   const router = useRouter();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [imageMediaType, setImageMediaType] = useState('image/jpeg');
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const { identify, loading, result, error, reset } = useFishIdentifier();
 
@@ -90,10 +92,16 @@ export default function IdentifierScreen() {
       : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, base64: true });
 
     if (!res.canceled && res.assets[0]) {
-      setImageUri(res.assets[0].uri);
-      setImageBase64(res.assets[0].base64 || null);
+      const asset = res.assets[0];
+      if (!asset.base64) {
+        Alert.alert('Photo unavailable', 'CAST Lens could not read that photo. Please try again.');
+        return;
+      }
+      setImageUri(asset.uri);
+      setImageBase64(asset.base64);
+      setImageMediaType(asset.mimeType || 'image/jpeg');
       reset();
-      await identify(res.assets[0].base64 || '');
+      await identify(asset.base64, asset.mimeType || 'image/jpeg');
     }
   };
 
@@ -114,11 +122,22 @@ export default function IdentifierScreen() {
     return Number.isInteger(mid) ? mid.toFixed(0) : mid.toFixed(1);
   };
 
-  const handleSaveCatch = () => {
+  const handleSaveCatch = async () => {
     if (!result) return;
     const weight = parseMidpoint(result.estimatedWeight);
     const length = parseMidpoint(result.estimatedLength);
-    router.push({ pathname: '/add-catch', params: { species: result.commonName, weight, length } } as any);
+    if (imageBase64) {
+      try {
+        await AsyncStorage.setItem('@cast_pending_scan_photo', `data:${imageMediaType};base64,${imageBase64}`);
+      } catch {}
+    }
+    router.replace({ pathname: '/add-catch', params: {
+      species: result.commonName,
+      weight,
+      length,
+      confidence: String(result.confidence),
+      scanned: '1',
+    } } as any);
   };
 
   return (
@@ -127,7 +146,7 @@ export default function IdentifierScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
           <MaterialCommunityIcons name="chevron-left" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Fish ID</Text>
+        <Text style={styles.headerTitle}>{mode === 'catch' ? 'CAST Lens Catch' : 'Fish ID'}</Text>
         <View style={{ width: 26 }} />
       </View>
 
@@ -203,21 +222,23 @@ export default function IdentifierScreen() {
             </View>
             <Text style={styles.resultLatin}>{result.latinName}</Text>
 
-            <View style={[styles.statusChip, result.isLegal ? styles.statusChipLegal : styles.statusChipWarn]}>
+            <View style={[styles.statusChip, result.legalSize > 0 && result.isLegal ? styles.statusChipLegal : styles.statusChipWarn]}>
               <MaterialCommunityIcons
-                name={result.isLegal ? 'check-circle-outline' : 'alert-circle-outline'}
+                name={result.legalSize > 0 && result.isLegal ? 'check-circle-outline' : 'information-outline'}
                 size={14}
-                color={result.isLegal ? colors.primary : colors.secondary}
+                color={result.legalSize > 0 && result.isLegal ? colors.primary : colors.secondary}
               />
-              <Text style={[styles.statusChipText, { color: result.isLegal ? colors.primary : colors.secondary }]}>
-                {result.isLegal ? `Legal to keep · min ${result.legalSize}cm` : `Check regulations · min ${result.legalSize}cm`}
+              <Text style={[styles.statusChipText, { color: result.legalSize > 0 && result.isLegal ? colors.primary : colors.secondary }]}>
+                {result.legalSize > 0
+                  ? (result.isLegal ? `Legal to keep · min ${result.legalSize}cm` : `Check regulations · min ${result.legalSize}cm`)
+                  : 'Check current local regulations before keeping'}
               </Text>
             </View>
 
             <View style={styles.idRows}>
               <View style={styles.idRow}><Text style={styles.idRowLabel}>Length</Text><Text style={styles.idRowValue}>{result.estimatedLength}</Text></View>
               <View style={styles.idRow}><Text style={styles.idRowLabel}>Weight</Text><Text style={styles.idRowValue}>{result.estimatedWeight}</Text></View>
-              <View style={styles.idRow}><Text style={styles.idRowLabel}>Legal Size</Text><Text style={styles.idRowValue}>{result.legalSize}cm</Text></View>
+              {result.legalSize > 0 && <View style={styles.idRow}><Text style={styles.idRowLabel}>Legal Size</Text><Text style={styles.idRowValue}>{result.legalSize}cm</Text></View>}
             </View>
 
             <Text style={styles.aboutLabel}>About</Text>
@@ -238,7 +259,7 @@ export default function IdentifierScreen() {
 
             <View style={styles.resultActions}>
               <CastButton title="Scan Again" onPress={handleReset} variant="ghost" style={{ flex: 1 }} />
-              <CastButton title="Log as Catch →" onPress={handleSaveCatch} style={{ flex: 1 }} />
+              <CastButton title={mode === 'catch' ? 'Review Catch' : 'Log as Catch →'} onPress={handleSaveCatch} style={{ flex: 1 }} />
             </View>
           </View>
         )}
@@ -314,7 +335,7 @@ const styles = StyleSheet.create({
   idTag: { ...typography.caption, color: colors.accentBlue },
   resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   resultSpecies: { ...typography.h2, fontSize: 24 },
-  resultLatin: { ...typography.bodySmall, fontStyle: 'italic', marginTop: 2, marginBottom: spacing.md },
+  resultLatin: { ...typography.bodySmall, marginTop: 2, marginBottom: spacing.md },
   matchBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(45,212,255,0.12)', borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(45,212,255,0.3)' },
   matchBadgeText: { fontSize: 11, fontWeight: '800', color: colors.accentBlue },
   statusChip: {

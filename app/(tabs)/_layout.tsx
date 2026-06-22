@@ -24,13 +24,13 @@ function CenterButton({ onPress }: { onPress?: () => void }) {
       onPress={onPress}
       activeOpacity={0.85}
       accessibilityRole="button"
-      accessibilityLabel="Add catch or start session"
+      accessibilityLabel="Add catch"
     >
       <LinearGradient
-        colors={['#00D4AA', '#00B88A']}
+        colors={[colors.primary, '#2BA9A8']}
         style={styles.centerBtn}
       >
-        <MaterialCommunityIcons name="plus" size={28} color="#031A12" />
+        <MaterialCommunityIcons name="plus" size={28} color={colors.background} />
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -139,7 +139,7 @@ export default function TabsLayout() {
             tabBarLabel: () => null,
             tabBarIcon: () => null,
             tabBarButton: () => (
-              <CenterButton onPress={() => router.push('/(tabs)/session' as any)} />
+              <CenterButton onPress={() => router.push('/add-catch' as any)} />
             ),
           }}
         />
@@ -161,8 +161,9 @@ export default function TabsLayout() {
             ),
           }}
         />
-        <Tabs.Screen name="tips" options={{ href: null }} />
         <Tabs.Screen name="more" options={{ href: null }} />
+        <Tabs.Screen name="tips" options={{ href: null }} />
+        <Tabs.Screen name="social" options={{ href: null }} />
         <Tabs.Screen name="add-tab" options={{ href: null }} />
       </Tabs>
 
@@ -199,14 +200,14 @@ const styles = StyleSheet.create({
     marginTop: -18,
   },
   centerBtn: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: colors.primary,
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
+    shadowOpacity: 0.28,
+    shadowRadius: 9,
     shadowOffset: { width: 0, height: 4 },
     elevation: 10,
   },

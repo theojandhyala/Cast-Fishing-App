@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -20,11 +20,12 @@ import { useCatchStore } from '../store/catchStore';
 import { useLocationStore } from '../store/locationStore';
 import { species as SPECIES_LIST } from '../data/species';
 import { colors, radius, spacing, elevation } from '../constants/theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SPECIES_OPTIONS = SPECIES_LIST.map((s) => ({ id: s.id, name: s.name || s.commonName }));
 
 export default function AddCatchScreen() {
-  const params = useLocalSearchParams<{ species?: string; weight?: string; length?: string }>();
+  const params = useLocalSearchParams<{ species?: string; weight?: string; length?: string; photo?: string; confidence?: string; scanned?: string }>();
   const router = useRouter();
   const { addCatch } = useCatchStore();
   const { location } = useLocationStore();
@@ -33,38 +34,58 @@ export default function AddCatchScreen() {
     ? SPECIES_OPTIONS.find((s) => s.name.toLowerCase() === params.species!.toLowerCase())
     : null;
 
-  const [selectedSpecies, setSelectedSpecies] = useState(prefill?.name || '');
+  const [selectedSpecies, setSelectedSpecies] = useState(prefill?.name || params.species || '');
   const [weight, setWeight] = useState(params.weight || '');
   const [length, setLength] = useState(params.length || '');
   const [bait, setBait] = useState('');
   const [notes, setNotes] = useState('');
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoUri, setPhotoUri] = useState<string | null>(params.photo || null);
   const [speciesPicker, setSpeciesPicker] = useState(false);
   const [baitPicker, setBaitPicker] = useState(false);
+
+  useEffect(() => {
+    if (params.scanned !== '1') return;
+    let active = true;
+    AsyncStorage.getItem('@cast_pending_scan_photo').then((stored) => {
+      if (active && stored) setPhotoUri(stored);
+      return AsyncStorage.removeItem('@cast_pending_scan_photo');
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [params.scanned]);
 
   const spotName = location?.name || 'Pine Lake';
   const now = new Date();
   const timeStr = `Today, ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
-  const handlePhoto = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const handlePhoto = async (source: 'camera' | 'library') => {
+    const { status } = source === 'camera'
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission needed', 'Allow access to your photo library to add a photo.');
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
-    if (!result.canceled && result.assets[0]) setPhotoUri(result.assets[0].uri);
+    const result = source === 'camera'
+      ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.65, base64: true })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.65, base64: true });
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      setPhotoUri(asset.base64 ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}` : asset.uri);
+    }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedSpecies) { Alert.alert('Select a species'); return; }
-    addCatch({
+    await addCatch({
       species: selectedSpecies,
       weight: (parseFloat(weight) || 0) as number,
       length: parseFloat(length) || undefined,
       location: spotName,
       bait: bait || undefined,
       notes: notes || undefined,
+      photo: photoUri || undefined,
+      latitude: location?.latitude,
+      longitude: location?.longitude,
     });
     router.back();
   };
@@ -83,8 +104,23 @@ export default function AddCatchScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
+          <TouchableOpacity
+            style={s.lensButton}
+            onPress={() => router.push({ pathname: '/identifier', params: { mode: 'catch' } } as any)}
+            activeOpacity={0.85}
+          >
+            <View style={s.lensIcon}>
+              <MaterialCommunityIcons name="camera-iris" size={24} color={colors.background} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.lensTitle}>Scan with CAST Lens</Text>
+              <Text style={s.lensSub}>Scan one photo to pre-fill species, estimated weight and length for review</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={22} color={colors.background} />
+          </TouchableOpacity>
+
           {/* Photo upload */}
-          <TouchableOpacity style={s.photoBox} onPress={handlePhoto} activeOpacity={0.85}>
+          <View style={s.photoBox}>
             {photoUri ? (
               <Image source={{ uri: photoUri }} style={s.photoImage} />
             ) : (
@@ -93,10 +129,28 @@ export default function AddCatchScreen() {
                   <MaterialCommunityIcons name="camera-outline" size={32} color={colors.textSecondary} />
                 </View>
                 <Text style={s.photoLabel}>Add Photo</Text>
-                <Text style={s.photoSub}>Tap to add a photo</Text>
+                <Text style={s.photoSub}>Use the camera or choose from your library below</Text>
               </>
             )}
-          </TouchableOpacity>
+          </View>
+          <View style={s.photoActions}>
+            <TouchableOpacity style={s.photoAction} onPress={() => handlePhoto('camera')} accessibilityRole="button">
+              <MaterialCommunityIcons name="camera-outline" size={17} color={colors.primary} />
+              <Text style={s.photoActionText}>{photoUri ? 'Retake' : 'Camera'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.photoAction} onPress={() => handlePhoto('library')} accessibilityRole="button">
+              <MaterialCommunityIcons name="image-outline" size={17} color={colors.primary} />
+              <Text style={s.photoActionText}>{photoUri ? 'Replace' : 'Choose photo'}</Text>
+            </TouchableOpacity>
+            {photoUri ? <TouchableOpacity style={s.photoAction} onPress={() => setPhotoUri(null)} accessibilityRole="button"><MaterialCommunityIcons name="delete-outline" size={17} color={colors.danger} /><Text style={[s.photoActionText, { color: colors.danger }]}>Remove</Text></TouchableOpacity> : null}
+          </View>
+
+          {params.scanned === '1' ? (
+            <View style={s.scanReview}>
+              <MaterialCommunityIcons name="check-decagram-outline" size={19} color={colors.primary} />
+              <Text style={s.scanReviewText}>Lens filled this form with a {params.confidence || '—'}% species match and estimated measurements. Check the values before saving.</Text>
+            </View>
+          ) : null}
 
           {/* Form */}
           <View style={s.form}>
@@ -249,6 +303,16 @@ const s = StyleSheet.create({
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
 
+  lensButton: {
+    marginHorizontal: spacing.lg, marginTop: spacing.lg, marginBottom: 0,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: colors.primary, borderRadius: radius.lg, padding: spacing.md,
+    ...elevation.glow,
+  },
+  lensIcon: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,14,26,0.16)' },
+  lensTitle: { fontSize: 15, fontWeight: '800', color: colors.background },
+  lensSub: { fontSize: 11, lineHeight: 16, color: 'rgba(10,14,26,0.72)', marginTop: 2 },
+
   photoBox: {
     margin: spacing.lg,
     height: 160, borderRadius: radius.lg,
@@ -264,6 +328,11 @@ const s = StyleSheet.create({
   },
   photoLabel: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   photoSub: { fontSize: 12, color: colors.textSecondary },
+  photoActions: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: -spacing.md, marginBottom: spacing.md },
+  photoAction: { flex: 1, minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  photoActionText: { color: colors.primary, fontSize: 11, fontWeight: '700' },
+  scanReview: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, marginHorizontal: spacing.lg, marginBottom: spacing.md, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(68,210,203,0.3)', backgroundColor: 'rgba(68,210,203,0.08)' },
+  scanReviewText: { flex: 1, color: colors.textSecondary, fontSize: 11, lineHeight: 16 },
 
   form: {
     marginHorizontal: spacing.lg,

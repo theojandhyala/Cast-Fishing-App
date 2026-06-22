@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   recordWeight: { fontSize: 22, fontWeight: '800', color: colors.primary },
   recordWeightLb: { fontSize: 11, color: colors.textSecondary, marginBottom: 4 },
   recordInfo: { fontSize: 11, color: colors.textSecondary, textAlign: 'center' },
-  recordAngler: { fontSize: 11, color: colors.textPrimary, textAlign: 'center', marginTop: 2, fontStyle: 'italic' },
+  recordAngler: { fontSize: 11, color: colors.textPrimary, textAlign: 'center', marginTop: 2 },
   pbComparison: { marginTop: spacing.md, backgroundColor: 'rgba(0,212,170,0.08)', borderRadius: radius.md, padding: spacing.md },
   pbCompTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.xs },
 });

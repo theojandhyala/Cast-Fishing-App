@@ -23,9 +23,11 @@ interface IconProps {
   size?: number;
   color?: string;
   style?: React.CSSProperties | any;
+  onPress?: () => void;
+  accessibilityLabel?: string;
 }
 
-export function Icon({ name, size = 24, color = '#fff', style }: IconProps) {
+export function Icon({ name, size = 24, color = '#fff', style, onPress, accessibilityLabel }: IconProps) {
   if (Platform.OS === 'web' && mdiPaths) {
     const path = mdiPaths[toCamel(name)] ?? mdiPaths['mdiHelp'];
     return (
@@ -35,6 +37,9 @@ export function Icon({ name, size = 24, color = '#fff', style }: IconProps) {
         viewBox="0 0 24 24"
         fill={color}
         style={{ display: 'inline-block', flexShrink: 0, ...(style as any) }}
+        onClick={onPress}
+        aria-label={accessibilityLabel}
+        role={onPress ? 'button' : 'img'}
         // @ts-ignore
         xmlns="http://www.w3.org/2000/svg"
       >
@@ -48,6 +53,8 @@ export function Icon({ name, size = 24, color = '#fff', style }: IconProps) {
       size={size}
       color={color}
       style={style}
+      onPress={onPress}
+      accessibilityLabel={accessibilityLabel}
     />
   );
 }

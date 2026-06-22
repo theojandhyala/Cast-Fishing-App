@@ -74,10 +74,14 @@ function SparklineChart({ catches }: { catches: any[] }) {
 }
 
 const MENU_ITEMS = [
+  { icon: 'account-group-outline', label: 'Friends', route: '/friends' },
+  { icon: 'earth', label: 'Community & Head-to-head', route: '/(tabs)/social' },
   { icon: 'trophy-outline', label: 'Achievements', route: '/challenges' },
   { icon: 'bag-personal-outline', label: 'Gear', route: '/gear-tracker' },
   { icon: 'heart-outline', label: 'Favourite Spots', route: '/map' },
   { icon: 'cog-outline', label: 'Settings', route: '/settings' },
+  { icon: 'help-circle-outline', label: 'Help & Support', route: '/settings' },
+  { icon: 'information-outline', label: 'About Cast Fishing', route: '/settings' },
 ] as const;
 
 export default function ProfileScreen() {
@@ -88,9 +92,6 @@ export default function ProfileScreen() {
 
   const displayName = user?.name || 'Angler Pro';
   const handle = '@' + (user?.email?.split('@')[0] || 'angler').toLowerCase().replace(/\s/g, '');
-  const isPro = user?.isPro || false;
-
-  const totalWeight = catches.reduce((sum, c) => sum + (c.weight || 0), 0);
   const speciesCount = Object.keys(stats.speciesCounts || {}).length;
 
   // Estimate unique spots
@@ -114,12 +115,10 @@ export default function ProfileScreen() {
             </View>
           </LinearGradient>
 
-          <Text style={s.displayName}>{displayName}</Text>
-          <Text style={s.handle}>{handle}</Text>
-
-          <View style={s.proBadge}>
-            <MaterialCommunityIcons name="crown" size={12} color={colors.primary} />
-            <Text style={s.proBadgeText}>{isPro ? 'Pro Member' : 'Free Plan'}</Text>
+          <View style={s.identity}>
+            <Text style={s.displayName}>{displayName}</Text>
+            <Text style={s.handle}>{handle}</Text>
+            <TouchableOpacity onPress={() => router.push('/settings' as any)}><Text style={s.editProfileLink}>Edit Profile</Text></TouchableOpacity>
           </View>
         </View>
 
@@ -141,15 +140,6 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        {/* Catches over time chart */}
-        <View style={s.chartCard}>
-          <View style={s.chartHeader}>
-            <Text style={s.sectionLabel}>CATCHES OVER TIME</Text>
-            <Text style={s.chartYear}>This Year</Text>
-          </View>
-          <SparklineChart catches={catches} />
-        </View>
-
         {/* Menu items */}
         <View style={s.menuCard}>
           {MENU_ITEMS.map((item, i) => (
@@ -166,25 +156,6 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        {/* Edit profile / upgrade CTA */}
-        <View style={s.ctaRow}>
-          <TouchableOpacity style={s.editBtn} onPress={() => router.push('/settings' as any)}>
-            <Text style={s.editBtnText}>Edit Profile</Text>
-          </TouchableOpacity>
-          {!isPro && (
-            <TouchableOpacity
-              style={s.proBtn}
-              onPress={() => router.push('/pro' as any)}
-              activeOpacity={0.88}
-            >
-              <LinearGradient colors={['#00D4AA', '#00B88A']} style={s.proBtnGrad}>
-                <MaterialCommunityIcons name="crown" size={16} color="#031A12" />
-                <Text style={s.proBtnText}>Go Pro</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
-        </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -194,24 +165,24 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
   profileHeader: {
-    alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     paddingBottom: spacing.lg,
-    gap: 6,
+    gap: spacing.md,
   },
 
   avatarRing: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
   },
   avatarInner: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: 'rgba(0,212,170,0.12)',
     borderWidth: 2,
     borderColor: 'rgba(0,212,170,0.3)',
@@ -219,17 +190,19 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  identity: { flex: 1, alignItems: 'flex-start' },
   displayName: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
     color: colors.textPrimary,
     letterSpacing: -0.5,
   },
   handle: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.textSecondary,
     fontWeight: '500',
   },
+  editProfileLink: { color: colors.primary, fontSize: 12, fontWeight: '600', marginTop: 7 },
   proBadge: {
     marginTop: 4,
     flexDirection: 'row',

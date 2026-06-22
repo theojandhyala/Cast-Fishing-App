@@ -57,7 +57,7 @@ export default function SessionScreen() {
   const insets = useSafeAreaInsets();
   const { activeSession, addCatchToSession, endSession, sessionHistory } = useSessionStore();
   const { addCatch, catches } = useCatchStore();
-  const { weather } = useWeather(activeSession?.spotQuery);
+  const { weather } = useWeather(activeSession?.latitude, activeSession?.longitude);
   const [now, setNow] = useState(Date.now());
   const [logOpen, setLogOpen] = useState(false);
   const [endConfirmOpen, setEndConfirmOpen] = useState(false);

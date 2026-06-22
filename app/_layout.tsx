@@ -1,4 +1,4 @@
-import { useEffect, Component, ReactNode } from 'react';
+import { useEffect, useState, Component, ReactNode } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Stack } from 'expo-router';
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
@@ -10,7 +10,6 @@ import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fon
 import { useAuthStore } from '../store/authStore';
 import { useCatchStore } from '../store/catchStore';
 import { useUserStore } from '../store/userStore';
-import { useSocialStore } from '../store/socialStore';
 import { colors } from '../constants/theme';
 
 const CastTheme = {
@@ -33,14 +32,14 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   render() {
     if (this.state.error) {
       return (
-        <View style={{ flex: 1, backgroundColor: '#0A0E1A', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
           <Text style={{ color: '#00D4AA', fontSize: 18, fontWeight: '700', marginBottom: 12 }}>Something went wrong</Text>
           <Text style={{ color: '#8B95A7', fontSize: 13, textAlign: 'center', marginBottom: 24 }}>
             {(this.state.error as Error).message}
           </Text>
           <TouchableOpacity onPress={() => this.setState({ error: null })}
-            style={{ backgroundColor: '#00D4AA', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 }}>
-            <Text style={{ color: '#0A0E1A', fontWeight: '700' }}>Try Again</Text>
+            style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 }}>
+            <Text style={{ color: colors.background, fontWeight: '700' }}>Try Again</Text>
           </TouchableOpacity>
         </View>
       );
@@ -53,7 +52,7 @@ export default function RootLayout() {
   const { loadUser } = useAuthStore();
   const { loadCatches } = useCatchStore();
   const { load: loadUserPrefs } = useUserStore();
-  const { load: loadSocial } = useSocialStore();
+  const [fontLoadTimedOut, setFontLoadTimedOut] = useState(false);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -66,7 +65,7 @@ export default function RootLayout() {
     document.head.appendChild(style);
   }, []);
 
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_600SemiBold,
     Inter_700Bold,
@@ -81,18 +80,26 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (!fontsLoaded) return;
+    if (fontsLoaded || fontError) return;
+    const timeout = setTimeout(() => setFontLoadTimedOut(true), 3000);
+    return () => clearTimeout(timeout);
+  }, [fontsLoaded, fontError]);
+
+  const fontsReady = fontsLoaded || Boolean(fontError) || fontLoadTimedOut;
+
+  useEffect(() => {
+    if (!fontsReady) return;
     async function init() {
       try {
-        await Promise.all([loadUser(), loadCatches(), loadUserPrefs(), loadSocial()]);
+        await Promise.all([loadUser(), loadCatches(), loadUserPrefs()]);
       } catch {}
       try { await SplashScreen.hideAsync(); } catch {}
     }
     init();
-  }, [fontsLoaded]);
+  }, [fontsReady]);
 
   // Don't render until icon font is loaded — prevents rectangle flash
-  if (!fontsLoaded) {
+  if (!fontsReady) {
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
 
@@ -136,7 +143,6 @@ export default function RootLayout() {
         <Stack.Screen name="challenges" options={{ title: 'Challenges' }} />
         <Stack.Screen name="tackle-shops" options={{ title: 'Tackle Shops' }} />
         <Stack.Screen name="competitions" options={{ title: 'Competitions' }} />
-        <Stack.Screen name="catch-duel" options={{ title: 'Catch Duels' }} />
         <Stack.Screen name="rig-builder" options={{ title: 'Rig Builder' }} />
         <Stack.Screen name="water-conditions" options={{ title: 'Water Conditions' }} />
         <Stack.Screen name="notifications" options={{ title: 'Notification Settings' }} />
@@ -165,8 +171,6 @@ export default function RootLayout() {
         <Stack.Screen name="fish-database" options={{ title: 'Fish Database' }} />
         <Stack.Screen name="session" options={{ headerShown: false }} />
         <Stack.Screen name="session-summary" options={{ headerShown: false, presentation: 'modal' }} />
-        <Stack.Screen name="feed" options={{ title: 'Activity Feed', headerShown: false }} />
-        <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
       </Stack>
       </View>
     </ErrorBoundary>

@@ -11,16 +11,24 @@
 
 const ALLOWED_ORIGINS = [
   'https://cast-fishing-app.pages.dev',
+  'https://castfishingapp.com',
+  'https://www.castfishingapp.com',
   'http://localhost:8081',
   'http://localhost:19006',
 ];
 
+function isAllowedOrigin(origin) {
+  return ALLOWED_ORIGINS.includes(origin)
+    || /^https:\/\/[a-z0-9-]+\.cast-fishing-app\.pages\.dev$/.test(origin);
+}
+
 const MODEL = 'claude-sonnet-4-6';
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
+const VISION_MODEL = '@cf/google/gemma-4-26b-a4b-it';
 
 function corsHeaders(origin) {
-  const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const allow = isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     'Access-Control-Allow-Origin': allow,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -52,6 +60,23 @@ async function callAnthropic(apiKey, payload) {
   return text;
 }
 
+async function identifyWithWorkersAI(ai, image, mediaType, prompt) {
+  const response = await ai.run(VISION_MODEL, {
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image_url', image_url: { url: `data:${mediaType};base64,${image}` } },
+        { type: 'text', text: prompt },
+      ],
+    }],
+    max_tokens: 1024,
+    temperature: 0.1,
+  });
+  return typeof response === 'string'
+    ? response
+    : response?.response || response?.choices?.[0]?.message?.content || response?.result || JSON.stringify(response);
+}
+
 const ADVISOR_SYSTEM = `You are CAST's expert fishing advisor — a friendly, knowledgeable angling guide.
 You give practical, specific advice on species, rigs, baits, knots, weather, tides, locations and techniques.
 Keep answers concise and well structured. Use markdown with bold headers and bullet points.
@@ -68,10 +93,6 @@ export default {
     if (request.method !== 'POST') {
       return json({ error: 'Method not allowed' }, 405, origin);
     }
-    if (!env.ANTHROPIC_API_KEY) {
-      return json({ error: 'Server not configured' }, 500, origin);
-    }
-
     const url = new URL(request.url);
     let payloadIn;
     try {
@@ -84,32 +105,23 @@ export default {
       if (url.pathname.endsWith('/identify')) {
         const image = payloadIn.image;
         if (!image) return json({ error: 'Missing image' }, 400, origin);
+        const allowedMediaTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+        const mediaType = allowedMediaTypes.has(payloadIn.mediaType) ? payloadIn.mediaType : 'image/jpeg';
 
-        const text = await callAnthropic(env.ANTHROPIC_API_KEY, {
-          model: MODEL,
-          max_tokens: 1024,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image } },
-              { type: 'text', text: `Identify the fish species in this image. Respond with ONLY a JSON object:
-{
-  "species": "Common name",
-  "confidence": 85,
-  "commonName": "Full common name",
-  "latinName": "Scientific name",
-  "legalSize": 30,
-  "estimatedWeight": "2-4kg",
-  "estimatedLength": "40-55cm",
-  "isLegal": true,
-  "notes": "Identifying features visible",
-  "tips": "One fishing tip for this species",
-  "alternatives": ["Alt 1", "Alt 2"]
-}
-legalSize is the UK minimum size in cm. If no fish, set species to "No fish detected". Return only JSON.` },
-            ],
-          }],
-        });
+        const identifyPrompt = `Identify the fish. Return ONLY one compact JSON line with these exact keys: species, confidence (0-100), commonName, latinName, estimatedWeight (kg range), estimatedLength (cm range), alternatives (maximum 2 names). No markdown, explanation, legal advice or extra keys. If there is no fish, set species and commonName to "No fish detected".`;
+        const text = env.ANTHROPIC_API_KEY
+          ? await callAnthropic(env.ANTHROPIC_API_KEY, {
+              model: MODEL,
+              max_tokens: 1024,
+              messages: [{ role: 'user', content: [
+                { type: 'image', source: { type: 'base64', media_type: mediaType, data: image } },
+                { type: 'text', text: identifyPrompt },
+              ] }],
+            })
+          : env.AI
+            ? await identifyWithWorkersAI(env.AI, image, mediaType, identifyPrompt)
+            : null;
+        if (!text) return json({ error: 'Fish scanning is not configured' }, 500, origin);
         return new Response(text, {
           status: 200,
           headers: { 'Content-Type': 'application/json', ...corsHeaders(origin) },
@@ -117,6 +129,7 @@ legalSize is the UK minimum size in cm. If no fish, set species to "No fish dete
       }
 
       if (url.pathname.endsWith('/advisor')) {
+        if (!env.ANTHROPIC_API_KEY) return json({ error: 'Advisor is not configured' }, 500, origin);
         const messages = payloadIn.messages;
         if (!Array.isArray(messages) || messages.length === 0) {
           return json({ error: 'Missing messages' }, 400, origin);

@@ -1,14 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, Dimensions, Image
+  SafeAreaView, Dimensions
 } from 'react-native';
-import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { species as allSpecies } from '../data/species';
 import { RarityBadge } from '../components/catches/RarityBadge';
 import { colors, radius, spacing } from '../constants/theme';
-import { getFishImage } from '../constants/fishImages';
+import { FishSpeciesPhoto } from '../components/fish/FishSpeciesPhoto';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - spacing.lg * 2 - spacing.sm) / 2;
@@ -63,7 +62,7 @@ export default function FishEncyclopediaScreen() {
               <View style={styles.mythicStamp}>
                 <Text style={styles.mythicStampText}>MYTHIC</Text>
               </View>
-              <Image source={{ uri: getFishImage(s.id) }} style={styles.mythicImage} resizeMode="cover" />
+              <FishSpeciesPhoto species={s.name} style={styles.mythicPhoto} />
               <Text style={styles.mythicName} numberOfLines={1}>{s.name}</Text>
               <Text style={styles.mythicLatin} numberOfLines={1}>{s.latinName}</Text>
               <RarityBadge rarity={s.rarity} rarityColor={s.rarityColor} size="sm" />
@@ -114,7 +113,7 @@ export default function FishEncyclopediaScreen() {
               onPress={() => router.push({ pathname: '/species-detail', params: { id: s.id } })}
               activeOpacity={0.85}
             >
-              <Image source={{ uri: getFishImage(s.id) }} style={styles.cardImage} resizeMode="cover" />
+              <FishSpeciesPhoto species={s.name} style={styles.cardPhoto} />
               <Text style={styles.cardName} numberOfLines={2}>{s.name}</Text>
               <Text style={styles.cardLatin} numberOfLines={1}>{s.latinName}</Text>
               {s.rarity && (
@@ -158,13 +157,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6, paddingVertical: 2,
   },
   mythicStampText: { fontSize: 8, fontWeight: '900', color: '#fff', letterSpacing: 1 },
-  mythicImage: {
-    width: '100%', height: 100, borderRadius: radius.md,
-    marginTop: spacing.xs, marginBottom: spacing.xs,
-    backgroundColor: colors.surface2,
-  },
+  mythicPhoto: { width: 128, height: 82, borderRadius: radius.sm, marginTop: spacing.lg, marginBottom: spacing.sm },
   mythicName: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, textAlign: 'center' },
-  mythicLatin: { fontSize: 11, color: colors.textSecondary, fontStyle: 'italic', marginBottom: spacing.xs },
+  mythicLatin: { fontSize: 11, color: colors.textSecondary, marginBottom: spacing.xs },
   mythicStats: { marginTop: spacing.xs, alignItems: 'center' },
   mythicStat: { fontSize: 11, color: colors.textSecondary },
   mythicCatchRate: { fontSize: 11, color: '#EC4899', fontWeight: '700' },
@@ -189,12 +184,9 @@ const styles = StyleSheet.create({
   mythicSpeciesCard: {
     borderColor: '#EC4899', backgroundColor: '#1a0a1a',
   },
-  cardImage: {
-    width: '100%', height: 80, borderRadius: radius.sm,
-    marginBottom: spacing.xs, backgroundColor: colors.surface2,
-  },
+  cardPhoto: { width: '100%', height: 92, borderRadius: radius.sm, marginBottom: spacing.sm },
   cardName: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, textAlign: 'center', marginBottom: 2 },
-  cardLatin: { fontSize: 10, color: colors.textSecondary, fontStyle: 'italic', marginBottom: spacing.xs, textAlign: 'center' },
+  cardLatin: { fontSize: 10, color: colors.textSecondary, marginBottom: spacing.xs, textAlign: 'center' },
   cardStats: { marginTop: spacing.xs },
   cardCatchRate: { fontSize: 11, color: colors.textSecondary },
 });

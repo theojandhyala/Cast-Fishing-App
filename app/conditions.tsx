@@ -1,123 +1,34 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocationStore } from '../store/locationStore';
+import { useLocation } from '../hooks/useLocation';
 import { useWeather } from '../hooks/useWeather';
-import { useTides } from '../hooks/useTides';
-import { useSolunar } from '../hooks/useSolunar';
-import { useForecast } from '../hooks/useForecast';
+import { useMarineConditions } from '../hooks/useMarineConditions';
 import { colors, radius, spacing, typography, fonts } from '../constants/theme';
-import Svg, { Path, Circle, Line, Text as SvgText } from 'react-native-svg';
 
-const CHART_WIDTH = Dimensions.get('window').width - 48 - 32;
-const CHART_HEIGHT = 100;
-
-interface TideChartProps {
-  points: { time: string; height: number; timestamp: number }[];
-  min: number;
-  max: number;
-  currentHour: number;
-}
-
-function TideChart({ points, min, max, currentHour }: TideChartProps) {
-  if (points.length < 2) return null;
-
-  const w = CHART_WIDTH;
-  const h = CHART_HEIGHT;
-  const range = max - min || 1;
-
-  const toX = (i: number) => (i / 24) * w;
-  const toY = (v: number) => h - ((v - min) / range) * (h - 16) - 4;
-
-  // Build smooth cubic bezier path
-  const coords = points.map((p, i) => ({ x: toX(i), y: toY(p.height) }));
-
-  let pathD = `M ${coords[0].x},${coords[0].y}`;
-  for (let i = 1; i < coords.length; i++) {
-    const prev = coords[i - 1];
-    const curr = coords[i];
-    const cp1x = prev.x + (curr.x - prev.x) / 3;
-    const cp1y = prev.y;
-    const cp2x = curr.x - (curr.x - prev.x) / 3;
-    const cp2y = curr.y;
-    pathD += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${curr.x},${curr.y}`;
-  }
-
-  // Area path: close back to bottom
-  const areaD =
-    pathD +
-    ` L ${coords[coords.length - 1].x},${h} L ${coords[0].x},${h} Z`;
-
-  // Current hour vertical line x position (clamped)
-  const clampedHour = Math.min(Math.max(currentHour, 0), 24);
-  const lineX = toX(clampedHour);
-  const currentPoint = points[Math.min(currentHour, points.length - 1)];
-  const lineY = currentPoint ? toY(currentPoint.height) : h / 2;
-
-  // Time label positions: 00:00=0, 06:00=6, 12:00=12, 18:00=18, 24:00=24
-  const timeLabels = [
-    { label: '00:00', x: toX(0) },
-    { label: '06:00', x: toX(6) },
-    { label: '12:00', x: toX(12) },
-    { label: '18:00', x: toX(18) },
-    { label: '24:00', x: toX(24) },
-  ];
-
-  return (
-    <Svg width={w} height={h + 16} viewBox={`0 0 ${w} ${h + 16}`}>
-      {/* Filled area under curve */}
-      <Path d={areaD} fill="rgba(0,212,170,0.12)" />
-      {/* Tide curve */}
-      <Path d={pathD} stroke="#00D4AA" strokeWidth={2} fill="none" />
-      {/* Current hour vertical line */}
-      <Line
-        x1={lineX}
-        y1={0}
-        x2={lineX}
-        y2={h}
-        stroke="rgba(0,212,170,0.5)"
-        strokeWidth={1}
-        strokeDasharray="3,3"
-      />
-      {/* Current position circle */}
-      <Circle cx={lineX} cy={lineY} r={4} fill="#00D4AA" />
-      {/* Time labels */}
-      {timeLabels.map(({ label, x }) => (
-        <SvgText
-          key={label}
-          x={x}
-          y={h + 13}
-          fontSize={9}
-          fill={colors.textTertiary}
-          fontFamily={fonts.mono}
-          textAnchor={label === '00:00' ? 'start' : label === '24:00' ? 'end' : 'middle'}
-        >
-          {label}
-        </SvgText>
-      ))}
-    </Svg>
-  );
+function formatMarineTime(value?: string) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value.slice(-5) : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function ConditionsScreen() {
   const router = useRouter();
   const { location } = useLocationStore();
-  const locationWithCoords = location as (typeof location & { coords?: { latitude: number; longitude: number } }) | null;
-  const coordLat = locationWithCoords?.coords?.latitude;
-  const coordLng = locationWithCoords?.coords?.longitude;
-  const { weather } = useWeather(location?.query);
-  const tideData = useTides(coordLat, coordLng);
-  const solunar = useSolunar(coordLat ?? 52.5, coordLng ?? -1.5);
-  const forecast = useForecast(coordLat ?? 52.5, coordLng ?? -1.5);
+  const { location: gpsLocation } = useLocation();
+  const latitude = location?.latitude ?? gpsLocation?.latitude;
+  const longitude = location?.longitude ?? gpsLocation?.longitude;
+  const { weather, loading, refresh: refreshWeather, updatedAt } = useWeather(latitude, longitude);
+  const { marine, loading: marineLoading, error: marineError, refresh: refreshMarine } = useMarineConditions(latitude, longitude);
 
   const w = weather || {
     temp: 18,
@@ -128,10 +39,25 @@ export default function ConditionsScreen() {
     pressureTrend: 'rising' as const,
     moonPhase: 'Waxing Crescent',
     humidity: 72,
-    fishingScore: 7,
+    fishingScore: 70,
     city: 'Rocky Point',
     description: 'Partly Cloudy',
   };
+  const activityBars = useMemo(() => {
+    const hourly = weather?.hourlyToday ?? [];
+    return Array.from({ length: 8 }, (_, index) => hourly[index * 3]?.fishingScore ?? w.fishingScore);
+  }, [weather?.hourlyToday, w.fishingScore]);
+  const tideBars = useMemo(() => {
+    const series = marine?.tideSeries ?? [];
+    if (!series.length) return [];
+    const sampled = Array.from({ length: 8 }, (_, index) => series[Math.min(series.length - 1, index * 3)]?.heightM ?? 0);
+    const min = Math.min(...sampled);
+    const max = Math.max(...sampled);
+    return sampled.map((height) => max === min ? 50 : 12 + ((height - min) / (max - min)) * 88);
+  }, [marine?.tideSeries]);
+  const feedingWindows = weather?.solunarTimes ?? [];
+  const forecast = weather?.forecast7day ?? [];
+  const refreshAll = () => { refreshWeather(); refreshMarine(); };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -141,10 +67,10 @@ export default function ConditionsScreen() {
         </TouchableOpacity>
         <View style={styles.headerLocation}>
           <MaterialCommunityIcons name="map-marker" size={15} color={colors.primary} />
-          <Text style={styles.headerLocationText}>{location?.name || w.city}</Text>
+          <Text style={styles.headerLocationText}>{location?.name || (gpsLocation ? 'Current location' : w.city)}</Text>
         </View>
-        <TouchableOpacity hitSlop={10}>
-          <MaterialCommunityIcons name="bookmark-outline" size={22} color={colors.textSecondary} />
+        <TouchableOpacity hitSlop={10} onPress={refreshAll} disabled={loading || marineLoading} accessibilityRole="button" accessibilityLabel="Refresh live fishing conditions">
+          <MaterialCommunityIcons name={loading || marineLoading ? 'progress-clock' : 'refresh'} size={22} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -156,13 +82,13 @@ export default function ConditionsScreen() {
               <Text style={styles.heroTemp}>{Math.round(w.temp)}<Text style={styles.heroTempUnit}>°C</Text></Text>
               <Text style={styles.heroDesc}>{w.description}</Text>
             </View>
-            <MaterialCommunityIcons name="weather-partly-cloudy" size={48} color={colors.secondary} />
+            <MaterialCommunityIcons name={(weather?.icon || 'weather-partly-cloudy') as any} size={48} color={colors.secondary} />
           </View>
           <View style={styles.heroStatsRow}>
             <View style={styles.heroStat}>
               <Text style={styles.heroStatLabel}>Wind</Text>
               <Text style={styles.heroStatValue}>{w.wind} km/h</Text>
-              <Text style={styles.heroStatSub}>NW</Text>
+              <Text style={styles.heroStatSub}>{Math.round(w.windDirection)}°</Text>
             </View>
             <View style={styles.heroStat}>
               <Text style={styles.heroStatLabel}>Feels Like</Text>
@@ -177,80 +103,35 @@ export default function ConditionsScreen() {
 
         {/* Tide */}
         <View style={styles.card}>
-          <View style={styles.tideCardHeader}>
-            <Text style={styles.cardLabel}>Tide</Text>
-            <View style={[
-              styles.sourceChip,
-              tideData.source === 'uk_ea' && styles.sourceChipLive,
-              tideData.source === 'noaa' && styles.sourceChipLive,
-              tideData.source === 'computed' && styles.sourceChipEst,
-            ]}>
-              <Text style={[
-                styles.sourceChipText,
-                tideData.source === 'computed' && styles.sourceChipTextEst,
-              ]}>
-                {tideData.source === 'uk_ea'
-                  ? 'LIVE · EA'
-                  : tideData.source === 'noaa'
-                  ? 'LIVE · NOAA'
-                  : 'Est.'}
-              </Text>
+          <Text style={styles.cardLabel}>Tide</Text>
+          <View style={styles.tideRow}>
+            <Text style={styles.tideValue}>{marine?.seaLevelM?.toFixed(2) ?? '—'}<Text style={styles.tideUnit}>m</Text></Text>
+            <View>
+              <Text style={styles.tideTrend}>{marine?.tideTrend ? marine.tideTrend[0].toUpperCase() + marine.tideTrend.slice(1) : 'Loading'}</Text>
+              <Text style={styles.tideSub}>High {formatMarineTime(marine?.nextHigh?.time)} · Low {formatMarineTime(marine?.nextLow?.time)}</Text>
             </View>
           </View>
-          {tideData.loading ? (
-            <View style={styles.tideSkeleton} />
-          ) : (
-            <>
-              <View style={styles.tideRow}>
-                <Text style={styles.tideValue}>
-                  {tideData.currentHeight.toFixed(1)}
-                  <Text style={styles.tideUnit}>m</Text>
-                </Text>
-                <View>
-                  <Text style={styles.tideTrend}>
-                    {tideData.trend === 'rising'
-                      ? 'Rising ▲'
-                      : tideData.trend === 'falling'
-                      ? 'Falling ▼'
-                      : 'Slack ~'}
-                    {'  '}
-                    <Text style={styles.tideTrendRate}>
-                      {Math.abs(tideData.trendRate).toFixed(2)}m/hr
-                    </Text>
-                  </Text>
-                  <Text style={styles.tideSub}>
-                    High {tideData.nextHigh.time} · {tideData.nextHigh.height.toFixed(1)}m
-                  </Text>
-                  <Text style={styles.tideSub}>
-                    Low {tideData.nextLow.time} · {tideData.nextLow.height.toFixed(1)}m
-                  </Text>
-                </View>
-              </View>
-              <TideChart
-                points={tideData.points}
-                min={tideData.range.min}
-                max={tideData.range.max}
-                currentHour={new Date().getHours()}
-              />
-              <Text style={styles.tideStation}>Data: {tideData.stationName}</Text>
-            </>
-          )}
+          <View style={styles.curveWrap}>
+            {(tideBars.length ? tideBars : [8, 8, 8, 8, 8, 8, 8, 8]).map((height, i) => <View key={i} style={[styles.curveBar, { height: `${height}%`, opacity: tideBars.length ? 1 : 0.25 }]} />)}
+          </View>
+          <View style={styles.curveLabels}>
+            <Text style={styles.curveLabel}>00:00</Text>
+            <Text style={styles.curveLabel}>06:00</Text>
+            <Text style={styles.curveLabel}>12:00</Text>
+            <Text style={styles.curveLabel}>18:00</Text>
+            <Text style={styles.curveLabel}>24:00</Text>
+          </View>
         </View>
 
         {/* Solunar */}
         <View style={styles.card}>
-          <View style={styles.tideCardHeader}>
-            <Text style={styles.cardLabel}>Solunar Activity</Text>
-            <Text style={styles.moonPhaseChip}>{solunar.moonPhaseName} · {solunar.moonIllumination}%</Text>
-          </View>
-          <Text style={styles.solunarValue}>{solunar.score}<Text style={styles.tideUnit}>%</Text></Text>
-          <Text style={styles.solunarSub}>{solunar.scoreLabel}</Text>
+          <Text style={styles.cardLabel}>Solunar Activity</Text>
+          <Text style={styles.solunarValue}>{Math.round(w.fishingScore)}<Text style={styles.tideUnit}>%</Text></Text>
+          <Text style={styles.solunarSub}>{w.fishingScore >= 75 ? 'High' : w.fishingScore >= 50 ? 'Moderate' : 'Low'} Activity · changes through the day</Text>
           <View style={styles.barsWrap}>
-            {solunar.hourlyActivity
-              .filter((_, i) => i % 3 === 0) // Show every 3rd hour to fit ~8 bars
-              .map((v, i) => (
-                <View key={i} style={[styles.bar, { height: Math.max(2, (v / 100) * 48) }]} />
-              ))}
+            {activityBars.map((h, i) => (
+              <View key={i} style={[styles.bar, { height: `${h}%` }]} />
+            ))}
           </View>
           <View style={styles.curveLabels}>
             <Text style={styles.curveLabel}>00:00</Text>
@@ -264,18 +145,18 @@ export default function ConditionsScreen() {
         {/* Solunar feeding windows */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Feeding Windows</Text>
-          {solunar.windows.map((win) => (
-            <View key={win.time + win.quality} style={[styles.windowCard, win.quality === 'major' && styles.windowCardMajor, win.isActive && styles.windowCardActive]}>
-              <View style={[styles.windowDot, { backgroundColor: win.quality === 'major' ? colors.primary : colors.secondary }]} />
+          {feedingWindows.map((win) => (
+            <View key={`${win.type}-${win.start}`} style={[styles.windowCard, win.type === 'major' && styles.windowCardMajor]}>
+              <View style={[styles.windowDot, { backgroundColor: win.type === 'major' ? colors.primary : colors.secondary }]} />
               <View style={styles.windowInfo}>
-                <Text style={styles.windowTime}>{win.time} – {win.endTime}</Text>
-                <Text style={styles.windowLabel}>{win.label}{win.isActive ? '  ● NOW' : win.minutesUntil > 0 ? `  in ${win.minutesUntil}m` : ''}</Text>
+                <Text style={styles.windowTime}>{win.start}–{win.end}</Text>
+                <Text style={styles.windowLabel}>{win.type === 'major' ? 'Major Feeding' : 'Minor Feeding'}</Text>
               </View>
               <View style={styles.windowRight}>
-                <Text style={styles.windowDuration}>{win.duration}</Text>
-                <View style={[styles.windowBadge, win.quality === 'major' && styles.windowBadgeMajor]}>
-                  <Text style={[styles.windowBadgeText, win.quality === 'major' && { color: colors.primary }]}>
-                    {win.quality.toUpperCase()}
+                <Text style={styles.windowDuration}>{win.rating}/5</Text>
+                <View style={[styles.windowBadge, win.type === 'major' && styles.windowBadgeMajor]}>
+                  <Text style={[styles.windowBadgeText, win.type === 'major' && { color: colors.primary }]}>
+                    {win.type.toUpperCase()}
                   </Text>
                 </View>
               </View>
@@ -285,33 +166,30 @@ export default function ConditionsScreen() {
 
         {/* 7-day forecast */}
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>7-Day Forecast</Text>
-            {forecast.error && <Text style={styles.forecastEstLabel}>Est.</Text>}
-          </View>
-          {forecast.loading ? (
-            <View style={styles.forecastSkeleton} />
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={styles.forecastRow}>
-                {forecast.days.map((day) => {
-                  const scoreColor = day.score >= 7 ? colors.primary : day.score >= 5 ? colors.secondary : colors.danger;
-                  return (
-                    <View key={day.day} style={styles.forecastCard}>
-                      <Text style={styles.forecastDay}>{day.day}</Text>
-                      <MaterialCommunityIcons name={day.icon as any} size={22} color={colors.textSecondary} />
-                      <Text style={styles.forecastHigh}>{day.high}°</Text>
-                      <Text style={styles.forecastLow}>{day.low}°</Text>
-                      <View style={[styles.forecastScore, { backgroundColor: scoreColor + '22' }]}>
-                        <Text style={[styles.forecastScoreText, { color: scoreColor }]}>{day.score}</Text>
-                      </View>
+          <Text style={styles.sectionTitle}>7-Day Forecast</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.forecastRow}>
+              {forecast.map((day) => {
+                const scoreColor = day.fishingScore >= 70 ? colors.primary : day.fishingScore >= 50 ? colors.secondary : colors.danger;
+                return (
+                  <View key={day.date} style={styles.forecastCard}>
+                    <Text style={styles.forecastDay}>{day.dayName}</Text>
+                    <MaterialCommunityIcons name={day.icon as any} size={22} color={colors.textSecondary} />
+                    <Text style={styles.forecastHigh}>{day.high}°</Text>
+                    <Text style={styles.forecastLow}>{day.low}°</Text>
+                    <View style={[styles.forecastScore, { backgroundColor: scoreColor + '22' }]}>
+                      <Text style={[styles.forecastScoreText, { color: scoreColor }]}>{day.fishingScore}</Text>
                     </View>
-                  );
-                })}
-              </View>
-            </ScrollView>
-          )}
+                  </View>
+                );
+              })}
+            </View>
+          </ScrollView>
         </View>
+
+        <Text style={styles.liveNote}>
+          {marineError ? `${marineError}. Weather remains live.` : `Live weather and marine forecast · updated ${updatedAt?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? 'now'}`}
+        </Text>
 
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
@@ -359,38 +237,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   cardLabel: { ...typography.caption, marginBottom: spacing.sm },
-  tideCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  sourceChip: {
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: radius.sm,
-    backgroundColor: 'rgba(0,212,170,0.18)',
-  },
-  sourceChipLive: { backgroundColor: 'rgba(0,212,170,0.18)' },
-  sourceChipEst: { backgroundColor: 'rgba(255,183,77,0.18)' },
-  sourceChipText: { fontSize: 9, fontWeight: '700', color: '#00D4AA', letterSpacing: 0.5 },
-  sourceChipTextEst: { color: '#FFB74D' },
   tideRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: spacing.md },
   tideValue: { ...typography.monoLarge, fontSize: 32 },
   tideUnit: { fontSize: 15, color: colors.textSecondary, fontFamily: fonts.mono },
-  tideTrend: { ...typography.label, color: colors.primary, textAlign: 'right', fontSize: 13 },
-  tideTrendRate: { fontSize: 10, color: colors.textSecondary, fontFamily: fonts.mono },
+  tideTrend: { ...typography.label, color: colors.primary, textAlign: 'right' },
   tideSub: { ...typography.caption, fontSize: 10, textTransform: 'none', textAlign: 'right', marginTop: 2 },
-  tideSkeleton: { height: 116, backgroundColor: colors.surface2, borderRadius: radius.md, marginVertical: spacing.sm },
-  tideStation: { fontSize: 9, color: colors.textTertiary, fontFamily: fonts.mono, marginTop: 4 },
+  curveWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 56, gap: 4 },
+  curveBar: { flex: 1, backgroundColor: 'rgba(0,212,170,0.35)', borderRadius: radius.xs, minHeight: 4 },
   curveLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   curveLabel: { fontSize: 9, color: colors.textTertiary, fontFamily: fonts.mono },
 
   solunarValue: { ...typography.monoLarge, fontSize: 32 },
   solunarSub: { ...typography.bodySmall, marginBottom: spacing.md },
   barsWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 48, gap: 5 },
-  bar: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.xs },
+  bar: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.xs, minHeight: 4 },
 
-  moonPhaseChip: { fontSize: 10, color: colors.textTertiary, fontFamily: fonts.mono },
-  windowCardActive: { borderColor: colors.primary, backgroundColor: 'rgba(0,212,170,0.1)' },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
-  forecastEstLabel: { fontSize: 9, color: '#FFB74D', fontFamily: fonts.mono, fontWeight: '700' },
-  forecastSkeleton: { height: 120, backgroundColor: colors.surface2, borderRadius: radius.md },
   section: { marginBottom: spacing.md },
   sectionTitle: { ...typography.caption, marginBottom: spacing.sm },
   windowCard: {
@@ -419,4 +280,5 @@ const styles = StyleSheet.create({
   forecastLow: { fontSize: 12, color: colors.textTertiary, fontFamily: fonts.mono },
   forecastScore: { borderRadius: radius.full, paddingHorizontal: 6, paddingVertical: 2, marginTop: 2 },
   forecastScoreText: { fontSize: 11, fontWeight: '800' },
+  liveNote: { color: colors.textTertiary, fontSize: 10, lineHeight: 15, textAlign: 'center', marginTop: spacing.sm },
 });

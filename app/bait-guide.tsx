@@ -282,5 +282,5 @@ const styles = StyleSheet.create({
   calcInput: { backgroundColor: colors.surface2, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: 18, fontWeight: '700', color: colors.primary, width: 80, textAlign: 'center', borderWidth: 1, borderColor: colors.border },
   calcUnit: { fontSize: 14, color: colors.textSecondary },
   calcResult: { fontSize: 22, fontWeight: '800', color: colors.primary },
-  calcNote: { fontSize: 12, color: colors.textSecondary, fontStyle: 'italic' },
+  calcNote: { fontSize: 12, color: colors.textSecondary },
 });
