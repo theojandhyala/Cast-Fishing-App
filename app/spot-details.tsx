@@ -230,6 +230,29 @@ export default function SpotDetailsScreen() {
 
         <View style={s.divider} />
 
+        {/* Water Clarity */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>WATER CONDITIONS</Text>
+          <View style={s.clarityRow}>
+            {WATER_CLARITY_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt}
+                style={[s.clarityChip, waterClarity === opt && s.clarityChipActive]}
+                onPress={() => setWaterClarity(opt)}
+                accessibilityRole="button"
+              >
+                <Text style={[s.clarityChipText, waterClarity === opt && s.clarityChipTextActive]}>{opt}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={s.clarityReported}>
+            Last reported: {reportedAgo} by {reporterUsername}
+          </Text>
+          <Text style={s.clarityInfo}>Community-reported. Tap to update.</Text>
+        </View>
+
+        <View style={s.divider} />
+
         {/* Best Times */}
         <View style={s.section}>
           <Text style={s.sectionTitle}>Best Times</Text>
@@ -240,6 +263,27 @@ export default function SpotDetailsScreen() {
                 <Text style={s.timeText}>{t.time}</Text>
               </View>
             ))}
+          </View>
+        </View>
+
+        <View style={s.divider} />
+
+        {/* Access & Directions */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>ACCESS & DIRECTIONS</Text>
+          <View style={s.accessRow}>
+            <MaterialCommunityIcons name="car" size={16} color={colors.textSecondary} />
+            <Text style={s.accessLabel}>Park at:</Text>
+            <Text style={s.accessValue}>{accessInfo.parkAt}</Text>
+          </View>
+          <View style={s.accessRow}>
+            <MaterialCommunityIcons name="walk" size={16} color={colors.textSecondary} />
+            <Text style={s.accessLabel}>Walk:</Text>
+            <Text style={s.accessValue}>{accessInfo.walkMin} min</Text>
+          </View>
+          <View style={s.accessNoteRow}>
+            <MaterialCommunityIcons name="information-outline" size={16} color={colors.textSecondary} style={{ marginTop: 2 }} />
+            <Text style={s.accessNote}>{accessInfo.accessNote}</Text>
           </View>
         </View>
 
@@ -274,6 +318,34 @@ export default function SpotDetailsScreen() {
           <Text style={s.sectionTitle}>Notes</Text>
           <Text style={s.notesText}>{spot.description}</Text>
           {spot.tips ? <Text style={[s.notesText, { marginTop: 8, color: colors.textSecondary }]}>{spot.tips}</Text> : null}
+        </View>
+
+        <View style={s.divider} />
+
+        {/* Private Notes */}
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>MY NOTES</Text>
+          <TextInput
+            style={s.notesInput}
+            placeholder="Add private notes about this spot..."
+            placeholderTextColor={colors.textTertiary}
+            value={notes}
+            onChangeText={setNotes}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
+          <View style={s.notesFooter}>
+            <TouchableOpacity style={s.saveNotesBtn} onPress={handleSaveNotes} activeOpacity={0.8}>
+              <Text style={s.saveNotesBtnText}>Save Notes</Text>
+            </TouchableOpacity>
+            {savedConfirm && (
+              <Animated.Text style={[s.savedConfirmText, { opacity: savedFadeAnim }]}>
+                Saved ✓
+              </Animated.Text>
+            )}
+          </View>
+          <Text style={s.notesPrivateHint}>Private — only visible to you</Text>
         </View>
       </ScrollView>
 
@@ -366,6 +438,48 @@ const s = StyleSheet.create({
   condLabel: { fontSize: 10, color: colors.textSecondary, textAlign: 'center' },
 
   notesText: { fontSize: 14, color: colors.textPrimary, lineHeight: 21 },
+
+  // Water clarity
+  clarityRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  clarityChip: {
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: radius.full, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: 'transparent',
+  },
+  clarityChipActive: { backgroundColor: 'rgba(0,212,170,0.15)', borderColor: colors.primary },
+  clarityChipText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  clarityChipTextActive: { color: colors.primary },
+  clarityReported: { fontSize: 12, color: colors.textSecondary, marginBottom: 3 },
+  clarityInfo: { fontSize: 11, color: colors.textTertiary, fontStyle: 'italic' },
+
+  // Access & directions
+  accessRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  accessLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: '600', width: 56 },
+  accessValue: { flex: 1, fontSize: 13, color: colors.textPrimary },
+  accessNoteRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  accessNote: { flex: 1, fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
+
+  // Private notes
+  notesInput: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    color: colors.textPrimary,
+    fontSize: 14,
+    padding: spacing.md,
+    minHeight: 96,
+    lineHeight: 21,
+  },
+  notesFooter: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 },
+  saveNotesBtn: {
+    backgroundColor: 'rgba(0,212,170,0.15)',
+    borderRadius: radius.full,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)',
+    paddingHorizontal: spacing.lg, paddingVertical: 9,
+  },
+  saveNotesBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  savedConfirmText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  notesPrivateHint: { fontSize: 11, color: colors.textTertiary, marginTop: 6, fontStyle: 'italic' },
 
   bottomBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
