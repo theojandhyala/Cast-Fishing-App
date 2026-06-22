@@ -64,7 +64,8 @@ export default function RootLayout() {
     if (existing) return;
     const style = document.createElement('style');
     style.id = 'mci-font';
-    style.textContent = `@font-face{font-family:'material-community';src:url('/assets/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.b62641afc9ab487008e996a5c5865e56.ttf') format('truetype');font-weight:normal;font-style:normal;}`;
+    style.textContent = `@font-face{font-family:'material-community';src:url('/assets/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.b62641afc9ab487008e996a5c5865e56.ttf') format('truetype');font-weight:normal;font-style:normal;}
+[dir='auto'],input,textarea,button{font-family:'Inter_400Regular',sans-serif;font-style:normal;}`;
     document.head.appendChild(style);
   }, []);
 
