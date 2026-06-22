@@ -76,6 +76,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   loadUser: async () => {
     try {
+      // Migrate from old single-key storage (pre-accounts-registry)
+      const oldRaw = await AsyncStorage.getItem('cast_user');
+      if (oldRaw) {
+        const oldUser = JSON.parse(oldRaw) as User;
+        const accounts = await getAccounts();
+        const key = (oldUser.email || 'migrated@castapp.local').toLowerCase();
+        if (!accounts[key]) {
+          accounts[key] = { user: oldUser, password: '' }; // empty password = migrated
+          await saveAccounts(accounts);
+        }
+        await AsyncStorage.setItem(SESSION_KEY, oldRaw);
+        await AsyncStorage.removeItem('cast_user');
+      }
+
       const raw = await AsyncStorage.getItem(SESSION_KEY);
       if (raw) {
         const user = JSON.parse(raw) as User;
@@ -96,9 +110,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return false;
     }
 
-    if (entry.password !== password) {
+    // Allow login for migrated accounts (empty stored password = migrated from old storage)
+    if (entry.password !== '' && entry.password !== password) {
       set({ authError: 'Incorrect password. Please try again.' });
       return false;
+    }
+
+    // If migrated account, update the password now
+    if (entry.password === '' && password !== '') {
+      const accounts = await getAccounts();
+      if (accounts[key]) {
+        accounts[key].password = password;
+        await saveAccounts(accounts);
+      }
     }
 
     await AsyncStorage.setItem(SESSION_KEY, JSON.stringify(entry.user));
