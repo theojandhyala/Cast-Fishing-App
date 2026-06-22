@@ -67,7 +67,10 @@ export default function RootLayout() {
     if (existing) return;
     const style = document.createElement('style');
     style.id = 'cast-global-styles';
-    style.textContent = `@font-face{font-family:'material-community';src:url('/assets/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.6e435534bd35da5fef04168860a9b8fa.ttf') format('truetype');font-style:normal;font-weight:normal;font-display:block;}
+    style.textContent = `@font-face{font-family:'material-community';src:url('/fonts/material-community.ttf') format('truetype');font-style:normal;font-weight:normal;font-display:block;}
+@font-face{font-family:'Inter_400Regular';src:url('/fonts/inter-400.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:'Inter_600SemiBold';src:url('/fonts/inter-600.ttf') format('truetype');font-style:normal;font-weight:600;font-display:swap;}
+@font-face{font-family:'Inter_700Bold';src:url('/fonts/inter-700.ttf') format('truetype');font-style:normal;font-weight:700;font-display:swap;}
 [dir='auto'],input,textarea,button{font-family:'Inter_400Regular',sans-serif;font-style:normal;}`;
     document.head.appendChild(style);
   }, []);

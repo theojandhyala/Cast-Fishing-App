@@ -41,7 +41,7 @@ const MENU_SECTIONS = [
       { icon: 'lightbulb', label: 'Fish Tips', route: '/fish-tips', color: colors.secondary, desc: 'Species tips & bite times' },
       { icon: 'calendar-month', label: 'Fishing Calendar', route: '/fishing-calendar', color: '#A78BFA', desc: 'Moon, tides & scores' },
       { icon: 'food-drumstick', label: 'Bait Guide', route: '/bait-guide', color: '#10B981', desc: '30+ baits & bait match' },
-      { icon: 'rope', label: 'Knot Library', route: '/knots', color: colors.primary, desc: '20 essential knots' },
+      { icon: 'link-variant', label: 'Knot Library', route: '/knots', color: colors.primary, desc: '20 essential knots' },
       { icon: 'weather-partly-cloudy', label: 'Weather & Tides', route: '/weather-detail', color: '#60A5FA', desc: 'Full conditions dashboard' },
       { icon: 'camera', label: 'Fish Identifier', route: '/identifier', color: colors.secondary, desc: 'Photo ID tool' },
       { icon: 'hook', label: 'Rig Builder', route: '/rig-builder', color: '#10B981', desc: '15 rig tutorials' },

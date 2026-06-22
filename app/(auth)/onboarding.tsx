@@ -31,7 +31,7 @@ const REGIONS = [
   { id: 'australia', label: 'Australia', icon: 'island' },
   { id: 'new-zealand', label: 'New Zealand', icon: 'terrain' },
   { id: 'south-africa', label: 'South Africa', icon: 'weather-sunny' },
-  { id: 'japan', label: 'Japan', icon: 'torii-gate' },
+  { id: 'japan', label: 'Japan', icon: 'map-marker-outline' },
   { id: 'brazil-amazon', label: 'Brazil & Amazon', icon: 'forest' },
   { id: 'india', label: 'India', icon: 'water' },
   { id: 'global', label: 'Worldwide', icon: 'earth' },

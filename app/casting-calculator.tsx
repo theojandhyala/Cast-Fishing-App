@@ -50,7 +50,7 @@ const TIPS = [
   { icon: 'weather-windy', text: 'Cast with the wind, never into it — it can add 20m+.' },
   { icon: 'sync', text: 'Smooth acceleration through the cast — power at the top.' },
   { icon: 'weight', text: 'Heavier leads increase distance up to a point — don\'t overdo it.' },
-  { icon: 'rope', text: 'Low-diameter line (0.28mm or below) reduces air resistance dramatically.' },
+  { icon: 'fishing', text: 'Low-diameter line (0.28mm or below) reduces air resistance dramatically.' },
   { icon: 'fish', text: 'Practice your clip distance before attaching a rig to save time.' },
 ];
 

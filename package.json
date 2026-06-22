@@ -39,7 +39,7 @@
   },
   "scripts": {
     "start": "expo start",
-    "build": "expo export --platform web --output-dir dist && cp _redirects dist/_redirects",
+    "build": "expo export --platform web --output-dir dist && mkdir -p dist/fonts && cp node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf dist/fonts/material-community.ttf && cp node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf dist/fonts/inter-400.ttf && cp node_modules/@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf dist/fonts/inter-600.ttf && cp node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf dist/fonts/inter-700.ttf && cp _redirects dist/_redirects",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"

@@ -367,7 +367,7 @@ export default function HomeScreen() {
         <View style={s.quickLinksRow}>
           {[
             { icon: 'fish', label: 'Species Guide', route: '/(tabs)/tips' },
-            { icon: 'rope', label: 'Knots', route: '/knots' },
+            { icon: 'link-variant', label: 'Knots', route: '/knots' },
             { icon: 'food-drumstick', label: 'Bait Guide', route: '/bait-guide' },
             { icon: 'weather-partly-cloudy', label: 'Weather', route: '/weather-detail' },
           ].map(item => (
