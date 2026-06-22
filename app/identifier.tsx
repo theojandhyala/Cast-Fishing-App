@@ -182,8 +182,8 @@ export default function IdentifierScreen() {
 
         {error && !loading && (
           <View style={styles.errorBanner}>
-            <MaterialCommunityIcons name="wifi-off" size={16} color={colors.secondary} />
-            <Text style={styles.errorText}>AI service unavailable — showing best match from database</Text>
+            <MaterialCommunityIcons name="alert-circle-outline" size={16} color={colors.secondary} />
+            <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
 

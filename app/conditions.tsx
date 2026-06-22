@@ -13,27 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocationStore } from '../store/locationStore';
 import { useWeather } from '../hooks/useWeather';
 import { useTides } from '../hooks/useTides';
+import { useSolunar } from '../hooks/useSolunar';
+import { useForecast } from '../hooks/useForecast';
 import { colors, radius, spacing, typography, fonts } from '../constants/theme';
 import Svg, { Path, Circle, Line, Text as SvgText } from 'react-native-svg';
-
-const SOLUNAR_WINDOWS = [
-  { time: '05:30', duration: '1h 40m', quality: 'major', label: 'Major Feeding' },
-  { time: '11:45', duration: '45m', quality: 'minor', label: 'Minor Feeding' },
-  { time: '18:00', duration: '1h 50m', quality: 'major', label: 'Major Feeding' },
-  { time: '23:15', duration: '40m', quality: 'minor', label: 'Minor Feeding' },
-];
-
-const FORECAST = [
-  { day: 'Today', icon: 'weather-partly-cloudy', high: 14, low: 8, score: 7 },
-  { day: 'Tomorrow', icon: 'weather-rainy', high: 12, low: 7, score: 5 },
-  { day: 'Wed', icon: 'weather-pouring', high: 11, low: 6, score: 4 },
-  { day: 'Thu', icon: 'weather-sunny', high: 15, low: 9, score: 8 },
-  { day: 'Fri', icon: 'weather-sunny', high: 17, low: 10, score: 9 },
-  { day: 'Sat', icon: 'weather-sunny', high: 16, low: 9, score: 8 },
-  { day: 'Sun', icon: 'weather-partly-cloudy', high: 14, low: 8, score: 6 },
-];
-
-const SOLUNAR_BARS = [25, 40, 55, 70, 85, 100, 90, 65];
 
 const CHART_WIDTH = Dimensions.get('window').width - 48 - 32;
 const CHART_HEIGHT = 100;
@@ -133,6 +116,8 @@ export default function ConditionsScreen() {
   const coordLng = locationWithCoords?.coords?.longitude;
   const { weather } = useWeather(location?.query);
   const tideData = useTides(coordLat, coordLng);
+  const solunar = useSolunar(coordLat ?? 52.5, coordLng ?? -1.5);
+  const forecast = useForecast(coordLat ?? 52.5, coordLng ?? -1.5);
 
   const w = weather || {
     temp: 18,
@@ -254,13 +239,18 @@ export default function ConditionsScreen() {
 
         {/* Solunar */}
         <View style={styles.card}>
-          <Text style={styles.cardLabel}>Solunar Activity</Text>
-          <Text style={styles.solunarValue}>{Math.round(w.fishingScore * 10) >= 70 ? Math.round(w.fishingScore * 10) : 85}<Text style={styles.tideUnit}>%</Text></Text>
-          <Text style={styles.solunarSub}>High Activity</Text>
+          <View style={styles.tideCardHeader}>
+            <Text style={styles.cardLabel}>Solunar Activity</Text>
+            <Text style={styles.moonPhaseChip}>{solunar.moonPhaseName} · {solunar.moonIllumination}%</Text>
+          </View>
+          <Text style={styles.solunarValue}>{solunar.score}<Text style={styles.tideUnit}>%</Text></Text>
+          <Text style={styles.solunarSub}>{solunar.scoreLabel}</Text>
           <View style={styles.barsWrap}>
-            {SOLUNAR_BARS.map((h, i) => (
-              <View key={i} style={[styles.bar, { height: `${h}%` }]} />
-            ))}
+            {solunar.hourlyActivity
+              .filter((_, i) => i % 3 === 0) // Show every 3rd hour to fit ~8 bars
+              .map((v, i) => (
+                <View key={i} style={[styles.bar, { height: Math.max(2, (v / 100) * 48) }]} />
+              ))}
           </View>
           <View style={styles.curveLabels}>
             <Text style={styles.curveLabel}>00:00</Text>
@@ -274,12 +264,12 @@ export default function ConditionsScreen() {
         {/* Solunar feeding windows */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Feeding Windows</Text>
-          {SOLUNAR_WINDOWS.map((win) => (
-            <View key={win.time} style={[styles.windowCard, win.quality === 'major' && styles.windowCardMajor]}>
+          {solunar.windows.map((win) => (
+            <View key={win.time + win.quality} style={[styles.windowCard, win.quality === 'major' && styles.windowCardMajor, win.isActive && styles.windowCardActive]}>
               <View style={[styles.windowDot, { backgroundColor: win.quality === 'major' ? colors.primary : colors.secondary }]} />
               <View style={styles.windowInfo}>
-                <Text style={styles.windowTime}>{win.time}</Text>
-                <Text style={styles.windowLabel}>{win.label}</Text>
+                <Text style={styles.windowTime}>{win.time} – {win.endTime}</Text>
+                <Text style={styles.windowLabel}>{win.label}{win.isActive ? '  ● NOW' : win.minutesUntil > 0 ? `  in ${win.minutesUntil}m` : ''}</Text>
               </View>
               <View style={styles.windowRight}>
                 <Text style={styles.windowDuration}>{win.duration}</Text>
@@ -295,25 +285,32 @@ export default function ConditionsScreen() {
 
         {/* 7-day forecast */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>7-Day Forecast</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.forecastRow}>
-              {FORECAST.map((day) => {
-                const scoreColor = day.score >= 7 ? colors.primary : day.score >= 5 ? colors.secondary : colors.danger;
-                return (
-                  <View key={day.day} style={styles.forecastCard}>
-                    <Text style={styles.forecastDay}>{day.day}</Text>
-                    <MaterialCommunityIcons name={day.icon as any} size={22} color={colors.textSecondary} />
-                    <Text style={styles.forecastHigh}>{day.high}°</Text>
-                    <Text style={styles.forecastLow}>{day.low}°</Text>
-                    <View style={[styles.forecastScore, { backgroundColor: scoreColor + '22' }]}>
-                      <Text style={[styles.forecastScoreText, { color: scoreColor }]}>{day.score}</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>7-Day Forecast</Text>
+            {forecast.error && <Text style={styles.forecastEstLabel}>Est.</Text>}
+          </View>
+          {forecast.loading ? (
+            <View style={styles.forecastSkeleton} />
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.forecastRow}>
+                {forecast.days.map((day) => {
+                  const scoreColor = day.score >= 7 ? colors.primary : day.score >= 5 ? colors.secondary : colors.danger;
+                  return (
+                    <View key={day.day} style={styles.forecastCard}>
+                      <Text style={styles.forecastDay}>{day.day}</Text>
+                      <MaterialCommunityIcons name={day.icon as any} size={22} color={colors.textSecondary} />
+                      <Text style={styles.forecastHigh}>{day.high}°</Text>
+                      <Text style={styles.forecastLow}>{day.low}°</Text>
+                      <View style={[styles.forecastScore, { backgroundColor: scoreColor + '22' }]}>
+                        <Text style={[styles.forecastScoreText, { color: scoreColor }]}>{day.score}</Text>
+                      </View>
                     </View>
-                  </View>
-                );
-              })}
-            </View>
-          </ScrollView>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          )}
         </View>
 
         <View style={{ height: spacing.xxl }} />
@@ -387,8 +384,13 @@ const styles = StyleSheet.create({
   solunarValue: { ...typography.monoLarge, fontSize: 32 },
   solunarSub: { ...typography.bodySmall, marginBottom: spacing.md },
   barsWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 48, gap: 5 },
-  bar: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.xs, minHeight: 4 },
+  bar: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.xs },
 
+  moonPhaseChip: { fontSize: 10, color: colors.textTertiary, fontFamily: fonts.mono },
+  windowCardActive: { borderColor: colors.primary, backgroundColor: 'rgba(0,212,170,0.1)' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  forecastEstLabel: { fontSize: 9, color: '#FFB74D', fontFamily: fonts.mono, fontWeight: '700' },
+  forecastSkeleton: { height: 120, backgroundColor: colors.surface2, borderRadius: radius.md },
   section: { marginBottom: spacing.md },
   sectionTitle: { ...typography.caption, marginBottom: spacing.sm },
   windowCard: {
