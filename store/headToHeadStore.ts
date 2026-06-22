@@ -51,7 +51,7 @@ export const useHeadToHeadStore = create<HeadToHeadState>()(
           opponentScore: 0,
           status: 'outgoing',
           endsAt: daysFromNow(7),
-          isDemo: Boolean(friend.isDemo),
+          isDemo: false,
         }, ...state.duels] }));
       },
       acceptDuel: (id) => set((state) => ({ duels: state.duels.map((duel) => duel.id === id ? { ...duel, status: 'active' } : duel) })),

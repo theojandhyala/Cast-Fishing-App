@@ -13,6 +13,7 @@ import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queryFishingSpots } from '../utils/fishingSpotLookup';
+import { loadAllFishingSpots } from '../data/fishingSpots';
 import { species as speciesData } from '../data/species';
 import { knots as KNOTS } from '../data/knots';
 import { BAITS as BAIT_DATA } from '../data/baitData';
@@ -32,9 +33,11 @@ export default function SearchScreen() {
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const inputRef = useRef<TextInput>(null);
   const router = useRouter();
+  const [spotIndexVersion, setSpotIndexVersion] = useState(0);
 
   useEffect(() => {
     loadRecent();
+    void loadAllFishingSpots().then(() => setSpotIndexVersion(1));
     setTimeout(() => inputRef.current?.focus(), 100);
   }, []);
 
@@ -60,7 +63,7 @@ export default function SearchScreen() {
 
   const spotResults = useMemo(
     () => (q ? queryFishingSpots({ text: q, limit: 8 }) : []),
-    [q]
+    [q, spotIndexVersion]
   );
 
   const speciesResults = q

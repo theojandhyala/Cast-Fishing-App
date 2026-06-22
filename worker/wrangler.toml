@@ -1,9 +1,15 @@
 name = "cast-ai"
 main = "index.js"
-compatibility_date = "2024-09-01"
+compatibility_date = "2026-06-22"
 
 [ai]
 binding = "AI"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cast-app"
+database_id = "0c202650-a68f-4e3e-9680-e0043af70f9d"
+migrations_dir = "migrations"
 
 # The ANTHROPIC_API_KEY is NOT stored here. Add it as a secret:
 #   cd worker && npx wrangler secret put ANTHROPIC_API_KEY

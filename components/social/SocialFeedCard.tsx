@@ -29,7 +29,7 @@ export const SocialFeedCard = memo(function SocialFeedCard({
 }: SocialFeedCardProps) {
   const share = () => Share.share({
     title: `${post.species} catch on CAST`,
-    message: `${user.name} landed a ${post.weightDisplay} ${post.species} at ${post.location}. Shared from the CAST demo community.`,
+    message: `${user.name} landed a ${post.weightDisplay} ${post.species} at ${post.location}. Shared from CAST Fishing.`,
   });
 
   return (
@@ -37,10 +37,7 @@ export const SocialFeedCard = memo(function SocialFeedCard({
       <View style={styles.header}>
         <SocialAvatar name={user.name} color={user.avatarColor} isOnline={user.isOnline} />
         <View style={styles.identity}>
-          <View style={styles.nameRow}>
-            <Text style={styles.name} numberOfLines={1}>{user.name}</Text>
-            <View style={styles.demoBadge}><Text style={styles.demoText}>DEMO</Text></View>
-          </View>
+          <View style={styles.nameRow}><Text style={styles.name} numberOfLines={1}>{user.name}</Text></View>
           <Text style={styles.meta}>{user.countryCode} · {relativeTime(post.caughtAt)} ago</Text>
         </View>
         <View style={styles.rarityBadge}><Text style={styles.rarityText}>{post.rarity}</Text></View>
@@ -79,8 +76,6 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { color: colors.textPrimary, fontSize: 15, fontWeight: '800', flexShrink: 1 },
   meta: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
-  demoBadge: { backgroundColor: 'rgba(45,212,255,0.12)', borderRadius: radius.full, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: 'rgba(45,212,255,0.3)' },
-  demoText: { color: colors.accentBlue, fontSize: 8, fontWeight: '900', letterSpacing: 0.8 },
   rarityBadge: { backgroundColor: 'rgba(245,158,11,0.12)', borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 4 },
   rarityText: { color: colors.secondary, fontSize: 10, fontWeight: '800' },
   hero: { height: 174, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },

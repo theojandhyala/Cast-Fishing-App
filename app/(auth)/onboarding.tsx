@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -71,6 +72,7 @@ export default function OnboardingScreen() {
   const [regionId, setRegionId] = useState('');
   const [targetSpecies, setTargetSpecies] = useState<string[]>([]);
   const [usernameTouched, setUsernameTouched] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const usernameValid = username.trim().length >= 2 && username.trim().length <= 24;
   const canContinue = useMemo(() => {
@@ -110,18 +112,25 @@ export default function OnboardingScreen() {
       : [...selected, speciesId]);
   };
 
-  const finish = () => {
+  const finish = async () => {
     if (!usernameValid || !regionId || targetSpecies.length === 0) return;
+    setSaving(true);
     const cleanUsername = username.trim();
+    await completeAuthOnboarding(cleanUsername, targetSpecies, { regionId });
+    const authState = useAuthStore.getState();
+    if (authState.authError || !authState.user?.hasCompletedOnboarding) {
+      setSaving(false);
+      Alert.alert('Couldn’t finish setup', authState.authError || 'Please try again.');
+      return;
+    }
     saveProfile({ username: cleanUsername, photoUri, regionId, targetSpecies });
-    completeAuthOnboarding(cleanUsername, targetSpecies);
     router.replace('/(tabs)');
   };
 
   const next = () => {
     if (step === 1) setUsernameTouched(true);
     if (!canContinue) return;
-    if (step === TOTAL_STEPS - 1) finish();
+    if (step === TOTAL_STEPS - 1) void finish();
     else goTo(step + 1);
   };
 
@@ -254,8 +263,8 @@ export default function OnboardingScreen() {
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
         {step > 0 ? <TouchableOpacity accessibilityRole="button" onPress={() => goTo(step - 1)} style={styles.backButton}><Icon name="arrow-left" size={21} color={colors.textPrimary} /></TouchableOpacity> : null}
-        <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: !canContinue }} activeOpacity={0.85} disabled={!canContinue} onPress={next} style={[styles.nextButton, !canContinue && styles.nextButtonDisabled]}>
-          <Text style={styles.nextButtonText}>{step === 0 ? 'Start your journey' : step === TOTAL_STEPS - 1 ? 'Build my profile' : step === 2 && !photoUri ? 'Skip for now' : 'Continue'}</Text>
+        <TouchableOpacity accessibilityRole="button" accessibilityState={{ disabled: !canContinue || saving, busy: saving }} activeOpacity={0.85} disabled={!canContinue || saving} onPress={next} style={[styles.nextButton, (!canContinue || saving) && styles.nextButtonDisabled]}>
+          <Text style={styles.nextButtonText}>{saving ? 'Building profile…' : step === 0 ? 'Start your journey' : step === TOTAL_STEPS - 1 ? 'Build my profile' : step === 2 && !photoUri ? 'Skip for now' : 'Continue'}</Text>
           <Icon name={step === TOTAL_STEPS - 1 ? 'check' : 'arrow-right'} size={20} color={colors.background} />
         </TouchableOpacity>
       </View>

@@ -119,7 +119,7 @@ export default function SafetyScreen() {
     setCheckedIn(true);
     Alert.alert(
       'Check-in Recorded',
-      "You've checked in as safe. Your emergency contact has been notified (mock).",
+      "Your safe check-in is recorded on this device. CAST has not contacted anyone—message your emergency contact directly if they are expecting an update.",
       [{ text: 'OK' }]
     );
   };

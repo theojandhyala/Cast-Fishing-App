@@ -27,8 +27,8 @@ export default function RegisterScreen() {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    if (password.length < 8) {
+      Alert.alert('Password too short', 'Use at least 8 characters.');
       return;
     }
     setLoading(true);
@@ -37,7 +37,7 @@ export default function RegisterScreen() {
     if (success) {
       router.replace('/(auth)/onboarding');
     } else {
-      Alert.alert('Error', 'Registration failed. Please try again.');
+      Alert.alert('Couldn’t create account', useAuthStore.getState().authError || 'Please check your details and try again.');
     }
   };
 
@@ -49,7 +49,7 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Text style={styles.back} onPress={() => router.back()}>← Back</Text>
+          <Text accessibilityRole="link" accessibilityLabel="Go back" style={styles.back} onPress={() => router.back()}>← Back</Text>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Build your fishing profile from scratch</Text>
         </View>
@@ -58,6 +58,7 @@ export default function RegisterScreen() {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Full Name</Text>
             <TextInput
+              accessibilityLabel="Full name or username"
               style={styles.input}
               value={name}
               onChangeText={setName}
@@ -71,6 +72,7 @@ export default function RegisterScreen() {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email</Text>
             <TextInput
+              accessibilityLabel="Email address"
               style={styles.input}
               value={email}
               onChangeText={setEmail}
@@ -85,10 +87,11 @@ export default function RegisterScreen() {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Password</Text>
             <TextInput
+              accessibilityLabel="Password"
               style={styles.input}
               value={password}
               onChangeText={setPassword}
-              placeholder="Min. 6 characters"
+              placeholder="Min. 8 characters"
               placeholderTextColor={colors.textSecondary}
               secureTextEntry
               autoComplete="new-password"
@@ -111,7 +114,7 @@ export default function RegisterScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Already have an account? </Text>
-          <Text style={styles.footerLink} onPress={() => router.push('/(auth)/login')}>
+          <Text accessibilityRole="link" style={styles.footerLink} onPress={() => router.push('/(auth)/login')}>
             Sign in
           </Text>
         </View>

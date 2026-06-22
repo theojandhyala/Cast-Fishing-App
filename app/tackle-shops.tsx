@@ -54,17 +54,6 @@ export default function TackleShopsScreen() {
       </ScrollView>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-        {/* Affiliate banner */}
-        <View style={styles.affiliateBanner}>
-          <View>
-            <Text style={styles.affiliateTitle}>Buy Tackle Online</Text>
-            <Text style={styles.affiliateSub}>Free delivery on orders over £25</Text>
-          </View>
-          <TouchableOpacity style={styles.affiliateBtn} onPress={() => Alert.alert('Angling Direct', 'This would open the Angling Direct website. (Affiliate link placeholder)')}>
-            <Text style={styles.affiliateBtnText}>Angling Direct →</Text>
-          </TouchableOpacity>
-        </View>
-
         {filtered.map(shop => (
           <View key={shop.id} style={styles.card}>
             <View style={styles.cardHeader}>

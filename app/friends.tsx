@@ -5,9 +5,19 @@ import { useRouter } from 'expo-router';
 import { Icon } from '../components/ui/Icon';
 import { SocialAvatar } from '../components/social/SocialAvatar';
 import { Friend, FriendRequest, useFriendsStore } from '../store/friendsStore';
+import { useAuthStore } from '../store/authStore';
 import { colors, radius, spacing, typography } from '../constants/theme';
 
 type FriendsTab = 'friends' | 'discover' | 'requests';
+
+const requestTime = (value: string) => {
+  const minutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60_000));
+  if (!Number.isFinite(minutes)) return value;
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1_440) return `${Math.floor(minutes / 60)}h ago`;
+  return `${Math.floor(minutes / 1_440)}d ago`;
+};
 
 function FriendRow({ friend, onRemove }: { friend: Friend; onRemove: (friend: Friend) => void }) {
   return (
@@ -63,7 +73,7 @@ function RequestRow({ request, onAccept, onDecline }: { request: FriendRequest; 
           <Text style={styles.name}>{request.fromName}</Text>
           <Text style={styles.country}>{request.countryCode}</Text>
         </View>
-        <Text style={styles.handle}>{outgoing ? 'Request sent' : 'Wants to connect'} · {request.sentAt}</Text>
+        <Text style={styles.handle}>{outgoing ? 'Request sent' : 'Wants to connect'} · {requestTime(request.sentAt)}</Text>
         {!outgoing ? (
           <View style={styles.requestActions}>
             <Pressable accessibilityRole="button" onPress={onAccept} style={styles.acceptButton}><Text style={styles.acceptText}>Accept</Text></Pressable>
@@ -80,6 +90,7 @@ export default function FriendsScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<FriendsTab>('friends');
   const [friendQuery, setFriendQuery] = useState('');
+  const user = useAuthStore((state) => state.user);
   const friends = useFriendsStore((state) => state.friends);
   const requests = useFriendsStore((state) => state.requests);
   const suggested = useFriendsStore((state) => state.suggestedAnglers);
@@ -88,32 +99,22 @@ export default function FriendsScreen() {
   const acceptRequest = useFriendsStore((state) => state.acceptRequest);
   const declineRequest = useFriendsStore((state) => state.declineRequest);
   const sendRequest = useFriendsStore((state) => state.sendRequest);
+  const searchAnglers = useFriendsStore((state) => state.searchAnglers);
+  const isSearching = useFriendsStore((state) => state.isSearching);
+  const lastError = useFriendsStore((state) => state.lastError);
 
-  const addByUsername = useCallback(() => {
+  const findByUsername = useCallback(async () => {
     const value = friendQuery.trim().replace(/^@/, '');
     if (value.length < 2) {
       Alert.alert('Enter a username', 'Use their CAST username or friend code.');
       return;
     }
-    const id = `user_${value.toLowerCase().replace(/[^a-z0-9_-]/g, '')}`;
-    sendRequest({
-      id,
-      name: value,
-      handle: `@${value}`,
-      level: 1,
-      catchCount: 0,
-      topSpecies: 'Not set',
-      streak: 0,
-      avatarColor: colors.primaryDim,
-      isOnline: false,
-      lastActive: 'Unknown',
-      mutualFriends: 0,
-    });
-    setFriendQuery('');
-    setTab('requests');
-  }, [friendQuery, sendRequest]);
+    await searchAnglers(value);
+    setTab('discover');
+  }, [friendQuery, searchAnglers]);
 
   useEffect(() => { void hydrate(); }, [hydrate]);
+  useEffect(() => { if (lastError) Alert.alert('Friends', lastError); }, [lastError]);
 
   const incomingCount = useMemo(() => requests.filter((request) => request.type === 'incoming').length, [requests]);
   const confirmRemove = useCallback((friend: Friend) => {
@@ -143,18 +144,18 @@ export default function FriendsScreen() {
           <TextInput
             value={friendQuery}
             onChangeText={setFriendQuery}
-            onSubmitEditing={addByUsername}
+            onSubmitEditing={findByUsername}
             placeholder="Username or friend code"
             placeholderTextColor={colors.textTertiary}
             autoCapitalize="none"
             returnKeyType="send"
             style={styles.searchInput}
           />
-          <Pressable accessibilityRole="button" accessibilityLabel="Send friend request" onPress={addByUsername} style={styles.sendButton}>
-            <Icon name="arrow-right" size={18} color={colors.background} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Search for anglers" onPress={findByUsername} style={styles.sendButton}>
+            <Icon name={isSearching ? 'loading' : 'magnify'} size={18} color={colors.background} />
           </Pressable>
         </View>
-        <Pressable onPress={() => Share.share({ message: 'Add me on CAST Fishing. Search for my username in Friends.' })} style={styles.inviteButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Share your CAST username" onPress={() => Share.share({ message: `Add me on CAST Fishing — search for @${user?.name || 'my username'} in Friends.` })} style={styles.inviteButton}>
           <Icon name="share-variant-outline" size={16} color={colors.primary} />
           <Text style={styles.inviteText}>Share an invite</Text>
         </Pressable>
@@ -171,7 +172,7 @@ export default function FriendsScreen() {
       {tab === 'friends' ? (
         <FlatList data={friends} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} renderItem={({ item }) => <FriendRow friend={item} onRemove={confirmRemove} />} ListEmptyComponent={<View style={styles.emptyState}><Icon name="account-group-outline" size={32} color={colors.textTertiary} /><Text style={styles.emptyTitle}>Your circle starts empty</Text><Text style={styles.empty}>Add a real angler by username or share an invite. CAST never fills your account with bots.</Text></View>} />
       ) : tab === 'discover' ? (
-        <FlatList data={suggested} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} renderItem={({ item }) => <DiscoverRow friend={item} onAdd={sendRequest} />} ListEmptyComponent={<View style={styles.emptyState}><Text style={styles.emptyTitle}>No suggested anglers yet</Text><Text style={styles.empty}>Suggestions will appear when real CAST accounts connect with you.</Text></View>} />
+        <FlatList data={suggested} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} renderItem={({ item }) => <DiscoverRow friend={item} onAdd={(friend) => { void sendRequest(friend); }} />} ListEmptyComponent={<View style={styles.emptyState}><Text style={styles.emptyTitle}>{friendQuery.trim() ? 'No matching anglers' : 'Search the CAST community'}</Text><Text style={styles.empty}>{friendQuery.trim() ? 'Check the spelling of their username.' : 'Enter a real CAST username above to connect.'}</Text></View>} />
       ) : (
         <FlatList data={requests} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} renderItem={({ item }) => <RequestRow request={item} onAccept={() => acceptRequest(item.id)} onDecline={() => declineRequest(item.id)} />} ListEmptyComponent={<Text style={styles.empty}>No pending requests.</Text>} />
       )}

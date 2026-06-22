@@ -1,4 +1,4 @@
-import React, { useDeferredValue, useState, useMemo } from 'react';
+import React, { useDeferredValue, useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { FISHING_SPOTS } from '../../data/fishingSpots';
+import { FISHING_SPOTS, loadAllFishingSpots } from '../../data/fishingSpots';
 import { FishingSpotRecord } from '../../types/fishingSpot';
 import { colors, radius, spacing, elevation } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
@@ -31,12 +31,6 @@ const TYPE_FILTERS = ['All', 'Fishery', 'Lake', 'River', 'Sea', 'Reservoir', 'Oc
 const TAG_FILTERS = ['Carp', 'Predator', 'Beginner'];
 const DISPLAY_MODES = ['List', 'Hotspots'] as const;
 type DisplayMode = typeof DISPLAY_MODES[number];
-const SEARCH_ROWS = FISHING_SPOTS.map((spot) => ({
-  spot,
-  name: spot.name.toLocaleLowerCase(),
-  haystack: [spot.name, spot.country, spot.region, ...spot.species].join(' ').toLocaleLowerCase(),
-}));
-
 interface Coordinate { latitude: number; longitude: number }
 
 function distanceKm(a: Coordinate, b: Coordinate) {
@@ -61,10 +55,25 @@ export default function SpotsScreen() {
   const savedSpots = useMemo(() => new Set(savedSpotIds), [savedSpotIds]);
   const [nearCoordinate, setNearCoordinate] = useState<Coordinate | null>(null);
   const [locating, setLocating] = useState(false);
+  const [spots, setSpots] = useState<FishingSpotRecord[]>(() => [...FISHING_SPOTS]);
+  const [loadingSpots, setLoadingSpots] = useState(true);
+  const searchRows = useMemo(() => spots.map((spot) => ({
+    spot,
+    name: spot.name.toLocaleLowerCase(),
+    haystack: [spot.name, spot.country, spot.region, ...spot.species].join(' ').toLocaleLowerCase(),
+  })), [spots]);
+
+  useEffect(() => {
+    let active = true;
+    loadAllFishingSpots()
+      .then((loaded) => { if (active) setSpots([...loaded]); })
+      .finally(() => { if (active) setLoadingSpots(false); });
+    return () => { active = false; };
+  }, []);
 
   const filtered = useMemo(() => {
     const normalisedQuery = deferredSearchQuery.trim().toLocaleLowerCase();
-    return SEARCH_ROWS.filter(({ spot, haystack }) => {
+    return searchRows.filter(({ spot, haystack }) => {
       const matchType = selectedType === 'All' || spot.type === selectedType.toLowerCase();
       const matchSearch = !normalisedQuery || haystack.includes(normalisedQuery);
       const matchTag = !selectedTag ||
@@ -79,9 +88,9 @@ export default function SpotsScreen() {
       const bRank = b.name === normalisedQuery ? 0 : b.name.startsWith(normalisedQuery) ? 1 : 2;
       return aRank - bRank || a.name.localeCompare(b.name);
     }).map(({ spot }) => spot);
-  }, [selectedType, deferredSearchQuery, selectedTag, nearCoordinate]);
+  }, [searchRows, selectedType, deferredSearchQuery, selectedTag, nearCoordinate]);
 
-  const featuredSpot = FISHING_SPOTS.find((spot) => spot.id === 'curated-babbacombe-beach') ?? FISHING_SPOTS[0];
+  const featuredSpot = spots.find((spot) => spot.id === 'curated-babbacombe-beach') ?? spots[0];
 
   const handleNearMe = async () => {
     if (nearCoordinate) {
@@ -180,7 +189,7 @@ export default function SpotsScreen() {
       <View style={s.header}>
         <View>
           <Text style={s.headerTitle}>Fishing Spots</Text>
-          <Text style={s.headerSub}>{filtered.length} locations</Text>
+          <Text style={s.headerSub}>{loadingSpots ? 'Loading 10,000 locations…' : `${filtered.length} locations`}</Text>
         </View>
         <TouchableOpacity style={[s.nearBtn, nearCoordinate && s.nearBtnActive]} onPress={handleNearMe} disabled={locating} accessibilityRole="button" accessibilityLabel={nearCoordinate ? 'Stop sorting by distance' : 'Sort spots near me'}>
           <MaterialCommunityIcons name="crosshairs-gps" size={16} color={colors.primary} />

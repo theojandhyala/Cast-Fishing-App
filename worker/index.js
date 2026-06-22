@@ -31,10 +31,243 @@ function corsHeaders(origin) {
   const allow = isAllowedOrigin(origin) ? origin : ALLOWED_ORIGINS[0];
   return {
     'Access-Control-Allow-Origin': allow,
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
   };
+}
+
+const encoder = new TextEncoder();
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SESSION_DAYS = 30;
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+async function digest(value) {
+  const hash = await crypto.subtle.digest('SHA-256', encoder.encode(value));
+  return bytesToBase64(new Uint8Array(hash));
+}
+
+async function passwordHash(password, salt) {
+  let value = password;
+  for (let round = 0; round < 3; round += 1) {
+    const material = await crypto.subtle.importKey('raw', encoder.encode(value), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: encoder.encode(`${salt}:${round}`), iterations: 100_000, hash: 'SHA-256' }, material, 256);
+    value = bytesToBase64(new Uint8Array(bits));
+  }
+  return value;
+}
+
+function randomToken(size = 32) {
+  const bytes = new Uint8Array(size);
+  crypto.getRandomValues(bytes);
+  return bytesToBase64(bytes).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function safeUser(row) {
+  return {
+    id: row.id,
+    name: row.username,
+    email: row.email,
+    avatarColor: row.avatar_color,
+    favouriteSpecies: JSON.parse(row.favourite_species || '[]'),
+    regionId: row.region_id || '',
+    hasCompletedOnboarding: Boolean(row.onboarding_complete),
+    isPro: Boolean(row.is_pro),
+    xp: Number(row.xp || 0),
+    level: Number(row.level || 1),
+    streak: Number(row.streak || 0),
+    catchCount: Number(row.catch_count || 0),
+    topSpecies: row.top_species || 'Not set',
+    joinedAt: row.created_at,
+  };
+}
+
+async function createSession(db, userId) {
+  const token = randomToken();
+  const tokenHash = await digest(token);
+  const now = new Date();
+  const expires = new Date(now.getTime() + SESSION_DAYS * 86_400_000).toISOString();
+  await db.prepare('INSERT INTO sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)')
+    .bind(tokenHash, userId, expires, now.toISOString()).run();
+  return token;
+}
+
+async function authenticatedUser(request, db) {
+  const auth = request.headers.get('Authorization') || '';
+  if (!auth.startsWith('Bearer ')) return null;
+  const tokenHash = await digest(auth.slice(7));
+  return db.prepare(`SELECT u.* FROM sessions s JOIN users u ON u.id = s.user_id
+    WHERE s.token_hash = ? AND s.expires_at > ?`).bind(tokenHash, new Date().toISOString()).first();
+}
+
+function friendShape(row) {
+  return {
+    id: row.id,
+    name: row.username,
+    handle: `@${row.username}`,
+    level: Number(row.level || 1),
+    catchCount: Number(row.catch_count || 0),
+    topSpecies: row.top_species || 'Not set',
+    streak: Number(row.streak || 0),
+    avatarColor: row.avatar_color || '#15565D',
+    isOnline: false,
+    lastActive: 'CAST angler',
+    mutualFriends: 0,
+  };
+}
+
+async function handleApi(request, env, url, origin, payload) {
+  if (!env.DB) return json({ error: 'Account service is temporarily unavailable.' }, 503, origin);
+  const db = env.DB;
+
+  if (url.pathname === '/auth/register' && request.method === 'POST') {
+    const email = String(payload?.email || '').trim().toLowerCase();
+    const username = String(payload?.name || '').trim();
+    const password = String(payload?.password || '');
+    if (!EMAIL_PATTERN.test(email)) return json({ error: 'Enter a valid email address.' }, 400, origin);
+    if (username.length < 2 || username.length > 24) return json({ error: 'Username must be 2–24 characters.' }, 400, origin);
+    if (password.length < 8) return json({ error: 'Password must be at least 8 characters.' }, 400, origin);
+    const id = crypto.randomUUID();
+    const salt = randomToken(18);
+    const hash = await passwordHash(password, salt);
+    const now = new Date().toISOString();
+    try {
+      await db.prepare(`INSERT INTO users
+        (id,email,username,password_hash,password_salt,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,?)`).bind(id, email, username, hash, salt, now, now).run();
+    } catch (error) {
+      const message = String(error?.message || '');
+      if (message.includes('users.email')) return json({ error: 'An account already uses that email.' }, 409, origin);
+      if (message.includes('users.username')) return json({ error: 'That username is already taken.' }, 409, origin);
+      throw error;
+    }
+    const user = await db.prepare('SELECT * FROM users WHERE id = ?').bind(id).first();
+    const token = await createSession(db, id);
+    return json({ token, user: safeUser(user) }, 201, origin);
+  }
+
+  if (url.pathname === '/auth/login' && request.method === 'POST') {
+    const email = String(payload?.email || '').trim().toLowerCase();
+    const password = String(payload?.password || '');
+    const user = await db.prepare('SELECT * FROM users WHERE email = ?').bind(email).first();
+    if (!user || await passwordHash(password, user.password_salt) !== user.password_hash) {
+      return json({ error: 'Email or password is incorrect.' }, 401, origin);
+    }
+    const token = await createSession(db, user.id);
+    return json({ token, user: safeUser(user) }, 200, origin);
+  }
+
+  const user = await authenticatedUser(request, db);
+  if (!user) return json({ error: 'Please sign in again.' }, 401, origin);
+
+  if (url.pathname === '/auth/me' && request.method === 'GET') return json({ user: safeUser(user) }, 200, origin);
+
+  if (url.pathname === '/auth/logout' && request.method === 'POST') {
+    const tokenHash = await digest((request.headers.get('Authorization') || '').slice(7));
+    await db.prepare('DELETE FROM sessions WHERE token_hash = ?').bind(tokenHash).run();
+    return json({ ok: true }, 200, origin);
+  }
+
+  if (url.pathname === '/profile' && request.method === 'PATCH') {
+    const name = String(payload?.name || user.username).trim();
+    const species = Array.isArray(payload?.favouriteSpecies) ? payload.favouriteSpecies.map(String).slice(0, 30) : JSON.parse(user.favourite_species || '[]');
+    const regionId = String(payload?.regionId ?? user.region_id ?? '').slice(0, 64);
+    const onboarding = payload?.hasCompletedOnboarding === undefined ? user.onboarding_complete : payload.hasCompletedOnboarding ? 1 : 0;
+    if (name.length < 2 || name.length > 24) return json({ error: 'Username must be 2–24 characters.' }, 400, origin);
+    try {
+      await db.prepare(`UPDATE users SET username=?, favourite_species=?, region_id=?, onboarding_complete=?, updated_at=? WHERE id=?`)
+        .bind(name, JSON.stringify(species), regionId, onboarding, new Date().toISOString(), user.id).run();
+    } catch (error) {
+      if (String(error?.message || '').includes('users.username')) return json({ error: 'That username is already taken.' }, 409, origin);
+      throw error;
+    }
+    const updated = await db.prepare('SELECT * FROM users WHERE id = ?').bind(user.id).first();
+    return json({ user: safeUser(updated) }, 200, origin);
+  }
+
+  if (url.pathname === '/friends' && request.method === 'GET') {
+    const result = await db.prepare(`SELECT u.* FROM friendships f JOIN users u
+      ON u.id = CASE WHEN f.user_low = ? THEN f.user_high ELSE f.user_low END
+      WHERE f.user_low = ? OR f.user_high = ? ORDER BY u.username COLLATE NOCASE`).bind(user.id, user.id, user.id).all();
+    return json({ friends: result.results.map(friendShape) }, 200, origin);
+  }
+
+  if (url.pathname === '/friends/search' && request.method === 'GET') {
+    const query = String(url.searchParams.get('q') || '').trim();
+    if (query.length < 2) return json({ users: [] }, 200, origin);
+    const result = await db.prepare(`SELECT u.* FROM users u WHERE u.id != ? AND u.username LIKE ? ESCAPE '\\'
+      AND NOT EXISTS (SELECT 1 FROM friendships f WHERE (f.user_low = ? AND f.user_high = u.id) OR (f.user_high = ? AND f.user_low = u.id))
+      ORDER BY u.username COLLATE NOCASE LIMIT 20`).bind(user.id, `%${query.replace(/[\\%_]/g, '\\$&')}%`, user.id, user.id).all();
+    return json({ users: result.results.map(friendShape) }, 200, origin);
+  }
+
+  if (url.pathname === '/friends/requests' && request.method === 'GET') {
+    const result = await db.prepare(`SELECT r.*, u.username, u.level, u.catch_count, u.avatar_color FROM friend_requests r
+      JOIN users u ON u.id = CASE WHEN r.sender_id = ? THEN r.receiver_id ELSE r.sender_id END
+      WHERE (r.sender_id = ? OR r.receiver_id = ?) AND r.status = 'pending' ORDER BY r.created_at DESC`).bind(user.id, user.id, user.id).all();
+    const requests = result.results.map((row) => ({
+      id: row.id, fromId: row.sender_id === user.id ? row.receiver_id : row.sender_id,
+      fromName: row.username, fromLevel: Number(row.level || 1), fromCatchCount: Number(row.catch_count || 0),
+      avatarColor: row.avatar_color || '#15565D', sentAt: row.created_at,
+      type: row.sender_id === user.id ? 'outgoing' : 'incoming',
+    }));
+    return json({ requests }, 200, origin);
+  }
+
+  if (url.pathname === '/friends/request' && request.method === 'POST') {
+    const username = String(payload?.username || '').trim();
+    const target = await db.prepare('SELECT id FROM users WHERE username = ? COLLATE NOCASE').bind(username).first();
+    if (!target) return json({ error: 'No CAST angler has that username.' }, 404, origin);
+    if (target.id === user.id) return json({ error: 'That is your own account.' }, 400, origin);
+    const low = user.id < target.id ? user.id : target.id;
+    const high = user.id < target.id ? target.id : user.id;
+    const existingFriend = await db.prepare('SELECT 1 AS yes FROM friendships WHERE user_low=? AND user_high=?').bind(low, high).first();
+    if (existingFriend) return json({ error: 'You are already friends.' }, 409, origin);
+    const reverse = await db.prepare(`SELECT id FROM friend_requests WHERE sender_id=? AND receiver_id=? AND status='pending'`).bind(target.id, user.id).first();
+    if (reverse) return json({ error: 'They already sent you a request. Open Requests to accept it.' }, 409, origin);
+    try {
+      const now = new Date().toISOString();
+      await db.prepare(`INSERT INTO friend_requests (id,sender_id,receiver_id,status,created_at,updated_at) VALUES (?,?,?,?,?,?)`)
+        .bind(crypto.randomUUID(), user.id, target.id, 'pending', now, now).run();
+    } catch (error) {
+      if (String(error?.message || '').includes('UNIQUE')) return json({ error: 'Friend request already sent.' }, 409, origin);
+      throw error;
+    }
+    return json({ ok: true }, 201, origin);
+  }
+
+  const requestMatch = url.pathname.match(/^\/friends\/requests\/([^/]+)\/(accept|decline)$/);
+  if (requestMatch && request.method === 'POST') {
+    const row = await db.prepare(`SELECT * FROM friend_requests WHERE id=? AND receiver_id=? AND status='pending'`).bind(requestMatch[1], user.id).first();
+    if (!row) return json({ error: 'Friend request not found.' }, 404, origin);
+    const now = new Date().toISOString();
+    if (requestMatch[2] === 'accept') {
+      const low = row.sender_id < row.receiver_id ? row.sender_id : row.receiver_id;
+      const high = row.sender_id < row.receiver_id ? row.receiver_id : row.sender_id;
+      await db.batch([
+        db.prepare(`UPDATE friend_requests SET status='accepted', updated_at=? WHERE id=?`).bind(now, row.id),
+        db.prepare('INSERT OR IGNORE INTO friendships (user_low,user_high,created_at) VALUES (?,?,?)').bind(low, high, now),
+      ]);
+    } else {
+      await db.prepare(`UPDATE friend_requests SET status='declined', updated_at=? WHERE id=?`).bind(now, row.id).run();
+    }
+    return json({ ok: true }, 200, origin);
+  }
+
+  const friendMatch = url.pathname.match(/^\/friends\/([^/]+)$/);
+  if (friendMatch && request.method === 'DELETE') {
+    const low = user.id < friendMatch[1] ? user.id : friendMatch[1];
+    const high = user.id < friendMatch[1] ? friendMatch[1] : user.id;
+    await db.prepare('DELETE FROM friendships WHERE user_low=? AND user_high=?').bind(low, high).run();
+    return json({ ok: true }, 200, origin);
+  }
+
+  return json({ error: 'Unknown API endpoint' }, 404, origin);
 }
 
 function json(body, status, origin) {
@@ -90,18 +323,21 @@ export default {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders(origin) });
     }
-    if (request.method !== 'POST') {
-      return json({ error: 'Method not allowed' }, 405, origin);
-    }
     const url = new URL(request.url);
     let payloadIn;
-    try {
-      payloadIn = await request.json();
-    } catch {
-      return json({ error: 'Invalid JSON' }, 400, origin);
+    if (request.method === 'POST' || request.method === 'PATCH') {
+      try {
+        payloadIn = await request.json();
+      } catch {
+        return json({ error: 'Invalid JSON' }, 400, origin);
+      }
     }
 
     try {
+      if (url.pathname.startsWith('/auth/') || url.pathname === '/profile' || url.pathname.startsWith('/friends')) {
+        return await handleApi(request, env, url, origin, payloadIn);
+      }
+      if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405, origin);
       if (url.pathname.endsWith('/identify')) {
         const image = payloadIn.image;
         if (!image) return json({ error: 'Missing image' }, 400, origin);

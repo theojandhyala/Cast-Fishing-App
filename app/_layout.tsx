@@ -4,7 +4,10 @@ import { Stack } from 'expo-router';
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import { useFonts } from 'expo-font';
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
 import { useAuthStore } from '../store/authStore';
 import { useCatchStore } from '../store/catchStore';
 import { useUserStore } from '../store/userStore';
@@ -59,13 +62,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
-    // Inject MaterialCommunityIcons font-face directly into DOM for web
-    const existing = document.getElementById('mci-font');
+    const existing = document.getElementById('cast-global-styles');
     if (existing) return;
     const style = document.createElement('style');
-    style.id = 'mci-font';
-    style.textContent = `@font-face{font-family:'material-community';src:url('/assets/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.b62641afc9ab487008e996a5c5865e56.ttf') format('truetype');font-weight:normal;font-style:normal;}
-[dir='auto'],input,textarea,button{font-family:'Inter_400Regular',sans-serif;font-style:normal;}`;
+    style.id = 'cast-global-styles';
+    style.textContent = `[dir='auto'],input,textarea,button{font-family:'Inter_400Regular',sans-serif;font-style:normal;}`;
     document.head.appendChild(style);
   }, []);
 
@@ -91,7 +92,8 @@ export default function RootLayout() {
     if (!fontsReady) return;
     async function init() {
       try {
-        await Promise.all([loadUser(), loadCatches(), loadUserPrefs()]);
+        await loadUser();
+        await Promise.all([loadCatches(), loadUserPrefs()]);
       } catch {}
       try { await SplashScreen.hideAsync(); } catch {}
     }

@@ -1,31 +1,6 @@
-import { WORLD_SPOTS, WorldSpot } from './worldSpots';
 import { CURATED_FISHING_SPOTS } from './fishingSpotsCurated';
-import { OSM_FISHING_SPOTS, OsmFishingSpotTuple } from './osmFishingSpots.generated';
+import type { OsmFishingSpotTuple } from './osmFishingSpots.generated';
 import { FishingSpotRecord, SpotDatasetMetadata } from '../types/fishingSpot';
-
-function inferCoverage(spot: WorldSpot): FishingSpotRecord['coverageRegion'] {
-  if (spot.country === 'UK' || spot.country === 'Ireland') return 'uk_ireland';
-  if (spot.country === 'Japan') return 'japan';
-  if (spot.country === 'India') return 'india';
-  if (spot.country === 'South Africa') return 'south_africa';
-  if (spot.country === 'Brazil') return 'brazil_amazon';
-  if (spot.country === 'Australia' || spot.country === 'New Zealand') return 'australia_nz';
-  if (spot.country === 'USA' || spot.country === 'Canada' || spot.country === 'Mexico') return 'north_america';
-  if (spot.continent === 'Europe') return 'europe';
-  return 'oceans';
-}
-
-export function adaptLegacyWorldSpot(spot: WorldSpot): FishingSpotRecord {
-  return {
-    ...spot,
-    coverageRegion: inferCoverage(spot),
-    coordinatePrecision: 'regional_centroid',
-    access: { summary: 'Legacy demo access claim; verify with the relevant authority.', permit: 'unknown' },
-    verification: 'unverified_demo',
-    verificationNotes: 'Migrated from the original demo dataset. Name, coordinates, species, ratings, access and tips have not completed source review.',
-    sources: [], dataset: 'legacy_demo', updatedAt: '2026-06-22',
-  };
-}
 
 function coverageFromCoordinate(latitude: number, longitude: number): FishingSpotRecord['coverageRegion'] {
   if (latitude >= 49 && latitude <= 61 && longitude >= -11 && longitude <= 2) return 'uk_ireland';
@@ -64,9 +39,24 @@ function adaptOsmFishingSpot(tuple: OsmFishingSpotTuple): FishingSpotRecord {
 
 export const FISHING_SPOTS: FishingSpotRecord[] = [
   ...CURATED_FISHING_SPOTS,
-  ...OSM_FISHING_SPOTS.map(adaptOsmFishingSpot),
-  ...WORLD_SPOTS.map(adaptLegacyWorldSpot),
 ];
+
+let allSpotsPromise: Promise<FishingSpotRecord[]> | null = null;
+
+export function loadAllFishingSpots(): Promise<FishingSpotRecord[]> {
+  if (FISHING_SPOTS.length > CURATED_FISHING_SPOTS.length) return Promise.resolve(FISHING_SPOTS);
+  if (!allSpotsPromise) {
+    allSpotsPromise = import('./osmFishingSpots.generated').then(({ OSM_FISHING_SPOTS }) => {
+      FISHING_SPOTS.push(...OSM_FISHING_SPOTS.map(adaptOsmFishingSpot));
+      refreshMetadata();
+      return FISHING_SPOTS;
+    }).catch((error) => {
+      allSpotsPromise = null;
+      throw error;
+    });
+  }
+  return allSpotsPromise;
+}
 
 const COVERAGE_LABELS: Record<FishingSpotRecord['coverageRegion'], string> = {
   uk_ireland: 'UK & Ireland', europe: 'Europe', north_america: 'North America', australia_nz: 'Australia & New Zealand', south_africa: 'South Africa', japan: 'Japan', brazil_amazon: 'Brazil & Amazon', india: 'India', oceans: 'Oceans',
@@ -78,16 +68,26 @@ const REGION_TARGETS: Record<FishingSpotRecord['coverageRegion'], number> = {
 
 export const FISHING_SPOTS_METADATA: SpotDatasetMetadata = {
   version: '1.0.0-osm', releasedAt: '2026-06-22', targetCount: 10000,
-  totalAvailable: FISHING_SPOTS.length,
+  totalAvailable: 10000 + CURATED_FISHING_SPOTS.length,
   curatedCount: CURATED_FISHING_SPOTS.length,
   verifiedCount: FISHING_SPOTS.filter((s) => s.verification === 'verified').length,
   partiallyVerifiedCount: FISHING_SPOTS.filter((s) => s.verification === 'partially_verified').length,
-  unverifiedDemoCount: FISHING_SPOTS.filter((s) => s.verification === 'unverified_demo').length,
-  disclaimer: 'Includes 10,000 named OpenStreetMap features explicitly tagged for fishing, plus curated and legacy records. An OSM fishing tag is not proof of current public access: always confirm licences, fees, seasons, closures and safe access locally.',
+  unverifiedDemoCount: 0,
+  disclaimer: 'Includes 10,000 named OpenStreetMap features explicitly tagged for fishing, plus curated records. An OSM fishing tag is not proof of current public access: always confirm licences, fees, seasons, closures and safe access locally.',
   coverage: (Object.keys(COVERAGE_LABELS) as FishingSpotRecord['coverageRegion'][]).map((id) => {
     const rows = FISHING_SPOTS.filter((s) => s.coverageRegion === id);
     return { id, label: COVERAGE_LABELS[id], target: REGION_TARGETS[id], curated: rows.filter((s) => s.dataset === 'curated_seed').length, verified: rows.filter((s) => s.verification === 'verified').length, partial: rows.filter((s) => s.verification === 'partially_verified').length, demo: rows.filter((s) => s.verification === 'unverified_demo').length };
   }),
 };
+
+function refreshMetadata() {
+  FISHING_SPOTS_METADATA.totalAvailable = FISHING_SPOTS.length;
+  FISHING_SPOTS_METADATA.verifiedCount = FISHING_SPOTS.filter((spot) => spot.verification === 'verified').length;
+  FISHING_SPOTS_METADATA.partiallyVerifiedCount = FISHING_SPOTS.filter((spot) => spot.verification === 'partially_verified').length;
+  FISHING_SPOTS_METADATA.coverage = (Object.keys(COVERAGE_LABELS) as FishingSpotRecord['coverageRegion'][]).map((id) => {
+    const rows = FISHING_SPOTS.filter((spot) => spot.coverageRegion === id);
+    return { id, label: COVERAGE_LABELS[id], target: REGION_TARGETS[id], curated: rows.filter((spot) => spot.dataset === 'curated_seed').length, verified: rows.filter((spot) => spot.verification === 'verified').length, partial: rows.filter((spot) => spot.verification === 'partially_verified').length, demo: 0 };
+  });
+}
 
 export { CURATED_FISHING_SPOTS };

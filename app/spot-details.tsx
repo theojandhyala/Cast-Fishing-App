@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getFishingSpotById } from '../utils/fishingSpotLookup';
+import { loadAllFishingSpots } from '../data/fishingSpots';
+import { FishingSpotRecord } from '../types/fishingSpot';
 import { colors, radius, spacing, elevation } from '../constants/theme';
 import { useSessionStore } from '../store/sessionStore';
 import { useLocationStore } from '../store/locationStore';
@@ -36,7 +38,14 @@ const FISH_ICONS: Record<string, string> = {
 export default function SpotDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const spot = getFishingSpotById(id);
+  const [spot, setSpot] = useState<FishingSpotRecord | undefined>(() => getFishingSpotById(id));
+  const [spotLoading, setSpotLoading] = useState(!spot);
+  useEffect(() => {
+    if (spot) return;
+    let active = true;
+    loadAllFishingSpots().then(() => { if (active) setSpot(getFishingSpotById(id)); }).finally(() => { if (active) setSpotLoading(false); });
+    return () => { active = false; };
+  }, [id, spot]);
   const { activeSession, startSession } = useSessionStore();
   const { setLocation } = useLocationStore();
   const { isSpotSaved, toggleSavedSpot } = useSpotStore();
@@ -49,7 +58,7 @@ export default function SpotDetailsScreen() {
     return (
       <SafeAreaView style={s.safe} edges={['top']}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ color: colors.textPrimary }}>Spot not found</Text>
+          <Text style={{ color: colors.textPrimary }}>{spotLoading ? 'Loading spot…' : 'Spot not found'}</Text>
           <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 12 }}>
             <Text style={{ color: colors.primary }}>Go back</Text>
           </TouchableOpacity>
@@ -104,7 +113,7 @@ export default function SpotDetailsScreen() {
             </Text>
             <View style={s.ratingChip}>
               <MaterialCommunityIcons name={spot.verification === 'verified' ? 'check-decagram' : 'alert-circle-outline'} size={12} color={spot.verification === 'verified' ? colors.primary : colors.secondary} />
-              <Text style={s.ratingText}>{spot.verification === 'verified' ? 'Verified source' : spot.verification === 'partially_verified' ? 'Partially verified' : 'Unverified demo'}</Text>
+              <Text style={s.ratingText}>{spot.verification === 'verified' ? 'Verified source' : spot.verification === 'partially_verified' ? 'Partially verified' : 'Needs verification'}</Text>
             </View>
             {saved && (
               <View style={s.savedChip}>

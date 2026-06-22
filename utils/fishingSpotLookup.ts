@@ -13,10 +13,8 @@ export interface SpotQuery {
 }
 
 const normalise = (value: string) => value.trim().toLocaleLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
-const SPOTS_BY_ID = new Map(FISHING_SPOTS.map((spot) => [spot.id, spot]));
-
 export function getFishingSpotById(id: string): FishingSpotRecord | undefined {
-  return SPOTS_BY_ID.get(id);
+  return FISHING_SPOTS.find((spot) => spot.id === id);
 }
 
 export function queryFishingSpots(query: SpotQuery = {}): FishingSpotRecord[] {

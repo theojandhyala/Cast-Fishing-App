@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Trip, SAMPLE_TRIPS } from '../data/tripData';
+import { Trip } from '../data/tripData';
 
 interface TripState {
   trips: Trip[];
@@ -15,12 +15,17 @@ interface TripState {
 const generateId = () => 'trip_' + Math.random().toString(36).substr(2, 9);
 
 export const useTripStore = create<TripState>((set, get) => ({
-  trips: SAMPLE_TRIPS,
+  trips: [],
 
   loadTrips: async () => {
     try {
       const stored = await AsyncStorage.getItem('cast_trips');
-      if (stored) set({ trips: JSON.parse(stored) });
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const trips = Array.isArray(parsed) ? parsed.filter((trip) => !String(trip.id).match(/^trip[1-4]$/)) : [];
+        set({ trips });
+        await AsyncStorage.setItem('cast_trips', JSON.stringify(trips));
+      } else set({ trips: [] });
     } catch {}
   },
 

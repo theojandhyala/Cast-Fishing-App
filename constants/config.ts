@@ -2,6 +2,7 @@ export const CONFIG = {
   // Secure AI proxy (Cloudflare Worker). The Anthropic key lives on the
   // Worker as a secret and is never shipped to the client.
   AI_WORKER_URL: process.env.EXPO_PUBLIC_AI_WORKER_URL || 'https://cast-ai.theojandhyala.workers.dev',
+  API_URL: process.env.EXPO_PUBLIC_CAST_API_URL || 'https://cast-ai.theojandhyala.workers.dev',
 
   // Direct keys (optional, native/dev only — do NOT use on the public web build).
   ANTHROPIC_API_KEY: process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY || '',

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, FlatList, Modal, TextInput,
   TouchableOpacity,
@@ -12,7 +12,7 @@ import { useCatchStore } from '../../store/catchStore';
 import { useWeather } from '../../hooks/useWeather';
 import { useLocation } from '../../hooks/useLocation';
 import { colors, spacing, radius, elevation } from '../../constants/theme';
-import { FISHING_SPOTS } from '../../data/fishingSpots';
+import { FISHING_SPOTS, loadAllFishingSpots } from '../../data/fishingSpots';
 import { FishingSpotRecord } from '../../types/fishingSpot';
 import { haversineKm, formatDistance } from '../../utils/distance';
 import { SpotPhoto } from '../../components/map/SpotPhoto';
@@ -73,16 +73,28 @@ export default function HomeScreen() {
   const [selectedSpot, setSelectedSpot] = useState<FishingSpotRecord | null>(FISHING_SPOTS[0] ?? null);
   const [spotPickerOpen, setSpotPickerOpen] = useState(false);
   const [spotSearch, setSpotSearch] = useState('');
+  const [spotCatalog, setSpotCatalog] = useState<FishingSpotRecord[]>(() => [...FISHING_SPOTS]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+
+  useEffect(() => {
+    if (!spotPickerOpen || spotCatalog.length >= 10_000) return;
+    let active = true;
+    setCatalogLoading(true);
+    loadAllFishingSpots()
+      .then((spots) => { if (active) setSpotCatalog([...spots]); })
+      .finally(() => { if (active) setCatalogLoading(false); });
+    return () => { active = false; };
+  }, [spotCatalog.length, spotPickerOpen]);
 
   const spotResults = useMemo(() => {
     const query = spotSearch.trim().toLowerCase();
-    if (!query) return FISHING_SPOTS.slice(0, 80);
-    return FISHING_SPOTS.filter((spot) =>
+    if (!query) return spotCatalog.slice(0, 80);
+    return spotCatalog.filter((spot) =>
       [spot.name, spot.country, spot.region, ...spot.species]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query)),
     ).slice(0, 80);
-  }, [spotSearch]);
+  }, [spotCatalog, spotSearch]);
 
   const chooseSpot = (spot: FishingSpotRecord) => {
     setSelectedSpot(spot);
@@ -101,12 +113,12 @@ export default function HomeScreen() {
   const tip = getTipOfDay();
 
   const spots: SpotWithDist[] = useMemo(() => {
-    if (!gpsLocation || !permissionGranted) return FISHING_SPOTS.slice(0, 6);
-    return FISHING_SPOTS
+    if (!gpsLocation || !permissionGranted) return spotCatalog.slice(0, 6);
+    return spotCatalog
       .map(s => ({ ...s, _distKm: haversineKm(gpsLocation.latitude, gpsLocation.longitude, s.latitude, s.longitude) }))
       .sort((a, b) => a._distKm! - b._distKm!)
       .slice(0, 6);
-  }, [gpsLocation, permissionGranted]);
+  }, [gpsLocation, permissionGranted, spotCatalog]);
 
   const nearMe = !!gpsLocation && permissionGranted;
 
@@ -400,6 +412,7 @@ export default function HomeScreen() {
               />
               {spotSearch ? <TouchableOpacity onPress={() => setSpotSearch('')}><MaterialCommunityIcons name="close-circle" size={18} color={colors.textTertiary} /></TouchableOpacity> : null}
             </View>
+            {catalogLoading ? <Text style={s.catalogLoading}>Loading the worldwide spot index…</Text> : null}
             <FlatList
               data={spotResults}
               keyExtractor={(item) => item.id}
@@ -677,4 +690,5 @@ const s = StyleSheet.create({
   resultName: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
   resultMeta: { color: colors.textSecondary, fontSize: 11, marginTop: 3 },
   noResults: { color: colors.textSecondary, textAlign: 'center', paddingTop: spacing.xxl },
+  catalogLoading: { color: colors.textSecondary, fontSize: 11, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm },
 });

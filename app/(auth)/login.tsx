@@ -33,9 +33,9 @@ export default function LoginScreen() {
     const success = await login(email.trim(), password);
     setLoading(false);
     if (success) {
-      router.replace('/(tabs)');
+      router.replace(useAuthStore.getState().user?.hasCompletedOnboarding === false ? '/(auth)/onboarding' : '/(tabs)');
     } else {
-      Alert.alert('Error', 'Login failed. Please try again.');
+      Alert.alert('Couldn’t sign in', useAuthStore.getState().authError || 'Check your details and try again.');
     }
   };
 
@@ -68,6 +68,7 @@ export default function LoginScreen() {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email</Text>
             <TextInput
+              accessibilityLabel="Email address"
               style={styles.input}
               value={email}
               onChangeText={setEmail}
@@ -82,6 +83,7 @@ export default function LoginScreen() {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Password</Text>
             <TextInput
+              accessibilityLabel="Password"
               style={styles.input}
               value={password}
               onChangeText={setPassword}
@@ -91,10 +93,6 @@ export default function LoginScreen() {
               autoComplete="password"
             />
           </View>
-
-          <TouchableOpacity style={styles.forgot}>
-            <Text style={styles.forgotText}>Forgot password?</Text>
-          </TouchableOpacity>
 
           <CastButton
             title="Sign In"
@@ -109,7 +107,7 @@ export default function LoginScreen() {
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+          <TouchableOpacity accessibilityRole="link" accessibilityLabel="Create a CAST account" onPress={() => router.push('/(auth)/register')}>
             <Text style={styles.footerLink}>Sign up free</Text>
           </TouchableOpacity>
         </View>

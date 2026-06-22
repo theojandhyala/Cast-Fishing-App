@@ -15,7 +15,7 @@ import {
 import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SAMPLE_JOURNAL_ENTRIES, JournalEntry } from '../data/journalData';
+import { JournalEntry } from '../data/journalData';
 import { colors, radius, spacing } from '../constants/theme';
 
 const MOODS = ['😄', '🙂', '😌', '😔', '🤩'];
@@ -52,13 +52,15 @@ export default function FishingJournalScreen() {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setEntries(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        const entries = Array.isArray(parsed) ? parsed.filter((entry) => !['1', '2', '3', '4', '5'].includes(String(entry.id))) : [];
+        setEntries(entries);
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
       } else {
-        setEntries(SAMPLE_JOURNAL_ENTRIES);
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(SAMPLE_JOURNAL_ENTRIES));
+        setEntries([]);
       }
     } catch {
-      setEntries(SAMPLE_JOURNAL_ENTRIES);
+      setEntries([]);
     }
   };
 
@@ -244,10 +246,6 @@ export default function FishingJournalScreen() {
                 value={newSpecies}
                 onChangeText={setNewSpecies}
               />
-              <View style={styles.photoPlaceholder}>
-                <MaterialCommunityIcons name="image-plus" size={28} color={colors.textSecondary} />
-                <Text style={styles.photoPlaceholderText}>Photo attachment (coming soon)</Text>
-              </View>
               <TouchableOpacity style={styles.saveBtn} onPress={saveEntry}>
                 <Text style={styles.saveBtnText}>Save Entry</Text>
               </TouchableOpacity>
@@ -337,8 +335,6 @@ const styles = StyleSheet.create({
   moodBtn: { width: 50, height: 50, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   moodBtnActive: { backgroundColor: 'rgba(0,212,170,0.15)', borderColor: colors.primary },
   moodEmoji: { fontSize: 28 },
-  photoPlaceholder: { alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, borderStyle: 'dashed', height: 80, marginTop: spacing.md, gap: 6 },
-  photoPlaceholderText: { fontSize: 13, color: colors.textSecondary },
   saveBtn: { backgroundColor: colors.success, borderRadius: radius.lg, paddingVertical: 14, alignItems: 'center', marginTop: spacing.lg },
   saveBtnText: { fontSize: 16, fontWeight: '800', color: '#fff' },
   viewMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg, flexWrap: 'wrap' },
