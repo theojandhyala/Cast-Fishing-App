@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useCatchStore } from '../store/catchStore';
 import { useLocationStore } from '../store/locationStore';
@@ -45,7 +46,12 @@ function ConditionPill({ label, value, icon }: { label: string; value: string; i
 }
 
 export default function AddCatchScreen() {
-  const params = useLocalSearchParams<{ species?: string; weight?: string; length?: string }>();
+  const params = useLocalSearchParams<{
+    species?: string;
+    weight?: string;
+    length?: string;
+    scanned?: string;
+  }>();
   const router = useRouter();
   const { addCatch } = useCatchStore();
   const { location } = useLocationStore();
@@ -73,6 +79,18 @@ export default function AddCatchScreen() {
   const [speciesPicker, setSpeciesPicker] = useState(false);
   const [baitPicker, setBaitPicker] = useState(false);
   const [baitSearch, setBaitSearch] = useState('');
+
+  useEffect(() => {
+    if (params.scanned !== '1') return;
+    let active = true;
+    AsyncStorage.getItem('@cast_pending_scan_photo')
+      .then((pendingPhoto) => {
+        if (active && pendingPhoto) setPhotoUri(pendingPhoto);
+        return AsyncStorage.removeItem('@cast_pending_scan_photo');
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [params.scanned]);
 
   const spotName = location?.name || 'Current Location';
   const now = new Date();
@@ -151,6 +169,23 @@ export default function AddCatchScreen() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+
+          <TouchableOpacity
+            style={s.scanCatchCta}
+            onPress={() => router.push({ pathname: '/identifier', params: { mode: 'catch' } } as any)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Scan fish to autofill catch details"
+          >
+            <View style={s.scanCatchIcon}>
+              <MaterialCommunityIcons name="line-scan" size={24} color={colors.background} />
+            </View>
+            <View style={s.scanCatchCopy}>
+              <Text style={s.scanCatchTitle}>Scan to autofill</Text>
+              <Text style={s.scanCatchSub}>Species, estimated size, weight and photo</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={22} color={colors.primary} />
+          </TouchableOpacity>
 
           {/* Photo upload */}
           <View style={s.photoWrap}>
@@ -409,6 +444,21 @@ const s = StyleSheet.create({
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, fontFamily: fonts.bodyBold },
+
+  scanCatchCta: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    marginHorizontal: spacing.lg, marginTop: spacing.lg,
+    padding: spacing.md, borderRadius: radius.md,
+    backgroundColor: 'rgba(0,212,170,0.08)',
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.35)',
+  },
+  scanCatchIcon: {
+    width: 42, height: 42, borderRadius: radius.md,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary,
+  },
+  scanCatchCopy: { flex: 1 },
+  scanCatchTitle: { fontSize: 15, color: colors.textPrimary, fontFamily: fonts.bodyBold },
+  scanCatchSub: { marginTop: 2, fontSize: 12, color: colors.textSecondary, fontFamily: fonts.body },
 
   photoWrap: { margin: spacing.lg, marginBottom: spacing.md },
   photoBox: {
