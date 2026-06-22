@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,11 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Linking,
+  AppState,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon as MaterialCommunityIcons } from '../ui/Icon';
 import { CastButton } from '../ui/CastButton';
 import { colors, radius, spacing } from '../../constants/theme';
+import { useAuthStore } from '../../store/authStore';
+import { CONFIG } from '../../constants/config';
 
 const proFeatures = [
   { icon: 'camera', title: 'Unlimited Fish ID', subtitle: 'Identify any fish with AI' },
@@ -41,16 +45,87 @@ interface ProPaywallProps {
 export function ProPaywall({ onClose }: ProPaywallProps) {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('annual');
   const [loading, setLoading] = useState(false);
+  const user = useAuthStore((s) => s.user);
+  const wentToBackgroundRef = useRef(false);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        wentToBackgroundRef.current = true;
+      } else if (nextState === 'active' && wentToBackgroundRef.current) {
+        wentToBackgroundRef.current = false;
+        const email = user?.email ?? '';
+        if (!email || !CONFIG.AI_WORKER_URL) return;
+        try {
+          const res = await fetch(`${CONFIG.AI_WORKER_URL}/verify-subscription`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+          });
+          const data = await res.json();
+          if (data.active) {
+            useAuthStore.getState().updateUser({ isPro: true });
+            Alert.alert('Pro Activated!', 'Welcome to CAST Pro! Enjoy all premium features.', [
+              { text: "Let's Go!", onPress: onClose },
+            ]);
+          }
+        } catch {
+          // silently ignore
+        }
+      }
+    });
+    return () => subscription.remove();
+  }, [user, onClose]);
 
   const handleSubscribe = async () => {
+    const email = user?.email ?? '';
+    if (!CONFIG.AI_WORKER_URL) {
+      Alert.alert('Unable to start payment. Please try again.');
+      return;
+    }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setLoading(false);
-    Alert.alert(
-      'Pro Activated!',
-      'Welcome to CAST Pro! Enjoy all premium features.',
-      [{ text: 'Let\'s Go!', onPress: onClose }]
-    );
+    try {
+      const res = await fetch(`${CONFIG.AI_WORKER_URL}/create-checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, plan: billing }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        await Linking.openURL(data.url);
+      } else {
+        Alert.alert('Unable to start payment. Please try again.');
+      }
+    } catch {
+      Alert.alert('Unable to start payment. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    const email = user?.email ?? '';
+    if (!CONFIG.AI_WORKER_URL || !email) {
+      Alert.alert('No active subscription found.');
+      return;
+    }
+    try {
+      const res = await fetch(`${CONFIG.AI_WORKER_URL}/verify-subscription`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (data.active) {
+        useAuthStore.getState().updateUser({ isPro: true });
+        Alert.alert('Pro restored!', 'Your CAST Pro subscription has been restored.');
+        onClose?.();
+      } else {
+        Alert.alert('No active subscription found.');
+      }
+    } catch {
+      Alert.alert('No active subscription found.');
+    }
   };
 
   return (
@@ -142,7 +217,7 @@ export function ProPaywall({ onClose }: ProPaywallProps) {
         <Text style={styles.ctaNote}>
           Then {billing === 'monthly' ? '£4.99/month' : '£29.99/year'}. Cancel anytime.
         </Text>
-        <TouchableOpacity onPress={() => Alert.alert('Restore Purchases', 'No previous purchases found.')}>
+        <TouchableOpacity onPress={handleRestorePurchases}>
           <Text style={styles.restore}>Restore Purchases</Text>
         </TouchableOpacity>
       </View>

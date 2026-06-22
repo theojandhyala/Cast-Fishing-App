@@ -1,12 +1,18 @@
 /**
- * CAST AI Worker — secure proxy for the Anthropic API.
+ * CAST AI Worker — secure proxy for the Anthropic API and Stripe payments.
  *
  * The ANTHROPIC_API_KEY is stored as a Cloudflare secret and never reaches
  * the client. The web/mobile app calls this Worker; the Worker calls Anthropic.
  *
  * Endpoints (POST):
- *   /advisor   { messages: [{role, content}], system?: string }
- *   /identify  { image: "<base64 jpeg>" }
+ *   /advisor             { messages: [{role, content}], system?: string }
+ *   /identify            { image: "<base64 jpeg>" }
+ *   /create-checkout     { email: string, plan: 'monthly' | 'annual' }
+ *   /verify-subscription { email: string }
+ *
+ * Secrets (set via Cloudflare dashboard or wrangler secret put):
+ *   ANTHROPIC_API_KEY — Anthropic API for fish ID and advisor
+ *   STRIPE_SECRET_KEY — Stripe secret key for subscription payments
  */
 
 const ALLOWED_ORIGINS = [
@@ -386,6 +392,67 @@ Rules:
           messages: messages.slice(-12),
         });
         return json({ reply: text }, 200, origin);
+      }
+
+      if (url.pathname.endsWith('/create-checkout')) {
+        if (!env.STRIPE_SECRET_KEY) return json({ error: 'Payments not configured' }, 503, origin);
+        const { email, plan } = payloadIn;
+        if (!email || !plan) return json({ error: 'Missing email or plan' }, 400, origin);
+        const isAnnual = plan === 'annual';
+        const unitAmount = isAnnual ? 2999 : 499;
+        const interval = isAnnual ? 'year' : 'month';
+        const encodedEmail = encodeURIComponent(email);
+        const params = new URLSearchParams();
+        params.append('mode', 'subscription');
+        params.append('customer_email', email);
+        params.append('success_url', `https://cast-fishing-app.pages.dev/?pro=success&email=${encodedEmail}`);
+        params.append('cancel_url', 'https://cast-fishing-app.pages.dev/?pro=cancel');
+        params.append('line_items[0][price_data][currency]', 'gbp');
+        params.append('line_items[0][price_data][product_data][name]', 'CAST Pro');
+        params.append('line_items[0][price_data][unit_amount]', String(unitAmount));
+        params.append('line_items[0][price_data][recurring][interval]', interval);
+        params.append('line_items[0][quantity]', '1');
+        const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Basic ${btoa(env.STRIPE_SECRET_KEY + ':')}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: params.toString(),
+        });
+        const session = await stripeRes.json();
+        if (!stripeRes.ok) return json({ error: session?.error?.message || 'Stripe error' }, 502, origin);
+        return json({ url: session.url }, 200, origin);
+      }
+
+      if (url.pathname.endsWith('/verify-subscription')) {
+        if (!env.STRIPE_SECRET_KEY) return json({ active: false }, 200, origin);
+        const { email } = payloadIn;
+        if (!email) return json({ active: false }, 200, origin);
+        try {
+          const custRes = await fetch(`https://api.stripe.com/v1/customers?email=${encodeURIComponent(email)}`, {
+            headers: { 'Authorization': `Basic ${btoa(env.STRIPE_SECRET_KEY + ':')}` },
+          });
+          const custData = await custRes.json();
+          if (!custRes.ok || !custData.data || custData.data.length === 0) {
+            return json({ active: false }, 200, origin);
+          }
+          for (const customer of custData.data) {
+            const subRes = await fetch(`https://api.stripe.com/v1/subscriptions?customer=${customer.id}&status=active`, {
+              headers: { 'Authorization': `Basic ${btoa(env.STRIPE_SECRET_KEY + ':')}` },
+            });
+            const subData = await subRes.json();
+            if (subRes.ok && subData.data && subData.data.length > 0) {
+              const sub = subData.data[0];
+              const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
+              const plan = interval === 'year' ? 'annual' : 'monthly';
+              return json({ active: true, plan }, 200, origin);
+            }
+          }
+          return json({ active: false }, 200, origin);
+        } catch {
+          return json({ active: false }, 200, origin);
+        }
       }
 
       return json({ error: 'Unknown endpoint' }, 404, origin);
