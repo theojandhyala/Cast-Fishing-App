@@ -5,11 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
 import { species } from '../data/species';
+import { getFishImage } from '../constants/fishImages';
 import { MONTHLY_ACTIVITY, MONTH_NAMES, getMoonPhase } from '../data/fishingTimes';
 import { RarityBadge } from '../components/catches/RarityBadge';
 import { colors, radius, spacing } from '../constants/theme';
@@ -39,11 +41,21 @@ export default function SpeciesDetailScreen() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Hero */}
+      <View style={styles.heroContainer}>
+        <Image
+          source={{ uri: getFishImage(fish.id) }}
+          style={styles.heroImage}
+          resizeMode="cover"
+        />
+        <LinearGradient
+          colors={['transparent', 'rgba(10,14,26,0.85)', colors.background]}
+          style={styles.heroGradient}
+        />
+      </View>
       <LinearGradient
-        colors={['rgba(0,212,170,0.12)', 'transparent']}
+        colors={['rgba(0,212,170,0.05)', 'transparent']}
         style={styles.hero}
       >
-        <MaterialCommunityIcons name="fish" size={64} color={colors.primary} style={styles.heroEmoji} />
         <Text style={styles.heroName}>{fish.name}</Text>
         <Text style={styles.heroLatin}>{fish.latinName}</Text>
         <View style={styles.heroBadges}>
@@ -429,13 +441,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.textSecondary,
   },
+  heroContainer: {
+    width: '100%',
+    height: 260,
+    position: 'relative',
+  },
+  heroImage: {
+    width: '100%',
+    height: 260,
+  },
+  heroGradient: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 160,
+  },
   hero: {
     alignItems: 'center',
-    paddingVertical: spacing.xl,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
     paddingHorizontal: spacing.lg,
-  },
-  heroEmoji: {
-    marginBottom: spacing.sm,
+    marginTop: -spacing.xl,
   },
   heroName: {
     fontSize: 26,

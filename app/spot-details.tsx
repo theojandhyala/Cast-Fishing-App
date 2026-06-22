@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { WORLD_SPOTS } from '../data/worldSpots';
+import { getSpotImage } from '../constants/spotImages';
 import { colors, radius, spacing, elevation } from '../constants/theme';
 import { useSessionStore } from '../store/sessionStore';
 import { useLocationStore } from '../store/locationStore';
@@ -85,7 +86,16 @@ export default function SpotDetailsScreen() {
   return (
     <View style={s.safe}>
       {/* Hero */}
-      <LinearGradient colors={grad} style={s.hero}>
+      <View style={s.heroContainer}>
+        <Image
+          source={{ uri: getSpotImage(spot.id) }}
+          style={s.heroPhoto}
+          resizeMode="cover"
+        />
+        <LinearGradient
+          colors={['rgba(10,14,26,0.3)', 'rgba(10,14,26,0.7)']}
+          style={StyleSheet.absoluteFillObject}
+        />
         {/* Nav overlay */}
         <SafeAreaView edges={['top']} style={s.heroNav}>
           <TouchableOpacity onPress={() => router.back()} style={s.heroBtn}>
@@ -98,13 +108,15 @@ export default function SpotDetailsScreen() {
             />
           </TouchableOpacity>
         </SafeAreaView>
-        {/* Big water icon */}
-        <MaterialCommunityIcons
-          name={TYPE_ICONS[spot.type] as any}
-          size={60} color="rgba(255,255,255,0.12)"
-          style={s.heroIcon}
-        />
-      </LinearGradient>
+        {/* Type icon badge */}
+        <View style={s.heroTypeBadge}>
+          <MaterialCommunityIcons
+            name={TYPE_ICONS[spot.type] as any}
+            size={20} color={colors.primary}
+          />
+          <Text style={s.heroTypeText}>{spot.type.charAt(0).toUpperCase() + spot.type.slice(1)}</Text>
+        </View>
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         {/* Name + meta */}
@@ -221,7 +233,8 @@ export default function SpotDetailsScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  hero: { height: 220, justifyContent: 'flex-end', alignItems: 'center' },
+  heroContainer: { height: 260, position: 'relative' },
+  heroPhoto: { width: '100%', height: 260 },
   heroNav: {
     position: 'absolute', top: 0, left: 0, right: 0,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
@@ -229,9 +242,16 @@ const s = StyleSheet.create({
   },
   heroBtn: {
     width: 36, height: 36, borderRadius: radius.full,
-    backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center',
   },
-  heroIcon: { marginBottom: spacing.lg },
+  heroTypeBadge: {
+    position: 'absolute', bottom: spacing.md, left: spacing.lg,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: radius.full,
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)',
+  },
+  heroTypeText: { fontSize: 12, color: colors.primary, fontWeight: '700' },
 
   nameSection: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md },
   spotName: { fontSize: 26, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
