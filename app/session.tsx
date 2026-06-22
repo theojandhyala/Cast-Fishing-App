@@ -22,6 +22,7 @@ import { useCatchStore } from '../store/catchStore';
 import { useWeather } from '../hooks/useWeather';
 import { useSolunar } from '../hooks/useSolunar';
 import { useForecast } from '../hooks/useForecast';
+import { useTides } from '../hooks/useTides';
 
 const { width } = Dimensions.get('window');
 
@@ -55,6 +56,7 @@ export default function SessionScreen() {
   const { weather } = useWeather(activeSession?.latitude, activeSession?.longitude);
   const solunar = useSolunar(activeSession?.latitude ?? 51.5, activeSession?.longitude ?? -0.1);
   const forecast = useForecast(activeSession?.latitude ?? 51.5, activeSession?.longitude ?? -0.1);
+  const tides = useTides(activeSession?.latitude, activeSession?.longitude);
   const [now, setNow] = useState(Date.now());
   const [logOpen, setLogOpen] = useState(false);
   const [endConfirmOpen, setEndConfirmOpen] = useState(false);
@@ -232,9 +234,9 @@ export default function SessionScreen() {
                 {[
                   { icon: 'thermometer', val: `${w.temp}°C`, label: w.description },
                   { icon: 'weather-windy', val: `${w.wind} km/h`, label: 'NW Wind' },
-                  { icon: 'waves', val: `${solunar.moonPhase < 0.5 ? 'Rising' : 'Falling'}`, label: 'Tide' },
+                  { icon: 'waves', val: `${tides.currentHeight.toFixed(1)} m`, label: tides.trend === 'rising' ? 'Rising Tide' : tides.trend === 'falling' ? 'Falling Tide' : 'Slack Tide' },
                   { icon: 'gauge', val: `${w.pressure} hPa`, label: 'Pressure' },
-                  { icon: 'water-percent', val: `${(w as any).humidity ?? 75}%`, label: 'Humidity' },
+                  { icon: 'water-percent', val: `${w.humidity ?? 75}%`, label: 'Humidity' },
                   { icon: 'arrow-expand-vertical', val: '8–15 m', label: 'Depth' },
                 ].map((item, i) => (
                   <View key={i} style={s.condItem}>
@@ -396,19 +398,19 @@ export default function SessionScreen() {
             ))}
           </View>
 
-          {/* Tide / Moon */}
+          {/* Tide */}
           <View style={[s.card, { flex: 1 }]}>
-            <Text style={s.cardTitle}>MOON & TIDE</Text>
-            <Text style={s.tideHeight}>{solunar.moonIllumination}%</Text>
-            <Text style={s.tideStatus}>{solunar.moonPhaseName}</Text>
+            <Text style={s.cardTitle}>TIDE</Text>
+            <Text style={s.tideHeight}>{tides.currentHeight.toFixed(1)} m</Text>
+            <Text style={s.tideStatus}>{tides.trend === 'rising' ? 'Rising' : tides.trend === 'falling' ? 'Falling' : 'Slack'}</Text>
             <View style={s.tideTimesRow}>
               <View>
-                <Text style={s.tideLbl}>Phase</Text>
-                <Text style={s.tideTime}>{Math.round(solunar.moonPhase * 100)}%</Text>
+                <Text style={s.tideLbl}>High</Text>
+                <Text style={s.tideTime}>{tides.nextHigh.time}</Text>
               </View>
               <View>
-                <Text style={s.tideLbl}>Windows</Text>
-                <Text style={s.tideTime}>{solunar.windows.length}</Text>
+                <Text style={s.tideLbl}>Low</Text>
+                <Text style={s.tideTime}>{tides.nextLow.time}</Text>
               </View>
             </View>
             {/* Tide chart */}
