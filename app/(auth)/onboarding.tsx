@@ -82,7 +82,7 @@ export default function OnboardingScreen() {
 
   const animateScreen = () => {
     entrance.setValue(0);
-    Animated.spring(entrance, { toValue: 1, damping: 16, stiffness: 150, useNativeDriver: true }).start();
+    Animated.spring(entrance, { toValue: 1, damping: 16, stiffness: 150, useNativeDriver: Platform.OS !== 'web' }).start();
   };
 
   const goTo = (nextStep: number) => {
