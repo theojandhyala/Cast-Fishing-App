@@ -162,6 +162,8 @@ interface DemoUser {
   avatarColor: string;
   location: string;
   specialty: string;
+  region?: RegionFilter;
+  level?: number;
 }
 
 function FindPeopleCard({ user, onSend, sent }: { user: DemoUser; onSend: () => void; sent: boolean }) {
