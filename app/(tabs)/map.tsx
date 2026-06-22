@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Modal,
   TextInput,
   FlatList,
+  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
@@ -17,6 +18,7 @@ import { WORLD_SPOTS, WorldSpot } from '../../data/worldSpots';
 import { SpotCard } from '../../components/map/SpotCard';
 import { colors, radius, spacing, elevation } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
+import { useSocialStore, FriendActivity } from '../../store/socialStore';
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   beginner:     colors.success,
@@ -41,6 +43,141 @@ const TYPE_ICONS: Record<string, string> = {
   river: 'waves', lake: 'water', sea: 'anchor',
   reservoir: 'water-pump', ocean: 'sail-boat', estuary: 'water-outline', private: 'lock',
 };
+
+// ─── Friend Session Pins ──────────────────────────────────────────────────────
+
+function FriendPin({ activity }: { activity: FriendActivity }) {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.6, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const initials = activity.displayName
+    .split(' ')
+    .map((n: string) => n[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  return (
+    <View style={fp.pinWrap}>
+      <Animated.View
+        style={[
+          fp.pulse,
+          {
+            backgroundColor: activity.avatarColor + '33',
+            transform: [{ scale: pulseAnim }],
+          },
+        ]}
+      />
+      <LinearGradient
+        colors={[activity.avatarColor, activity.avatarColor + 'CC']}
+        style={fp.pin}
+      >
+        <Text style={fp.initials}>{initials}</Text>
+      </LinearGradient>
+      <View style={fp.greenDot} />
+      <Text style={fp.name} numberOfLines={1}>{activity.username}</Text>
+    </View>
+  );
+}
+
+const fp = StyleSheet.create({
+  pinWrap: { alignItems: 'center', width: 60 },
+  pulse: {
+    position: 'absolute',
+    top: -6,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+  },
+  pin: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  initials: { fontSize: 14, fontWeight: '800', color: '#fff' },
+  greenDot: {
+    position: 'absolute',
+    top: 28,
+    right: 8,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#22C55E',
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
+  name: { fontSize: 9, fontWeight: '700', color: colors.textSecondary, marginTop: 6, maxWidth: 56, textAlign: 'center' },
+});
+
+// ─── Friend Sessions Banner ───────────────────────────────────────────────────
+
+function FriendSessionsBanner() {
+  const { feed } = useSocialStore();
+  const activeSessions = feed.filter(
+    (a: FriendActivity) => a.type === 'session_start' && Date.now() - new Date(a.timestamp).getTime() < 24 * 60 * 60 * 1000
+  );
+  // Deduplicate by userId – show only latest session per friend
+  const seen = new Set<string>();
+  const uniqueSessions = activeSessions.filter((a: FriendActivity) => {
+    if (seen.has(a.userId)) return false;
+    seen.add(a.userId);
+    return true;
+  });
+
+  if (uniqueSessions.length === 0) return null;
+
+  return (
+    <View style={fsBanner.wrap}>
+      <View style={fsBanner.header}>
+        <View style={fsBanner.dot} />
+        <Text style={fsBanner.title}>Friends Fishing Now</Text>
+        <Text style={fsBanner.count}>{uniqueSessions.length}</Text>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={fsBanner.scroll}>
+        {uniqueSessions.map((a: FriendActivity) => (
+          <FriendPin key={a.id} activity={a} />
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+const fsBanner = StyleSheet.create({
+  wrap: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.25)',
+    padding: spacing.md,
+    ...elevation.raised,
+  },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' },
+  title: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+  count: {
+    fontSize: 11, fontWeight: '800', color: '#22C55E',
+    backgroundColor: 'rgba(34,197,94,0.15)', borderRadius: radius.full,
+    paddingHorizontal: 8, paddingVertical: 2,
+    borderWidth: 1, borderColor: 'rgba(34,197,94,0.3)',
+  },
+  scroll: { gap: spacing.md, paddingVertical: 4 },
+});
 
 export default function SpotsScreen() {
   const router = useRouter();
@@ -139,6 +276,7 @@ export default function SpotsScreen() {
 
   const ListHeader = () => (
     <View>
+      <FriendSessionsBanner />
       {activeSession && (
         <TouchableOpacity style={s.sessionBanner} onPress={() => router.push('/session' as any)} activeOpacity={0.85}>
           <View style={s.sessionDot} />

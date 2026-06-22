@@ -10,6 +10,7 @@ import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fon
 import { useAuthStore } from '../store/authStore';
 import { useCatchStore } from '../store/catchStore';
 import { useUserStore } from '../store/userStore';
+import { useSocialStore } from '../store/socialStore';
 import { colors } from '../constants/theme';
 
 const CastTheme = {
@@ -52,6 +53,7 @@ export default function RootLayout() {
   const { loadUser } = useAuthStore();
   const { loadCatches } = useCatchStore();
   const { load: loadUserPrefs } = useUserStore();
+  const { load: loadSocial } = useSocialStore();
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
@@ -82,7 +84,7 @@ export default function RootLayout() {
     if (!fontsLoaded) return;
     async function init() {
       try {
-        await Promise.all([loadUser(), loadCatches(), loadUserPrefs()]);
+        await Promise.all([loadUser(), loadCatches(), loadUserPrefs(), loadSocial()]);
       } catch {}
       try { await SplashScreen.hideAsync(); } catch {}
     }
@@ -162,6 +164,8 @@ export default function RootLayout() {
         <Stack.Screen name="fish-database" options={{ title: 'Fish Database' }} />
         <Stack.Screen name="session" options={{ headerShown: false }} />
         <Stack.Screen name="session-summary" options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="feed" options={{ title: 'Activity Feed', headerShown: false }} />
+        <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
       </Stack>
       </View>
     </ErrorBoundary>
