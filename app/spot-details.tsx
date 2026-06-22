@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, Image } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, Image, TextInput, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
@@ -9,6 +9,7 @@ import { getSpotImage } from '../constants/spotImages';
 import { colors, radius, spacing, elevation } from '../constants/theme';
 import { useSessionStore } from '../store/sessionStore';
 import { useLocationStore } from '../store/locationStore';
+import { useSpotStore } from '../store/spotStore';
 
 const SPOT_GRADIENTS: Record<string, [string, string]> = {
   river:     ['#1a3a2a', '#0d1f16'],
@@ -38,17 +39,81 @@ function getBestTimes(spot: any) {
   return times;
 }
 
+const DEMO_USERNAMES = ['@CarpKing22', '@RiverRat_UK', '@PikePete', '@TenchFanatic', '@BassBuster'];
+const WATER_CLARITY_OPTIONS = ['Crystal Clear', 'Slightly Coloured', 'Coloured', 'Murky'] as const;
+type WaterClarity = typeof WATER_CLARITY_OPTIONS[number];
+
+function getWaterClarityDefault(spotId: string): WaterClarity {
+  const hash = spotId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return WATER_CLARITY_OPTIONS[hash % 4];
+}
+
+function getReporterUsername(spotId: string): string {
+  const hash = spotId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return DEMO_USERNAMES[hash % DEMO_USERNAMES.length];
+}
+
+function getReportedAgo(spotId: string): string {
+  const hash = spotId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const hours = (hash % 23) + 1;
+  return hours === 1 ? '1h ago' : `${hours}h ago`;
+}
+
+const PARK_OPTIONS = [
+  'Main car park 200m north',
+  'Lay-by on the B-road',
+  'National Trust car park (£2/day)',
+  'Farm track — park on verge',
+];
+
+function getAccessInfo(spot: any) {
+  const hash = spot.id.split('').reduce((a: number, c: string) => a + c.charCodeAt(0), 0);
+  const walkMin = (hash % 15) + 2;
+  const parkAt = PARK_OPTIONS[hash % PARK_OPTIONS.length];
+  const accessNotes: Record<string, string> = {
+    river: 'Follow the footpath downstream. Bankside can be muddy after rain.',
+    lake: 'Follow the lake path clockwise from the car park.',
+    sea: 'Rocky coastal path. Wear sturdy footwear.',
+    reservoir: 'Access via the designated anglers\' gate at the dam end.',
+  };
+  const accessNote = accessNotes[spot.type] ?? 'Follow the marked fishing trail from the main entrance.';
+  return { walkMin, parkAt, accessNote };
+}
+
 export default function SpotDetailsScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const spot = WORLD_SPOTS.find((s) => s.id === id);
   const { activeSession, startSession } = useSessionStore();
   const { setLocation } = useLocationStore();
+  const { getSpotNote, setSpotNote } = useSpotStore();
   const [saved, setSaved] = useState(false);
+  const [waterClarity, setWaterClarity] = useState<WaterClarity | null>(null);
+  const [notes, setNotes] = useState('');
+  const [savedConfirm, setSavedConfirm] = useState(false);
+  const savedFadeAnim = useRef(new Animated.Value(0)).current;
 
   const reviewCount = spot
     ? 20 + (spot.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 200)
     : 0;
+
+  useEffect(() => {
+    if (spot) {
+      setWaterClarity(getWaterClarityDefault(spot.id));
+      setNotes(getSpotNote(spot.id));
+    }
+  }, [spot?.id]);
+
+  const handleSaveNotes = async () => {
+    if (!spot) return;
+    await setSpotNote(spot.id, notes);
+    setSavedConfirm(true);
+    Animated.sequence([
+      Animated.timing(savedFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(1600),
+      Animated.timing(savedFadeAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+    ]).start(() => setSavedConfirm(false));
+  };
 
   if (!spot) {
     return (
@@ -65,6 +130,9 @@ export default function SpotDetailsScreen() {
 
   const grad = SPOT_GRADIENTS[spot.type] || ['#1a2a3a', '#0f1924'];
   const bestTimes = getBestTimes(spot);
+  const accessInfo = getAccessInfo(spot);
+  const reporterUsername = getReporterUsername(spot.id);
+  const reportedAgo = getReportedAgo(spot.id);
 
   const handleStartSession = () => {
     if (activeSession) {

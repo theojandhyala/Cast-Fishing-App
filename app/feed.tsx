@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Animated,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +17,34 @@ import { useSocialStore, FriendActivity, DEMO_FRIEND_USERS } from '../store/soci
 import { colors, radius, spacing, elevation, typography } from '../constants/theme';
 
 const MY_USER_ID = 'me';
+
+// ─── Comment types ────────────────────────────────────────────────────────────
+
+interface Comment {
+  id: string;
+  authorName: string;
+  authorColor: string;
+  text: string;
+  ago: string;
+}
+
+// ─── Demo comments keyed by activity ID ──────────────────────────────────────
+
+const DEMO_COMMENTS: Record<string, Comment[]> = {
+  da1: [
+    { id: 'c1a', authorName: 'CastAngler_UK', authorColor: '#3B82F6', text: 'Absolute unit! What bait?', ago: '45m ago' },
+    { id: 'c1b', authorName: 'TroutMaster', authorColor: '#10B981', text: "That's a new spot PB surely?", ago: '30m ago' },
+    { id: 'c1c', authorName: 'PikePete', authorColor: '#8B5CF6', text: 'Legend 🎣', ago: '12m ago' },
+  ],
+  da3: [
+    { id: 'c3a', authorName: 'SalmonSue', authorColor: '#F59E0B', text: 'What a fish! River or lake?', ago: '22h ago' },
+    { id: 'c3b', authorName: 'CastAngler_UK', authorColor: '#3B82F6', text: 'Top catch mate', ago: '20h ago' },
+  ],
+  da2: [
+    { id: 'c2a', authorName: 'TroutMaster', authorColor: '#10B981', text: 'Have a good one!', ago: '2h ago' },
+    { id: 'c2b', authorName: 'PikePete', authorColor: '#8B5CF6', text: 'Good luck out there', ago: '1h ago' },
+  ],
+};
 
 // ─── Rarity ──────────────────────────────────────────────────────────────────
 
@@ -132,13 +161,116 @@ function ReactionRow({ activity }: { activity: FriendActivity }) {
   );
 }
 
+// ─── Comment Item ─────────────────────────────────────────────────────────────
+
+function CommentItem({ comment }: { comment: Comment }) {
+  const initials = comment.authorName
+    .split('_')
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+  return (
+    <View style={styles.commentItem}>
+      <View style={[styles.commentAvatar, { backgroundColor: comment.authorColor + '33', borderColor: comment.authorColor + '55' }]}>
+        <Text style={[styles.commentAvatarText, { color: comment.authorColor }]}>{initials}</Text>
+      </View>
+      <View style={styles.commentBody}>
+        <View style={styles.commentHeader}>
+          <Text style={styles.commentAuthor}>{comment.authorName}</Text>
+          <Text style={styles.commentAgo}>{comment.ago}</Text>
+        </View>
+        <Text style={styles.commentText}>{comment.text}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Comments Section ─────────────────────────────────────────────────────────
+
+const MAX_PREVIEW = 3;
+
+function CommentsSection({
+  activityId,
+  comments,
+  onAddComment,
+}: {
+  activityId: string;
+  comments: Comment[];
+  onAddComment: (activityId: string, text: string) => void;
+}) {
+  const [inputText, setInputText] = useState('');
+  const [showAll, setShowAll] = useState(false);
+
+  const visibleComments = showAll ? comments : comments.slice(0, MAX_PREVIEW);
+  const hiddenCount = comments.length - MAX_PREVIEW;
+
+  const handleSend = () => {
+    const trimmed = inputText.trim();
+    if (!trimmed) return;
+    onAddComment(activityId, trimmed);
+    setInputText('');
+  };
+
+  return (
+    <View style={styles.commentsSection}>
+      {/* Divider */}
+      <View style={styles.commentsDivider} />
+
+      {/* Comment list */}
+      {visibleComments.map((c) => (
+        <CommentItem key={c.id} comment={c} />
+      ))}
+
+      {/* Show more */}
+      {!showAll && hiddenCount > 0 && (
+        <TouchableOpacity onPress={() => setShowAll(true)} style={styles.showMoreBtn}>
+          <Text style={styles.showMoreText}>Show {hiddenCount} more comment{hiddenCount > 1 ? 's' : ''}</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Input row */}
+      <View style={styles.commentInputRow}>
+        <TextInput
+          style={styles.commentInput}
+          placeholder="Add a comment…"
+          placeholderTextColor={colors.textTertiary}
+          value={inputText}
+          onChangeText={setInputText}
+          returnKeyType="send"
+          onSubmitEditing={handleSend}
+          multiline={false}
+        />
+        <TouchableOpacity
+          style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]}
+          onPress={handleSend}
+          disabled={!inputText.trim()}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.sendBtnText, !inputText.trim() && styles.sendBtnTextDisabled]}>Send</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 // ─── Activity Card ────────────────────────────────────────────────────────────
 
-function ActivityCard({ activity }: { activity: FriendActivity }) {
+function ActivityCard({
+  activity,
+  comments,
+  onAddComment,
+}: {
+  activity: FriendActivity;
+  comments: Comment[];
+  onAddComment: (activityId: string, text: string) => void;
+}) {
   const isLegendary = activity.rarity === 'legendary';
   const isPb = activity.type === 'pb';
   const isLevelUp = activity.type === 'level_up';
   const isBadge = activity.type === 'badge';
+
+  const [commentsExpanded, setCommentsExpanded] = useState(false);
 
   return (
     <View style={[styles.card, isLegendary && styles.cardLegendary]}>
@@ -218,6 +350,40 @@ function ActivityCard({ activity }: { activity: FriendActivity }) {
 
       {/* Reactions */}
       <ReactionRow activity={activity} />
+
+      {/* Comment toggle row */}
+      <View style={styles.commentToggleRow}>
+        <TouchableOpacity
+          style={[styles.commentToggleBtn, commentsExpanded && styles.commentToggleBtnActive]}
+          onPress={() => setCommentsExpanded((v) => !v)}
+          activeOpacity={0.7}
+        >
+          <Icon name="comment-outline" size={13} color={commentsExpanded ? colors.primary : colors.textSecondary} />
+          <Text style={[styles.commentToggleLabel, commentsExpanded && styles.commentToggleLabelActive]}>
+            Comment
+          </Text>
+        </TouchableOpacity>
+
+        {comments.length > 0 && (
+          <TouchableOpacity
+            style={styles.commentCountBtn}
+            onPress={() => setCommentsExpanded((v) => !v)}
+            activeOpacity={0.7}
+          >
+            <Icon name="comment-multiple-outline" size={12} color={colors.textTertiary} />
+            <Text style={styles.commentCountText}>{comments.length} comment{comments.length !== 1 ? 's' : ''}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Expanded comments section */}
+      {commentsExpanded && (
+        <CommentsSection
+          activityId={activity.id}
+          comments={comments}
+          onAddComment={onAddComment}
+        />
+      )}
     </View>
   );
 }
@@ -249,6 +415,33 @@ export default function FeedScreen() {
   const router = useRouter();
   const { feed, seedDemoFriends, load } = useSocialStore();
   const [refreshing, setRefreshing] = React.useState(false);
+
+  // comments map: activityId -> Comment[]
+  const [commentsMap, setCommentsMap] = useState<Map<string, Comment[]>>(() => {
+    const m = new Map<string, Comment[]>();
+    Object.entries(DEMO_COMMENTS).forEach(([id, cs]) => m.set(id, cs));
+    return m;
+  });
+
+  const getComments = useCallback((activityId: string): Comment[] => {
+    return commentsMap.get(activityId) ?? [];
+  }, [commentsMap]);
+
+  const handleAddComment = useCallback((activityId: string, text: string) => {
+    const newComment: Comment = {
+      id: `c_${activityId}_${Date.now()}`,
+      authorName: 'Me',
+      authorColor: colors.primary,
+      text,
+      ago: 'Just now',
+    };
+    setCommentsMap((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(activityId) ?? [];
+      next.set(activityId, [...existing, newComment]);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     load();
@@ -292,7 +485,13 @@ export default function FeedScreen() {
       <FlatList
         data={feed}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ActivityCard activity={item} />}
+        renderItem={({ item }) => (
+          <ActivityCard
+            activity={item}
+            comments={getComments(item.id)}
+            onAddComment={handleAddComment}
+          />
+        )}
         contentContainerStyle={[styles.listContent, feed.length === 0 && styles.listContentEmpty]}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={<EmptyState />}
@@ -305,6 +504,7 @@ export default function FeedScreen() {
           />
         }
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        keyboardShouldPersistTaps="handled"
       />
     </SafeAreaView>
   );
@@ -446,6 +646,97 @@ const styles = StyleSheet.create({
   reactionCountActive: { backgroundColor: 'rgba(0,212,170,0.2)' },
   reactionCountText: { fontSize: 9, fontWeight: '800', color: colors.textSecondary },
   reactionCountTextActive: { color: colors.primary },
+
+  // Comment toggle
+  commentToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  commentToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'transparent',
+  },
+  commentToggleBtnActive: {
+    borderColor: 'rgba(0,212,170,0.35)',
+    backgroundColor: 'rgba(0,212,170,0.07)',
+  },
+  commentToggleLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  commentToggleLabelActive: { color: colors.primary },
+  commentCountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  commentCountText: { fontSize: 12, color: colors.textTertiary },
+
+  // Comments section
+  commentsSection: { marginTop: spacing.sm },
+  commentsDivider: { height: 1, backgroundColor: colors.border, marginBottom: spacing.sm },
+  commentItem: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+    alignItems: 'flex-start',
+  },
+  commentAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  commentAvatarText: { fontSize: 8, fontWeight: '800' },
+  commentBody: { flex: 1 },
+  commentHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  commentAuthor: { fontSize: 11, fontWeight: '700', color: colors.textPrimary },
+  commentAgo: { fontSize: 10, color: colors.textTertiary },
+  commentText: { fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
+  showMoreBtn: { marginBottom: 8 },
+  showMoreText: { fontSize: 12, color: colors.primary, fontWeight: '600' },
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+    backgroundColor: colors.surface2,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  commentInput: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.textPrimary,
+    paddingVertical: 0,
+  },
+  sendBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  sendBtnDisabled: {
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  sendBtnText: { fontSize: 12, fontWeight: '700', color: '#0A0E1A' },
+  sendBtnTextDisabled: { color: colors.textTertiary },
 
   empty: {
     alignItems: 'center',

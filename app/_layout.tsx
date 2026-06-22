@@ -136,6 +136,7 @@ export default function RootLayout() {
         <Stack.Screen name="challenges" options={{ title: 'Challenges' }} />
         <Stack.Screen name="tackle-shops" options={{ title: 'Tackle Shops' }} />
         <Stack.Screen name="competitions" options={{ title: 'Competitions' }} />
+        <Stack.Screen name="catch-duel" options={{ title: 'Catch Duels' }} />
         <Stack.Screen name="rig-builder" options={{ title: 'Rig Builder' }} />
         <Stack.Screen name="water-conditions" options={{ title: 'Water Conditions' }} />
         <Stack.Screen name="notifications" options={{ title: 'Notification Settings' }} />

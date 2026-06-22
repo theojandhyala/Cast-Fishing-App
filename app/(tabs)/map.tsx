@@ -20,6 +20,18 @@ import { colors, radius, spacing, elevation } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
 import { useSocialStore, FriendActivity } from '../../store/socialStore';
 
+function getSpotPressure(spotId: string): { level: 'quiet' | 'moderate' | 'busy' | 'packed'; count: number; color: string } {
+  const hash = spotId.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  const n = hash % 4;
+  const levels = [
+    { level: 'quiet' as const, count: (hash % 3) + 1, color: '#22C55E' },
+    { level: 'moderate' as const, count: (hash % 5) + 3, color: '#F59E0B' },
+    { level: 'busy' as const, count: (hash % 8) + 6, color: '#F97316' },
+    { level: 'packed' as const, count: (hash % 12) + 10, color: '#EF4444' },
+  ];
+  return levels[n];
+}
+
 const DIFFICULTY_COLORS: Record<string, string> = {
   beginner:     colors.success,
   intermediate: colors.secondary,
@@ -214,6 +226,7 @@ export default function SpotsScreen() {
     const grad = SPOT_GRADIENTS[spot.type] || ['#1a2a3a', '#0f1924'];
     const isSaved = savedSpots.has(spot.id);
     const diffColor = DIFFICULTY_COLORS[spot.difficulty] || colors.primary;
+    const pressure = getSpotPressure(spot.id);
     return (
       <TouchableOpacity
         style={s.spotCard}
@@ -245,6 +258,18 @@ export default function SpotsScreen() {
           <Text style={s.spotMeta}>
             {spot.type.charAt(0).toUpperCase() + spot.type.slice(1)} · {spot.country}
           </Text>
+
+          <View style={s.pressureRow}>
+            <View style={[s.pressureDot, { backgroundColor: pressure.color }]} />
+            <Text style={s.pressureText}>
+              {pressure.level === 'quiet'
+                ? 'Quiet today'
+                : `${pressure.count} anglers today`}
+            </Text>
+            {pressure.level === 'packed' && (
+              <MaterialCommunityIcons name="alert" size={11} color={pressure.color} />
+            )}
+          </View>
 
           <View style={s.spotBottomRow}>
             <View style={s.speciesRow}>
@@ -550,6 +575,10 @@ const s = StyleSheet.create({
   spotName: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   bookmarkBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginRight: -8 },
   spotMeta: { fontSize: 12, color: colors.textSecondary, marginBottom: 8 },
+  pressureRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
+  pressureDot: { width: 7, height: 7, borderRadius: 4 },
+  pressureText: { fontSize: 11, color: colors.textSecondary, fontWeight: '600', flex: 1 },
+
   spotBottomRow: { flexDirection: 'row', alignItems: 'center' },
   speciesRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   speciesChip: {
