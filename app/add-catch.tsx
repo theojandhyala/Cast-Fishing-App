@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -18,77 +18,125 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useCatchStore } from '../store/catchStore';
 import { useLocationStore } from '../store/locationStore';
+import { useWeather } from '../hooks/useWeather';
+import { useTides } from '../hooks/useTides';
+import { useSolunar } from '../hooks/useSolunar';
 import { species as SPECIES_LIST } from '../data/species';
-import { colors, radius, spacing, elevation } from '../constants/theme';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { colors, radius, spacing, elevation, fonts, typography } from '../constants/theme';
 
 const SPECIES_OPTIONS = SPECIES_LIST.map((s) => ({ id: s.id, name: s.name || s.commonName }));
 
+const BAIT_OPTIONS = [
+  'Boilies', 'Sweetcorn', 'Maggots', 'Worms', 'Deadbait (Mackerel)', 'Deadbait (Roach)',
+  'Lure (Soft Plastic)', 'Lure (Hard)', 'Spinner', 'Spinnerbait', 'Fly (Dry)', 'Fly (Nymph)',
+  'Pellets', 'Hemp', 'Bread', 'Cheese Paste', 'Feeder Mix', 'Zig Rig', 'Pop-up', 'Tiger Nuts',
+];
+
+function ConditionPill({ label, value, icon }: { label: string; value: string; icon: string }) {
+  return (
+    <View style={s.condPill}>
+      <MaterialCommunityIcons name={icon} size={13} color={colors.primary} />
+      <View>
+        <Text style={s.condPillLabel}>{label}</Text>
+        <Text style={s.condPillValue}>{value}</Text>
+      </View>
+    </View>
+  );
+}
+
 export default function AddCatchScreen() {
-  const params = useLocalSearchParams<{ species?: string; weight?: string; length?: string; photo?: string; confidence?: string; scanned?: string }>();
+  const params = useLocalSearchParams<{ species?: string; weight?: string; length?: string }>();
   const router = useRouter();
   const { addCatch } = useCatchStore();
   const { location } = useLocationStore();
+
+  // Coordinates for live condition hooks
+  const locWithCoords = location as (typeof location & { coords?: { latitude: number; longitude: number } }) | null;
+  const lat = locWithCoords?.coords?.latitude;
+  const lng = locWithCoords?.coords?.longitude;
+
+  // Live conditions — auto-captured at logging time
+  const { weather } = useWeather(lat, lng);
+  const tideData = useTides(lat, lng);
+  const solunar = useSolunar(lat ?? 52.5, lng ?? -1.5);
 
   const prefill = params.species
     ? SPECIES_OPTIONS.find((s) => s.name.toLowerCase() === params.species!.toLowerCase())
     : null;
 
-  const [selectedSpecies, setSelectedSpecies] = useState(prefill?.name || params.species || '');
+  const [selectedSpecies, setSelectedSpecies] = useState(prefill?.name || '');
   const [weight, setWeight] = useState(params.weight || '');
   const [length, setLength] = useState(params.length || '');
   const [bait, setBait] = useState('');
   const [notes, setNotes] = useState('');
-  const [photoUri, setPhotoUri] = useState<string | null>(params.photo || null);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [speciesPicker, setSpeciesPicker] = useState(false);
   const [baitPicker, setBaitPicker] = useState(false);
+  const [baitSearch, setBaitSearch] = useState('');
 
-  useEffect(() => {
-    if (params.scanned !== '1') return;
-    let active = true;
-    AsyncStorage.getItem('@cast_pending_scan_photo').then((stored) => {
-      if (active && stored) setPhotoUri(stored);
-      return AsyncStorage.removeItem('@cast_pending_scan_photo');
-    }).catch(() => {});
-    return () => { active = false; };
-  }, [params.scanned]);
-
-  const spotName = location?.name || 'Pine Lake';
+  const spotName = location?.name || 'Current Location';
   const now = new Date();
-  const timeStr = `Today, ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const timeStr = `Today, ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-  const handlePhoto = async (source: 'camera' | 'library') => {
-    const { status } = source === 'camera'
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const handlePhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission needed', 'Allow access to your photo library to add a photo.');
       return;
     }
-    const result = source === 'camera'
-      ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.65, base64: true })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.65, base64: true });
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      setPhotoUri(asset.base64 ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}` : asset.uri);
-    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) setPhotoUri(result.assets[0].uri);
   };
 
-  const handleSave = async () => {
-    if (!selectedSpecies) { Alert.alert('Select a species'); return; }
-    await addCatch({
+  const handleCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Allow camera access to take a photo.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) setPhotoUri(result.assets[0].uri);
+  };
+
+  const handleSave = () => {
+    if (!selectedSpecies) { Alert.alert('Select a species', 'Please choose the species you caught.'); return; }
+    addCatch({
       species: selectedSpecies,
-      weight: (parseFloat(weight) || 0) as number,
+      weight: parseFloat(weight) || 0,
       length: parseFloat(length) || undefined,
       location: spotName,
+      latitude: lat,
+      longitude: lng,
       bait: bait || undefined,
       notes: notes || undefined,
       photo: photoUri || undefined,
-      latitude: location?.latitude,
-      longitude: location?.longitude,
+      // Auto-captured conditions
+      weather: weather
+        ? { temp: weather.temp, description: weather.description, wind: weather.wind }
+        : undefined,
+      pressure: weather?.pressure,
+      pressureTrend: weather?.pressureTrend === 'stable' ? 'steady' : weather?.pressureTrend,
+      tideHeight: tideData?.loading ? undefined : tideData?.currentHeight,
+      moonPhase: solunar?.moonPhase,
+      hourOfDay: now.getHours(),
     });
     router.back();
   };
+
+  const filteredBaits = baitSearch
+    ? BAIT_OPTIONS.filter((b) => b.toLowerCase().includes(baitSearch.toLowerCase()))
+    : BAIT_OPTIONS;
+
+  // Format tide trend label
+  const trendLabel = tideData?.trend === 'rising' ? '▲ Rising' : tideData?.trend === 'falling' ? '▼ Falling' : '~ Slack';
+
+  const moonPct = solunar ? Math.round(solunar.moonIllumination) : null;
 
   return (
     <View style={s.safe}>
@@ -104,59 +152,87 @@ export default function AddCatchScreen() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
-          <TouchableOpacity
-            style={s.lensButton}
-            onPress={() => router.push({ pathname: '/identifier', params: { mode: 'catch' } } as any)}
-            activeOpacity={0.85}
-          >
-            <View style={s.lensIcon}>
-              <MaterialCommunityIcons name="camera-iris" size={24} color={colors.background} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.lensTitle}>Scan with CAST Lens</Text>
-              <Text style={s.lensSub}>Scan one photo to pre-fill species, estimated weight and length for review</Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={22} color={colors.background} />
-          </TouchableOpacity>
-
           {/* Photo upload */}
-          <View style={s.photoBox}>
-            {photoUri ? (
-              <Image source={{ uri: photoUri }} style={s.photoImage} />
-            ) : (
-              <>
-                <View style={s.photoIcon}>
-                  <MaterialCommunityIcons name="camera-outline" size={32} color={colors.textSecondary} />
-                </View>
-                <Text style={s.photoLabel}>Add Photo</Text>
-                <Text style={s.photoSub}>Use the camera or choose from your library below</Text>
-              </>
+          <View style={s.photoWrap}>
+            <TouchableOpacity
+              style={[s.photoBox, photoUri ? s.photoBoxFilled : null]}
+              onPress={handleCamera}
+              activeOpacity={0.85}
+            >
+              {photoUri ? (
+                <Image source={{ uri: photoUri }} style={s.photoImage} />
+              ) : (
+                <>
+                  <View style={s.photoIcon}>
+                    <MaterialCommunityIcons name="camera-plus-outline" size={32} color={colors.primary} />
+                  </View>
+                  <Text style={s.photoLabel}>Add Photo</Text>
+                  <Text style={s.photoSub}>Camera or Gallery</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            {!photoUri && (
+              <TouchableOpacity style={s.galleryBtn} onPress={handlePhoto}>
+                <MaterialCommunityIcons name="image-outline" size={18} color={colors.textSecondary} />
+                <Text style={s.galleryBtnText}>Gallery</Text>
+              </TouchableOpacity>
             )}
           </View>
-          <View style={s.photoActions}>
-            <TouchableOpacity style={s.photoAction} onPress={() => handlePhoto('camera')} accessibilityRole="button">
-              <MaterialCommunityIcons name="camera-outline" size={17} color={colors.primary} />
-              <Text style={s.photoActionText}>{photoUri ? 'Retake' : 'Camera'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={s.photoAction} onPress={() => handlePhoto('library')} accessibilityRole="button">
-              <MaterialCommunityIcons name="image-outline" size={17} color={colors.primary} />
-              <Text style={s.photoActionText}>{photoUri ? 'Replace' : 'Choose photo'}</Text>
-            </TouchableOpacity>
-            {photoUri ? <TouchableOpacity style={s.photoAction} onPress={() => setPhotoUri(null)} accessibilityRole="button"><MaterialCommunityIcons name="delete-outline" size={17} color={colors.danger} /><Text style={[s.photoActionText, { color: colors.danger }]}>Remove</Text></TouchableOpacity> : null}
-          </View>
 
-          {params.scanned === '1' ? (
-            <View style={s.scanReview}>
-              <MaterialCommunityIcons name="check-decagram-outline" size={19} color={colors.primary} />
-              <Text style={s.scanReviewText}>Lens filled this form with a {params.confidence || '—'}% species match and estimated measurements. Check the values before saving.</Text>
+          {/* Auto-captured conditions banner */}
+          <View style={s.condBanner}>
+            <View style={s.condBannerHeader}>
+              <MaterialCommunityIcons name="lightning-bolt" size={14} color={colors.primary} />
+              <Text style={s.condBannerTitle}>Auto-Captured Conditions</Text>
             </View>
-          ) : null}
+            <View style={s.condPills}>
+              {weather && (
+                <>
+                  <ConditionPill
+                    icon="thermometer"
+                    label="Temp"
+                    value={`${weather.temp}°C`}
+                  />
+                  <ConditionPill
+                    icon="gauge"
+                    label="Pressure"
+                    value={`${weather.pressure} ${weather.pressureTrend === 'rising' ? '↑' : weather.pressureTrend === 'falling' ? '↓' : '→'}`}
+                  />
+                  <ConditionPill
+                    icon="weather-windy"
+                    label="Wind"
+                    value={`${weather.wind} km/h`}
+                  />
+                </>
+              )}
+              {!tideData.loading && (
+                <ConditionPill
+                  icon="waves"
+                  label="Tide"
+                  value={`${tideData.currentHeight.toFixed(1)}m ${trendLabel}`}
+                />
+              )}
+              {solunar && moonPct !== null && (
+                <ConditionPill
+                  icon="moon-waning-crescent"
+                  label="Moon"
+                  value={`${solunar.moonPhaseName} ${moonPct}%`}
+                />
+              )}
+              {!weather && !solunar && (
+                <Text style={s.condNone}>Conditions will be captured when you save</Text>
+              )}
+            </View>
+          </View>
 
           {/* Form */}
           <View style={s.form}>
             {/* Species */}
             <TouchableOpacity style={s.formRow} onPress={() => setSpeciesPicker(true)} activeOpacity={0.85}>
-              <Text style={s.formLabel}>Species</Text>
+              <View style={s.formLabelRow}>
+                <MaterialCommunityIcons name="fish" size={16} color={colors.primary} />
+                <Text style={s.formLabel}>Species</Text>
+              </View>
               <View style={s.formRight}>
                 <Text style={[s.formValue, !selectedSpecies && s.placeholder]}>
                   {selectedSpecies || 'Select species'}
@@ -169,7 +245,10 @@ export default function AddCatchScreen() {
             {/* Weight + Length */}
             <View style={s.formRowInline}>
               <View style={s.inlineLeft}>
-                <Text style={s.formLabel}>Weight</Text>
+                <View style={s.formLabelRow}>
+                  <MaterialCommunityIcons name="scale-balance" size={14} color={colors.primary} />
+                  <Text style={s.formLabel}>Weight</Text>
+                </View>
                 <View style={s.inlineInput}>
                   <TextInput
                     style={s.inlineText}
@@ -184,7 +263,10 @@ export default function AddCatchScreen() {
               </View>
               <View style={s.inlineDivider} />
               <View style={s.inlineRight}>
-                <Text style={s.formLabel}>Length</Text>
+                <View style={s.formLabelRow}>
+                  <MaterialCommunityIcons name="ruler" size={14} color={colors.primary} />
+                  <Text style={s.formLabel}>Length</Text>
+                </View>
                 <View style={s.inlineInput}>
                   <TextInput
                     style={s.inlineText}
@@ -202,7 +284,10 @@ export default function AddCatchScreen() {
 
             {/* Bait */}
             <TouchableOpacity style={s.formRow} onPress={() => setBaitPicker(true)} activeOpacity={0.85}>
-              <Text style={s.formLabel}>Bait / Lure</Text>
+              <View style={s.formLabelRow}>
+                <MaterialCommunityIcons name="hook" size={16} color={colors.primary} />
+                <Text style={s.formLabel}>Bait / Lure</Text>
+              </View>
               <View style={s.formRight}>
                 <Text style={[s.formValue, !bait && s.placeholder]}>
                   {bait || 'Select bait or lure'}
@@ -214,24 +299,33 @@ export default function AddCatchScreen() {
 
             {/* Spot */}
             <View style={s.formRow}>
-              <Text style={s.formLabel}>Selected Spot</Text>
+              <View style={s.formLabelRow}>
+                <MaterialCommunityIcons name="map-marker" size={16} color={colors.primary} />
+                <Text style={s.formLabel}>Location</Text>
+              </View>
               <Text style={s.formValue}>{spotName}</Text>
             </View>
             <View style={s.sep} />
 
             {/* Time */}
             <View style={s.formRow}>
-              <Text style={s.formLabel}>Time Caught</Text>
+              <View style={s.formLabelRow}>
+                <MaterialCommunityIcons name="clock-outline" size={16} color={colors.primary} />
+                <Text style={s.formLabel}>Time Caught</Text>
+              </View>
               <Text style={s.formValue}>{timeStr}</Text>
             </View>
             <View style={s.sep} />
 
             {/* Notes */}
             <View style={s.notesRow}>
-              <Text style={s.formLabel}>Notes</Text>
+              <View style={[s.formLabelRow, { marginBottom: 8 }]}>
+                <MaterialCommunityIcons name="note-text-outline" size={16} color={colors.primary} />
+                <Text style={s.formLabel}>Notes</Text>
+              </View>
               <TextInput
                 style={s.notesInput}
-                placeholder="Add notes..."
+                placeholder="Rig setup, spot details, story..."
                 placeholderTextColor={colors.textTertiary}
                 value={notes}
                 onChangeText={setNotes}
@@ -248,6 +342,7 @@ export default function AddCatchScreen() {
       <View style={s.bottomBar}>
         <TouchableOpacity style={s.saveBtn} onPress={handleSave} activeOpacity={0.85}>
           <LinearGradient colors={['#00D4AA', '#00B892']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.saveBtnGrad}>
+            <MaterialCommunityIcons name="content-save-check" size={18} color="#0A0E1A" />
             <Text style={s.saveBtnText}>SAVE CATCH</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -257,6 +352,7 @@ export default function AddCatchScreen() {
       <Modal visible={speciesPicker} transparent animationType="slide" onRequestClose={() => setSpeciesPicker(false)}>
         <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={() => setSpeciesPicker(false)} />
         <View style={s.sheet}>
+          <View style={s.sheetHandle} />
           <Text style={s.sheetTitle}>Select Species</Text>
           <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
             {SPECIES_OPTIONS.map((sp) => (
@@ -266,7 +362,7 @@ export default function AddCatchScreen() {
                 onPress={() => { setSelectedSpecies(sp.name); setSpeciesPicker(false); }}
               >
                 <Text style={s.sheetRowText}>{sp.name}</Text>
-                {selectedSpecies === sp.name && <MaterialCommunityIcons name="check" size={18} color={colors.primary} />}
+                {selectedSpecies === sp.name && <MaterialCommunityIcons name="check-circle" size={18} color={colors.primary} />}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -277,12 +373,23 @@ export default function AddCatchScreen() {
       <Modal visible={baitPicker} transparent animationType="slide" onRequestClose={() => setBaitPicker(false)}>
         <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={() => setBaitPicker(false)} />
         <View style={s.sheet}>
+          <View style={s.sheetHandle} />
           <Text style={s.sheetTitle}>Select Bait / Lure</Text>
-          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }}>
-            {['Boilies', 'Sweetcorn', 'Maggots', 'Worms', 'Deadbait', 'Lure', 'Spinner', 'Fly', 'Pellets', 'Hemp', 'Bread', 'Cheese', 'Feeder', 'Zig rig'].map((b) => (
-              <TouchableOpacity key={b} style={s.sheetRow} onPress={() => { setBait(b); setBaitPicker(false); }}>
+          <View style={s.searchRow}>
+            <MaterialCommunityIcons name="magnify" size={18} color={colors.textSecondary} />
+            <TextInput
+              style={s.searchInput}
+              placeholder="Search baits..."
+              placeholderTextColor={colors.textTertiary}
+              value={baitSearch}
+              onChangeText={setBaitSearch}
+            />
+          </View>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 360 }}>
+            {filteredBaits.map((b) => (
+              <TouchableOpacity key={b} style={s.sheetRow} onPress={() => { setBait(b); setBaitPicker(false); setBaitSearch(''); }}>
                 <Text style={s.sheetRowText}>{b}</Text>
-                {bait === b && <MaterialCommunityIcons name="check" size={18} color={colors.primary} />}
+                {bait === b && <MaterialCommunityIcons name="check-circle" size={18} color={colors.primary} />}
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -301,38 +408,47 @@ const s = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
+  title: { fontSize: 17, fontWeight: '700', color: colors.textPrimary, fontFamily: fonts.bodyBold },
 
-  lensButton: {
-    marginHorizontal: spacing.lg, marginTop: spacing.lg, marginBottom: 0,
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: colors.primary, borderRadius: radius.lg, padding: spacing.md,
-    ...elevation.glow,
-  },
-  lensIcon: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,14,26,0.16)' },
-  lensTitle: { fontSize: 15, fontWeight: '800', color: colors.background },
-  lensSub: { fontSize: 11, lineHeight: 16, color: 'rgba(10,14,26,0.72)', marginTop: 2 },
-
+  photoWrap: { margin: spacing.lg, marginBottom: spacing.md },
   photoBox: {
-    margin: spacing.lg,
     height: 160, borderRadius: radius.lg,
     borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed',
     backgroundColor: colors.surface,
     alignItems: 'center', justifyContent: 'center', gap: 8,
     overflow: 'hidden',
   },
+  photoBoxFilled: { borderStyle: 'solid', borderColor: 'transparent' },
   photoImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   photoIcon: {
-    width: 56, height: 56, borderRadius: radius.full,
-    backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center',
+    width: 60, height: 60, borderRadius: radius.full,
+    backgroundColor: 'rgba(0,212,170,0.1)', alignItems: 'center', justifyContent: 'center',
   },
-  photoLabel: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+  photoLabel: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, fontFamily: fonts.bodyBold },
   photoSub: { fontSize: 12, color: colors.textSecondary },
-  photoActions: { flexDirection: 'row', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: -spacing.md, marginBottom: spacing.md },
-  photoAction: { flex: 1, minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  photoActionText: { color: colors.primary, fontSize: 11, fontWeight: '700' },
-  scanReview: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, marginHorizontal: spacing.lg, marginBottom: spacing.md, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(68,210,203,0.3)', backgroundColor: 'rgba(68,210,203,0.08)' },
-  scanReviewText: { flex: 1, color: colors.textSecondary, fontSize: 11, lineHeight: 16 },
+  galleryBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, marginTop: spacing.sm, paddingVertical: spacing.xs,
+  },
+  galleryBtnText: { fontSize: 13, color: colors.textSecondary, fontFamily: fonts.bodySemi },
+
+  condBanner: {
+    marginHorizontal: spacing.lg, marginBottom: spacing.md,
+    backgroundColor: 'rgba(0,212,170,0.06)',
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
+    borderRadius: radius.md, padding: spacing.md,
+  },
+  condBannerHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
+  condBannerTitle: { fontSize: 12, fontWeight: '600', color: colors.primary, letterSpacing: 0.5, fontFamily: fonts.bodySemi },
+  condPills: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  condPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: colors.surface2, borderRadius: radius.sm,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  condPillLabel: { fontSize: 9, color: colors.textTertiary, fontFamily: fonts.bodySemi, letterSpacing: 0.5 },
+  condPillValue: { fontSize: 12, color: colors.textPrimary, fontFamily: fonts.mono, marginTop: 1 },
+  condNone: { fontSize: 12, color: colors.textTertiary, fontStyle: 'italic' },
 
   form: {
     marginHorizontal: spacing.lg,
@@ -344,8 +460,9 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.md, paddingVertical: 14,
   },
+  formLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   formRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  formLabel: { fontSize: 14, color: colors.textPrimary, fontWeight: '500' },
+  formLabel: { fontSize: 14, color: colors.textPrimary, fontWeight: '500', fontFamily: fonts.bodySemi },
   formValue: { fontSize: 14, color: colors.textSecondary },
   placeholder: { color: colors.textTertiary },
   sep: { height: 1, backgroundColor: colors.border, marginHorizontal: spacing.md },
@@ -353,13 +470,13 @@ const s = StyleSheet.create({
   formRowInline: { flexDirection: 'row', alignItems: 'center' },
   inlineLeft: { flex: 1, paddingHorizontal: spacing.md, paddingVertical: 14 },
   inlineRight: { flex: 1, paddingHorizontal: spacing.md, paddingVertical: 14 },
-  inlineDivider: { width: 1, height: 40, backgroundColor: colors.border },
-  inlineInput: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  inlineText: { flex: 1, fontSize: 18, fontWeight: '700', color: colors.textPrimary },
-  unit: { fontSize: 13, color: colors.textSecondary },
+  inlineDivider: { width: 1, height: 48, backgroundColor: colors.border },
+  inlineInput: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
+  inlineText: { flex: 1, fontSize: 22, fontWeight: '700', color: colors.textPrimary, fontFamily: fonts.monoBold },
+  unit: { fontSize: 13, color: colors.textSecondary, fontFamily: fonts.mono },
 
   notesRow: { paddingHorizontal: spacing.md, paddingTop: 14, paddingBottom: 14 },
-  notesInput: { fontSize: 14, color: colors.textPrimary, marginTop: 8, minHeight: 60 },
+  notesInput: { fontSize: 14, color: colors.textPrimary, marginTop: 4, minHeight: 64, fontFamily: fonts.body },
 
   bottomBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -367,19 +484,29 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md, paddingBottom: 32,
   },
   saveBtn: { borderRadius: radius.full, overflow: 'hidden', ...elevation.glow },
-  saveBtnGrad: { alignItems: 'center', paddingVertical: 16 },
-  saveBtnText: { fontSize: 15, fontWeight: '800', color: '#0A0E1A', letterSpacing: 1.5 },
+  saveBtnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16 },
+  saveBtnText: { fontSize: 15, fontWeight: '800', color: '#0A0E1A', letterSpacing: 1.5, fontFamily: fonts.bodyBold },
 
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)' },
   sheet: {
     backgroundColor: colors.surface,
     borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
-    padding: spacing.lg, paddingBottom: 40,
+    padding: spacing.lg, paddingBottom: 48,
   },
-  sheetTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.md },
+  sheetHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: colors.border, alignSelf: 'center', marginBottom: spacing.md,
+  },
+  sheetTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary, marginBottom: spacing.md, fontFamily: fonts.display },
   sheetRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
-  sheetRowText: { fontSize: 15, color: colors.textPrimary },
+  sheetRowText: { fontSize: 15, color: colors.textPrimary, fontFamily: fonts.body },
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.surface2, borderRadius: radius.md,
+    paddingHorizontal: spacing.md, marginBottom: spacing.md,
+  },
+  searchInput: { flex: 1, height: 40, fontSize: 15, color: colors.textPrimary, fontFamily: fonts.body },
 });

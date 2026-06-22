@@ -17,6 +17,12 @@ export interface Catch {
     description: string;
     wind: number;
   };
+  // Conditions auto-captured at time of logging
+  pressure?: number;            // hPa
+  pressureTrend?: 'rising' | 'falling' | 'steady';
+  tideHeight?: number;          // metres
+  moonPhase?: number;           // 0–1 (0=new, 0.5=full)
+  hourOfDay?: number;           // 0–23
   date: string;
   emoji?: string;
 }

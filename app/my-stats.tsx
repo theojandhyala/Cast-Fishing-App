@@ -1,612 +1,681 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
-  TouchableOpacity,
+  LayoutChangeEvent,
 } from 'react-native';
-import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Icon } from '../components/ui/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCatchStore, Catch } from '../store/catchStore';
 import { useAuthStore } from '../store/authStore';
-import { colors, radius, spacing, fonts } from '../constants/theme';
+import { colors, radius, spacing, fonts, typography } from '../constants/theme';
+
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function computeStats(catches: Catch[]) {
-  if (catches.length === 0) {
-    return {
-      total: 0,
-      speciesCounts: {} as Record<string, number>,
-      byMonth: new Array(12).fill(0) as number[],
-      byDayOfWeek: new Array(7).fill(0) as number[],
-      byTimeOfDay: { dawn: 0, morning: 0, afternoon: 0, evening: 0, night: 0 },
-      baitCounts: {} as Record<string, number>,
-      heaviest: null as Catch | null,
-      totalWeight: 0,
-      avgSizePerSpecies: {} as Record<string, number>,
-      locations: [] as string[],
-      longestStreak: 0,
-      thisMonth: 0,
-      lastMonth: 0,
-    };
-  }
+const SPECIES_COLORS = [
+  '#00D4AA', '#F59E0B', '#2DD4FF', '#EC4899',
+  '#8B5CF6', '#10B981', '#EF4444', '#F97316',
+];
 
+const BAIT_COLORS = ['#00D4AA', '#F59E0B', '#2DD4FF', '#EC4899', '#8B5CF6'];
+
+// ─── Data helpers ─────────────────────────────────────────────────────────────
+
+function getHour(c: Catch): number {
+  return c.hourOfDay ?? new Date(c.date).getHours();
+}
+
+function formatHour(h: number): string {
+  if (h === 0) return '12a';
+  if (h === 12) return '12p';
+  return h < 12 ? `${h}a` : `${h - 12}p`;
+}
+
+function confidenceLabel(n: number): { label: string; color: string } {
+  if (n >= 10) return { label: 'High confidence', color: '#00D4AA' };
+  if (n >= 5) return { label: 'Medium confidence', color: '#F59E0B' };
+  return { label: 'Low confidence', color: '#8B95A7' };
+}
+
+interface ComputedStats {
+  total: number;
+  speciesCounts: Record<string, number>;
+  speciesWeightSum: Record<string, number>;
+  byMonth: number[];
+  byHour: number[];
+  baitCounts: Record<string, number>;
+  locationSet: string[];
+  bestHour: number;
+  bestHourCount: number;
+  topBait: string | null;
+  topBaitCount: number;
+  topSpecies: string | null;
+  topSpeciesCount: number;
+  topSpeciesAvg: number;
+  morningRate: number;
+  eveningRate: number;
+  personalBests: Array<{ species: string; best: number; avg: number }>;
+}
+
+function computeStats(catches: Catch[]): ComputedStats {
   const speciesCounts: Record<string, number> = {};
-  const byMonth = new Array(12).fill(0);
-  const byDayOfWeek = new Array(7).fill(0);
-  const byTimeOfDay = { dawn: 0, morning: 0, afternoon: 0, evening: 0, night: 0 };
-  const baitCounts: Record<string, number> = {};
   const speciesWeightSum: Record<string, number> = {};
+  const byMonth = new Array(12).fill(0) as number[];
+  const byHour = new Array(24).fill(0) as number[];
+  const baitCounts: Record<string, number> = {};
   const locationSet = new Set<string>();
-  let heaviest: Catch | null = null;
-  let totalWeight = 0;
-
-  const now = new Date();
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  let thisMonth = 0;
-  let lastMonth = 0;
-
-  const sortedDates: string[] = [];
+  const speciesBest: Record<string, number> = {};
 
   for (const c of catches) {
     const d = new Date(c.date);
+    const h = getHour(c);
+
     speciesCounts[c.species] = (speciesCounts[c.species] || 0) + 1;
     speciesWeightSum[c.species] = (speciesWeightSum[c.species] || 0) + c.weight;
+    if (!speciesBest[c.species] || c.weight > speciesBest[c.species]) {
+      speciesBest[c.species] = c.weight;
+    }
+
     byMonth[d.getMonth()]++;
-    byDayOfWeek[d.getDay()]++;
-    const h = d.getHours();
-    if (h >= 5 && h < 7) byTimeOfDay.dawn++;
-    else if (h >= 7 && h < 12) byTimeOfDay.morning++;
-    else if (h >= 12 && h < 17) byTimeOfDay.afternoon++;
-    else if (h >= 17 && h < 21) byTimeOfDay.evening++;
-    else byTimeOfDay.night++;
+    byHour[h]++;
+
     if (c.bait) baitCounts[c.bait] = (baitCounts[c.bait] || 0) + 1;
     if (c.location) locationSet.add(c.location);
-    if (!heaviest || c.weight > heaviest.weight) heaviest = c;
-    totalWeight += c.weight;
-    sortedDates.push(d.toDateString());
-    if (d >= thisMonthStart) thisMonth++;
-    else if (d >= lastMonthStart) lastMonth++;
   }
 
-  // Longest streak
-  const uniqueDays = [...new Set(sortedDates)].sort();
-  let longestStreak = 1;
-  let currentStreak = 1;
-  for (let i = 1; i < uniqueDays.length; i++) {
-    const prev = new Date(uniqueDays[i - 1]);
-    const curr = new Date(uniqueDays[i]);
-    const diff = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
-    if (diff === 1) {
-      currentStreak++;
-      longestStreak = Math.max(longestStreak, currentStreak);
-    } else {
-      currentStreak = 1;
-    }
-  }
+  const bestHour = byHour.indexOf(Math.max(...byHour));
+  const bestHourCount = byHour[bestHour];
 
-  const avgSizePerSpecies: Record<string, number> = {};
-  for (const s of Object.keys(speciesCounts)) {
-    avgSizePerSpecies[s] = Math.round((speciesWeightSum[s] / speciesCounts[s]) * 10) / 10;
-  }
+  const baitEntries = Object.entries(baitCounts).sort((a, b) => b[1] - a[1]);
+  const topBait = baitEntries[0]?.[0] ?? null;
+  const topBaitCount = baitEntries[0]?.[1] ?? 0;
+
+  const speciesEntries = Object.entries(speciesCounts).sort((a, b) => b[1] - a[1]);
+  const topSpecies = speciesEntries[0]?.[0] ?? null;
+  const topSpeciesCount = speciesEntries[0]?.[1] ?? 0;
+  const topSpeciesAvg = topSpecies
+    ? Math.round((speciesWeightSum[topSpecies] / speciesCounts[topSpecies]) * 10) / 10
+    : 0;
+
+  const morningTotal = byHour.slice(5, 12).reduce((a, b) => a + b, 0);
+  const eveningTotal = byHour.slice(17, 22).reduce((a, b) => a + b, 0);
+  const morningRate = morningTotal / 7;
+  const eveningRate = eveningTotal / 5;
+
+  const personalBests = Object.entries(speciesBest)
+    .map(([species, best]) => ({
+      species,
+      best,
+      avg: Math.round((speciesWeightSum[species] / speciesCounts[species]) * 10) / 10,
+    }))
+    .sort((a, b) => b.best - a.best);
 
   return {
     total: catches.length,
     speciesCounts,
+    speciesWeightSum,
     byMonth,
-    byDayOfWeek,
-    byTimeOfDay,
+    byHour,
     baitCounts,
-    heaviest,
-    totalWeight: Math.round(totalWeight * 10) / 10,
-    avgSizePerSpecies,
-    locations: [...locationSet],
-    longestStreak: catches.length === 0 ? 0 : longestStreak,
-    thisMonth,
-    lastMonth,
+    locationSet: [...locationSet],
+    bestHour,
+    bestHourCount,
+    topBait,
+    topBaitCount,
+    topSpecies,
+    topSpeciesCount,
+    topSpeciesAvg,
+    morningRate,
+    eveningRate,
+    personalBests,
   };
 }
 
-const SPECIES_COLORS = ['#00D4AA', '#F59E0B', '#3B82F6', '#EC4899', '#8B5CF6', '#10B981', '#EF4444', '#F97316'];
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-function MiniBarChart({ data, labels }: { data: number[]; labels: string[] }) {
-  const max = Math.max(...data, 1);
+function StatPill({ label, value }: { label: string; value: string | number }) {
   return (
-    <View style={chartStyles.container}>
-      <View style={chartStyles.bars}>
-        {data.map((v, i) => (
-          <View key={i} style={chartStyles.barCol}>
-            <View style={chartStyles.barTrack}>
-              <View style={[chartStyles.barFill, { height: `${Math.round((v / max) * 100)}%` }]} />
-            </View>
-            <Text style={chartStyles.barLabel}>{labels[i]}</Text>
-          </View>
-        ))}
+    <View style={pillStyles.pill}>
+      <Text style={pillStyles.value}>{value}</Text>
+      <Text style={pillStyles.label}>{label}</Text>
+    </View>
+  );
+}
+
+const pillStyles = StyleSheet.create({
+  pill: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,170,0.2)',
+  },
+  value: {
+    fontFamily: fonts.monoBold,
+    fontSize: 20,
+    color: colors.primary,
+    lineHeight: 24,
+  },
+  label: {
+    fontFamily: fonts.body,
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginTop: 2,
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+});
+
+function InsightCard({
+  stat,
+  text,
+  sampleCount,
+  accentColor = colors.primary,
+}: {
+  stat: string;
+  text: string;
+  sampleCount: number;
+  accentColor?: string;
+}) {
+  const conf = confidenceLabel(sampleCount);
+  return (
+    <View style={[insightStyles.card, { borderLeftColor: accentColor }]}>
+      <Text style={[insightStyles.stat, { color: accentColor }]}>{stat}</Text>
+      <Text style={insightStyles.text}>{text}</Text>
+      <View style={insightStyles.confRow}>
+        <View style={[insightStyles.confDot, { backgroundColor: conf.color }]} />
+        <Text style={[insightStyles.confLabel, { color: conf.color }]}>{conf.label}</Text>
+        <Text style={insightStyles.sampleCount}>({sampleCount} catches)</Text>
       </View>
     </View>
   );
 }
 
-const chartStyles = StyleSheet.create({
-  container: { width: '100%' },
-  bars: { flexDirection: 'row', alignItems: 'flex-end', height: 80, gap: 2 },
-  barCol: { flex: 1, alignItems: 'center', height: 96 },
-  barTrack: { flex: 1, width: '100%', backgroundColor: colors.surface2, borderRadius: 3, overflow: 'hidden', justifyContent: 'flex-end' },
-  barFill: { width: '100%', backgroundColor: colors.primary, borderRadius: 3 },
-  barLabel: { fontSize: 8, color: colors.textSecondary, marginTop: 2, textAlign: 'center' },
+const insightStyles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.surface2,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 3,
+    marginBottom: spacing.sm,
+  },
+  stat: {
+    fontFamily: fonts.monoBold,
+    fontSize: 32,
+    marginBottom: 4,
+    lineHeight: 36,
+  },
+  text: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: colors.textPrimary,
+    lineHeight: 20,
+    marginBottom: spacing.sm,
+  },
+  confRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  confDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  confLabel: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 11,
+    letterSpacing: 0.4,
+  },
+  sampleCount: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    color: colors.textTertiary,
+  },
 });
 
-function MiniPieChart({ data }: { data: { label: string; value: number; color: string }[] }) {
-  const total = data.reduce((s, d) => s + d.value, 0);
-  if (total === 0) return <Text style={{ color: colors.textSecondary, fontSize: 12 }}>No data</Text>;
+function HourlyChart({ byHour, currentHour }: { byHour: number[]; currentHour: number }) {
+  const max = Math.max(...byHour, 1);
+  const BAR_HEIGHT = 64;
+  const keyLabels: Record<number, string> = { 0: '12a', 6: '6a', 12: '12p', 18: '6p' };
+
   return (
-    <View style={pieStyles.container}>
-      {data.slice(0, 6).map((d, i) => (
-        <View key={i} style={pieStyles.row}>
-          <View style={[pieStyles.dot, { backgroundColor: d.color }]} />
-          <Text style={pieStyles.label} numberOfLines={1}>{d.label}</Text>
-          <View style={pieStyles.track}>
-            <View style={[pieStyles.fill, { width: `${Math.round((d.value / total) * 100)}%`, backgroundColor: d.color }]} />
-          </View>
-          <Text style={pieStyles.pct}>{Math.round((d.value / total) * 100)}%</Text>
-        </View>
-      ))}
+    <View style={hourlyStyles.wrapper}>
+      <View style={hourlyStyles.bars}>
+        {byHour.map((v, i) => {
+          const h = Math.round((v / max) * BAR_HEIGHT);
+          const isActive = i === currentHour;
+          const hasLabel = keyLabels[i] !== undefined;
+          return (
+            <View key={i} style={hourlyStyles.col}>
+              <View style={[hourlyStyles.track, { height: BAR_HEIGHT }]}>
+                <View
+                  style={[
+                    hourlyStyles.bar,
+                    { height: h, backgroundColor: isActive ? colors.primary : 'rgba(0,212,170,0.25)' },
+                  ]}
+                />
+              </View>
+              <Text style={[hourlyStyles.tickLabel, { opacity: hasLabel ? 1 : 0 }]}>
+                {keyLabels[i] ?? ' '}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }
 
-const pieStyles = StyleSheet.create({
-  container: { width: '100%', gap: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  label: { fontSize: 12, color: colors.textPrimary, width: 70 },
-  track: { flex: 1, height: 6, backgroundColor: colors.surface2, borderRadius: 3, overflow: 'hidden' },
-  fill: { height: '100%', borderRadius: 3 },
-  pct: { fontSize: 11, color: colors.textSecondary, width: 32, textAlign: 'right' },
+const hourlyStyles = StyleSheet.create({
+  wrapper: { width: '100%' },
+  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
+  col: { flex: 1, alignItems: 'center' },
+  track: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 3,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  bar: { width: '100%', borderRadius: 3 },
+  tickLabel: {
+    fontSize: 7,
+    color: colors.textSecondary,
+    marginTop: 3,
+    fontFamily: fonts.mono,
+  },
 });
 
-export default function MyStatsScreen() {
-  const { catches } = useCatchStore();
-  const { user } = useAuthStore();
-  const stats = useMemo(() => computeStats(catches), [catches]);
+function BaitBars({ baitCounts }: { baitCounts: Record<string, number> }) {
+  const [containerWidth, setContainerWidth] = useState(0);
+  const entries = Object.entries(baitCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const max = entries[0]?.[1] ?? 1;
 
-  const yearsLabel = (() => {
-    if (!user?.joinedAt) return '< 1 year';
-    const joined = new Date(user.joinedAt);
-    const years = Math.floor((Date.now() - joined.getTime()) / (1000 * 60 * 60 * 24 * 365));
-    return years < 1 ? '< 1 year' : `${years} year${years > 1 ? 's' : ''}`;
-  })();
-
-  const trendIcon = stats.thisMonth > stats.lastMonth ? 'arrow-up-bold' : stats.thisMonth < stats.lastMonth ? 'arrow-down-bold' : 'arrow-right-bold';
-  const trendColor = stats.thisMonth > stats.lastMonth ? colors.success : stats.thisMonth < stats.lastMonth ? colors.danger : colors.textSecondary;
-
-  const speciesPieData = Object.entries(stats.speciesCounts).map(([label, value], i) => ({
-    label,
-    value,
-    color: SPECIES_COLORS[i % SPECIES_COLORS.length],
-  }));
-
-  const bestDayIdx = stats.byDayOfWeek.indexOf(Math.max(...stats.byDayOfWeek));
-  const bestTimeEntry = Object.entries(stats.byTimeOfDay).sort((a, b) => b[1] - a[1])[0];
-  const bestTimeLabel = bestTimeEntry ? bestTimeEntry[0].charAt(0).toUpperCase() + bestTimeEntry[0].slice(1) : '-';
-
-  const topBaits = Object.entries(stats.baitCounts)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
+  if (entries.length === 0) {
+    return (
+      <Text style={emptyStyle.text}>
+        No bait data logged yet — add bait when logging catches
+      </Text>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <LinearGradient
-          colors={['rgba(0,212,170,0.12)', 'transparent']}
-          style={styles.header}
-        >
-          <Text style={styles.headerTitle}>My Fishing Story</Text>
-          <Text style={styles.headerSub}>Fishing for {yearsLabel}</Text>
-          <View style={styles.headerStats}>
-            <View style={styles.headerStat}>
-              <Text style={styles.headerStatValue}>{stats.total}</Text>
-              <Text style={styles.headerStatLabel}>Total Catches</Text>
+    <View style={{ gap: spacing.sm }} onLayout={(e: LayoutChangeEvent) => setContainerWidth(e.nativeEvent.layout.width)}>
+      {entries.map(([bait, count], i) => {
+        const barW = containerWidth > 0 ? Math.round((count / max) * (containerWidth - 80)) : 0;
+        return (
+          <View key={bait} style={baitBarStyles.row}>
+            <Text style={baitBarStyles.name} numberOfLines={1}>{bait}</Text>
+            <View style={baitBarStyles.trackWrap}>
+              <View style={[baitBarStyles.fill, { width: barW, backgroundColor: BAIT_COLORS[i % BAIT_COLORS.length] }]} />
             </View>
-            <View style={styles.headerStat}>
-              <Text style={styles.headerStatValue}>{Object.keys(stats.speciesCounts).length}</Text>
-              <Text style={styles.headerStatLabel}>Species</Text>
-            </View>
-            <View style={styles.headerStat}>
-              <Text style={styles.headerStatValue}>{stats.totalWeight}kg</Text>
-              <Text style={styles.headerStatLabel}>Total Weight</Text>
-            </View>
+            <Text style={baitBarStyles.count}>{count}</Text>
           </View>
-        </LinearGradient>
-
-        <View style={styles.content}>
-
-          {/* This Month vs Last */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Monthly Catches</Text>
-            <View style={styles.monthRow}>
-              <View style={styles.monthBox}>
-                <Text style={styles.monthValue}>{stats.thisMonth}</Text>
-                <Text style={styles.monthLabel}>This Month</Text>
-              </View>
-              <View style={styles.trendArrow}>
-                <MaterialCommunityIcons name={trendIcon as any} size={32} color={trendColor} />
-              </View>
-              <View style={styles.monthBox}>
-                <Text style={styles.monthValue}>{stats.lastMonth}</Text>
-                <Text style={styles.monthLabel}>Last Month</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Species Breakdown */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Species Caught</Text>
-            {speciesPieData.length > 0 ? (
-              <MiniPieChart data={speciesPieData} />
-            ) : (
-              <Text style={styles.emptyText}>No catches logged yet</Text>
-            )}
-          </View>
-
-          {/* Catches by Month */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Catches by Month</Text>
-            <MiniBarChart data={stats.byMonth} labels={MONTH_NAMES} />
-          </View>
-
-          {/* Best Day & Time */}
-          <View style={styles.row}>
-            <View style={[styles.card, styles.halfCard]}>
-              <Text style={styles.cardTitle}>Best Day</Text>
-              <MaterialCommunityIcons name="calendar-star" size={32} color={colors.primary} style={{ marginBottom: spacing.xs }} />
-              <Text style={styles.bigValue}>{stats.total > 0 ? DAY_NAMES[bestDayIdx] : '-'}</Text>
-              <Text style={styles.smallSub}>Most catches</Text>
-            </View>
-            <View style={[styles.card, styles.halfCard]}>
-              <Text style={styles.cardTitle}>Best Time</Text>
-              <MaterialCommunityIcons name="weather-sunset-up" size={32} color={colors.primary} style={{ marginBottom: spacing.xs }} />
-              <Text style={styles.bigValue}>{stats.total > 0 ? bestTimeLabel : '-'}</Text>
-              <Text style={styles.smallSub}>Time of day</Text>
-            </View>
-          </View>
-
-          {/* Top Baits */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Top Baits</Text>
-            {topBaits.length > 0 ? (
-              <View style={styles.baitList}>
-                {topBaits.map(([bait, count], i) => (
-                  <View key={bait} style={styles.baitRow}>
-                    <View style={styles.baitRank}>
-                      <Text style={styles.baitRankText}>#{i + 1}</Text>
-                    </View>
-                    <Text style={styles.baitName}>{bait}</Text>
-                    <Text style={styles.baitCount}>{count} uses</Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={styles.emptyText}>No bait data yet</Text>
-            )}
-          </View>
-
-          {/* Heaviest Catch */}
-          {stats.heaviest && (
-            <View style={[styles.card, styles.pbCard]}>
-              <View style={styles.pbTitleRow}>
-                <Text style={styles.cardTitle}>Heaviest Catch Ever</Text>
-                <MaterialCommunityIcons name="trophy" size={16} color={colors.secondary} />
-              </View>
-              <View style={styles.pbRow}>
-                <View style={styles.pbIconBox}>
-                  <MaterialCommunityIcons name="fish" size={32} color={colors.secondary} />
-                </View>
-                <View style={styles.pbInfo}>
-                  <Text style={styles.pbSpecies}>{stats.heaviest.species}</Text>
-                  <Text style={styles.pbWeight}>{stats.heaviest.weight}kg</Text>
-                  {stats.heaviest.location && (
-                    <View style={styles.pbLocationRow}>
-                      <MaterialCommunityIcons name="map-marker" size={12} color={colors.textSecondary} />
-                      <Text style={styles.pbLocation}>{stats.heaviest.location}</Text>
-                    </View>
-                  )}
-                  <Text style={styles.pbDate}>
-                    {new Date(stats.heaviest.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* Average size per species */}
-          {Object.keys(stats.avgSizePerSpecies).length > 0 && (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Average Size per Species</Text>
-              <View style={styles.avgList}>
-                {Object.entries(stats.avgSizePerSpecies).map(([sp, avg]) => (
-                  <View key={sp} style={styles.avgRow}>
-                    <Text style={styles.avgSpecies}>{sp}</Text>
-                    <Text style={styles.avgValue}>{avg}kg avg</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Locations */}
-          {stats.locations.length > 0 && (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Fishing Locations ({stats.locations.length})</Text>
-              <View style={styles.locationList}>
-                {stats.locations.map((loc) => (
-                  <View key={loc} style={styles.locationChip}>
-                    <MaterialCommunityIcons name="map-marker" size={12} color={colors.primary} />
-                    <Text style={styles.locationText}>{loc}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* Longest Streak */}
-          <View style={[styles.card, styles.streakCard]}>
-            <MaterialCommunityIcons name="fire" size={28} color={colors.secondary} />
-            <View style={styles.streakInfo}>
-              <Text style={styles.streakTitle}>Longest Streak</Text>
-              <Text style={styles.streakValue}>{stats.longestStreak} consecutive day{stats.longestStreak !== 1 ? 's' : ''}</Text>
-            </View>
-          </View>
-
-        </View>
-        <View style={{ height: 80 }} />
-      </ScrollView>
-    </SafeAreaView>
+        );
+      })}
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+function SpeciesBars({ speciesCounts }: { speciesCounts: Record<string, number> }) {
+  const [containerWidth, setContainerWidth] = useState(0);
+  const entries = Object.entries(speciesCounts).sort((a, b) => b[1] - a[1]);
+  const max = entries[0]?.[1] ?? 1;
+
+  if (entries.length === 0) {
+    return <Text style={emptyStyle.text}>No catches logged yet</Text>;
+  }
+
+  return (
+    <View style={{ gap: spacing.sm }} onLayout={(e: LayoutChangeEvent) => setContainerWidth(e.nativeEvent.layout.width)}>
+      {entries.map(([species, count], i) => {
+        const barW = containerWidth > 0 ? Math.round((count / max) * (containerWidth - 80)) : 0;
+        return (
+          <View key={species} style={baitBarStyles.row}>
+            <Text style={baitBarStyles.name} numberOfLines={1}>{species}</Text>
+            <View style={baitBarStyles.trackWrap}>
+              <View style={[baitBarStyles.fill, { width: barW, backgroundColor: SPECIES_COLORS[i % SPECIES_COLORS.length] }]} />
+            </View>
+            <Text style={baitBarStyles.count}>{count}</Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+const baitBarStyles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, height: 28 },
+  name: { width: 80, fontFamily: fonts.bodySemi, fontSize: 13, color: colors.textPrimary },
+  trackWrap: {
     flex: 1,
-    backgroundColor: colors.background,
+    height: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 5,
+    overflow: 'hidden',
+    justifyContent: 'center',
   },
-  header: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  headerSub: {
-    fontSize: 14,
+  fill: { height: 10, borderRadius: 5 },
+  count: { width: 24, fontFamily: fonts.mono, fontSize: 12, color: colors.textSecondary, textAlign: 'right' },
+});
+
+function MonthlyChart({ byMonth }: { byMonth: number[] }) {
+  const max = Math.max(...byMonth, 1);
+  const BAR_HEIGHT = 56;
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>
+      {byMonth.map((v, i) => {
+        const h = Math.round((v / max) * BAR_HEIGHT);
+        return (
+          <View key={i} style={{ flex: 1, alignItems: 'center' }}>
+            <View style={{ width: '100%', height: BAR_HEIGHT, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 4, justifyContent: 'flex-end', overflow: 'hidden' }}>
+              <View style={{ width: '100%', height: h, backgroundColor: v > 0 ? 'rgba(0,212,170,0.6)' : 'transparent', borderRadius: 4 }} />
+            </View>
+            <Text style={{ fontSize: 7, color: colors.textSecondary, marginTop: 3, fontFamily: fonts.mono }}>
+              {MONTH_NAMES[i].slice(0, 1)}
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+const emptyStyle = StyleSheet.create({
+  text: {
+    fontFamily: fonts.body,
+    fontSize: 13,
     color: colors.textSecondary,
-    marginBottom: spacing.lg,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
+    lineHeight: 20,
   },
-  headerStats: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-  },
-  headerStat: {
-    alignItems: 'center',
-  },
-  headerStatValue: {
-    fontFamily: fonts.monoBold,
-    fontSize: 24,
-    color: colors.primary,
-  },
-  headerStatLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  content: {
-    paddingHorizontal: spacing.lg,
-    gap: spacing.md,
-  },
-  card: {
+});
+
+function Section({
+  title,
+  icon,
+  accentColor = colors.primary,
+  children,
+}: {
+  title: string;
+  icon: string;
+  accentColor?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={sectionStyles.wrapper}>
+      <View style={sectionStyles.titleRow}>
+        <View style={[sectionStyles.iconBadge, { backgroundColor: `${accentColor}18` }]}>
+          <Icon name={icon as any} size={14} color={accentColor} />
+        </View>
+        <Text style={sectionStyles.title}>{title}</Text>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+const sectionStyles = StyleSheet.create({
+  wrapper: {
+    marginBottom: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
     padding: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.primary,
   },
-  halfCard: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  row: {
+  titleRow: {
     flexDirection: 'row',
-    gap: spacing.md,
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    alignItems: 'center',
+    gap: spacing.sm,
     marginBottom: spacing.md,
   },
-  monthRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xl,
-  },
-  monthBox: {
-    alignItems: 'center',
-  },
-  monthValue: {
-    fontFamily: fonts.monoBold,
-    fontSize: 36,
-    color: colors.textPrimary,
-  },
-  monthLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  trendArrow: {
-    alignItems: 'center',
-  },
-  bigValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    marginBottom: 2,
-  },
-  smallSub: {
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  baitList: {
-    gap: spacing.sm,
-  },
-  baitRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  baitRank: {
+  iconBadge: {
     width: 28,
     height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0,212,170,0.12)',
+    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  baitRankText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  baitName: {
-    flex: 1,
-    fontSize: 14,
-    color: colors.textPrimary,
-    fontWeight: '500',
-  },
-  baitCount: {
-    fontSize: 12,
+  title: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 13,
     color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
-  pbCard: {
-    borderLeftColor: colors.secondary,
-  },
-  pbTitleRow: {
+});
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
+
+export default function MyStatsScreen() {
+  const { catches } = useCatchStore();
+  const { user } = useAuthStore();
+  const currentHour = new Date().getHours();
+
+  const stats = useMemo(() => computeStats(catches), [catches]);
+
+  const insights = useMemo(() => {
+    const result: Array<{ stat: string; text: string; sampleCount: number; accentColor?: string }> = [];
+
+    if (catches.length === 0) return result;
+
+    result.push({
+      stat: formatHour(stats.bestHour),
+      text: `You catch most fish at ${formatHour(stats.bestHour)} — ${stats.bestHourCount} of your catches happened in this window.`,
+      sampleCount: stats.bestHourCount,
+      accentColor: colors.primary,
+    });
+
+    if (stats.topBait) {
+      result.push({
+        stat: stats.topBait,
+        text: `Your most successful bait overall is ${stats.topBait} (${stats.topBaitCount} catches).`,
+        sampleCount: stats.topBaitCount,
+        accentColor: colors.secondary,
+      });
+    } else {
+      result.push({
+        stat: '—',
+        text: 'Not enough bait data. Try adding bait when logging your next catch.',
+        sampleCount: 0,
+        accentColor: colors.textTertiary,
+      });
+    }
+
+    if (stats.topSpecies) {
+      result.push({
+        stat: `${stats.topSpeciesCount}×`,
+        text: `${stats.topSpecies} is your most caught species — ${stats.topSpeciesCount} catches, averaging ${stats.topSpeciesAvg}kg.`,
+        sampleCount: stats.topSpeciesCount,
+        accentColor: '#2DD4FF',
+      });
+    }
+
+    if (catches.length >= 5 && (stats.morningRate > 0 || stats.eveningRate > 0)) {
+      const isMorningBetter = stats.morningRate >= stats.eveningRate;
+      const ratio = isMorningBetter
+        ? stats.eveningRate > 0 ? (stats.morningRate / stats.eveningRate).toFixed(1) : '∞'
+        : stats.morningRate > 0 ? (stats.eveningRate / stats.morningRate).toFixed(1) : '∞';
+      const better = isMorningBetter ? 'morning' : 'evening';
+      const worse = isMorningBetter ? 'evening' : 'morning';
+      result.push({
+        stat: `${ratio}×`,
+        text: `Your catch rate is ${ratio}× higher in the ${better} vs ${worse}.`,
+        sampleCount: catches.length,
+        accentColor: '#8B5CF6',
+      });
+    }
+
+    return result;
+  }, [catches, stats]);
+
+  const isEmpty = catches.length < 3;
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+
+        <LinearGradient
+          colors={['rgba(0,212,170,0.18)', 'rgba(0,212,170,0.04)', 'transparent']}
+          style={styles.header}
+        >
+          <View style={styles.headerTop}>
+            <View>
+              <Text style={styles.headerTitle}>Pattern Lab</Text>
+              <Text style={styles.headerSub}>What actually works for you</Text>
+            </View>
+            <View style={styles.headerIcon}>
+              <Icon name="flask-outline" size={22} color={colors.primary} />
+            </View>
+          </View>
+          <View style={styles.pillRow}>
+            <StatPill label="Total Catches" value={stats.total} />
+            <StatPill label="Species" value={Object.keys(stats.speciesCounts).length} />
+            <StatPill label="Locations" value={stats.locationSet.length} />
+          </View>
+        </LinearGradient>
+
+        <View style={styles.content}>
+          {isEmpty ? (
+            <View style={styles.emptyState}>
+              <Icon name="fish-off" size={48} color={colors.textTertiary} />
+              <Text style={styles.emptyTitle}>Start logging catches</Text>
+              <Text style={styles.emptyBody}>
+                Log at least 3 catches to unlock your personal insights and patterns.
+              </Text>
+            </View>
+          ) : (
+            <>
+              <Section title="Your Fishing Brain" icon="brain" accentColor={colors.primary}>
+                {insights.map((ins, i) => (
+                  <InsightCard key={i} {...ins} />
+                ))}
+              </Section>
+
+              <Section title="Your Most Productive Hours" icon="clock-outline" accentColor="#2DD4FF">
+                <HourlyChart byHour={stats.byHour} currentHour={currentHour} />
+              </Section>
+
+              <Section title="What's Working" icon="hook" accentColor={colors.secondary}>
+                <BaitBars baitCounts={stats.baitCounts} />
+              </Section>
+
+              <Section title="Species Caught" icon="fish" accentColor="#EC4899">
+                <SpeciesBars speciesCounts={stats.speciesCounts} />
+              </Section>
+
+              {stats.personalBests.length > 0 && (
+                <Section title="Personal Records" icon="trophy-outline" accentColor={colors.secondary}>
+                  {stats.personalBests.map((pb, i) => (
+                    <View key={pb.species} style={pbStyles.row}>
+                      <View style={pbStyles.rankBadge}>
+                        <Text style={pbStyles.rank}>#{i + 1}</Text>
+                      </View>
+                      <Text style={pbStyles.species} numberOfLines={1}>{pb.species}</Text>
+                      <View style={pbStyles.weights}>
+                        <Text style={pbStyles.best}>{pb.best}kg</Text>
+                        <Text style={pbStyles.avg}>{pb.avg}kg avg</Text>
+                      </View>
+                    </View>
+                  ))}
+                </Section>
+              )}
+
+              <Section title="Catches by Month" icon="calendar-month-outline" accentColor={colors.primary}>
+                <MonthlyChart byMonth={stats.byMonth} />
+              </Section>
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const pbStyles = StyleSheet.create({
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: spacing.md,
-  },
-  pbRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  pbIconBox: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.lg,
-    backgroundColor: 'rgba(245,158,11,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pbInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  pbSpecies: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-  pbWeight: {
-    fontFamily: fonts.monoBold,
-    fontSize: 28,
-    color: colors.secondary,
-  },
-  pbLocationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  pbLocation: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  pbDate: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
-  avgList: {
-    gap: spacing.xs,
-  },
-  avgRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.xs,
+    gap: spacing.sm,
+    paddingVertical: spacing.xs + 2,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  avgSpecies: {
-    fontSize: 14,
-    color: colors.textPrimary,
-  },
-  avgValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  locationList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
-  locationChip: {
-    flexDirection: 'row',
+  rankBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(245,158,11,0.12)',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.surface2,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    justifyContent: 'center',
   },
-  locationText: {
-    fontSize: 12,
-    color: colors.textPrimary,
+  rank: { fontFamily: fonts.monoBold, fontSize: 10, color: colors.secondary },
+  species: { flex: 1, fontFamily: fonts.bodySemi, fontSize: 14, color: colors.textPrimary },
+  weights: { alignItems: 'flex-end', gap: 1 },
+  best: { fontFamily: fonts.monoBold, fontSize: 15, color: colors.secondary },
+  avg: { fontFamily: fonts.mono, fontSize: 11, color: colors.textSecondary },
+});
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  header: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
   },
-  streakCard: {
+  headerTop: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    borderLeftColor: colors.secondary,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.lg,
   },
-  streakInfo: {
-    flex: 1,
+  headerTitle: {
+    fontFamily: fonts.display,
+    fontSize: 34,
+    color: colors.textPrimary,
+    letterSpacing: -0.5,
+    lineHeight: 38,
   },
-  streakTitle: {
+  headerSub: {
+    fontFamily: fonts.body,
     fontSize: 14,
     color: colors.textSecondary,
+    marginTop: 3,
   },
-  streakValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.textPrimary,
+  headerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: 'rgba(0,212,170,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,170,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  emptyText: {
-    fontSize: 13,
+  pillRow: { flexDirection: 'row', gap: spacing.sm },
+  content: { paddingHorizontal: spacing.md, paddingTop: spacing.sm },
+  emptyState: { alignItems: 'center', paddingVertical: spacing.xxl, gap: spacing.md },
+  emptyTitle: { fontFamily: fonts.display, fontSize: 22, color: colors.textPrimary },
+  emptyBody: {
+    fontFamily: fonts.body,
+    fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
-    paddingVertical: spacing.md,
+    lineHeight: 22,
+    paddingHorizontal: spacing.lg,
   },
 });
