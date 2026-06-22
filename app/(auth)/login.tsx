@@ -105,21 +105,6 @@ export default function LoginScreen() {
             style={styles.loginBtn}
           />
 
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.guestBtn}
-            onPress={() => {
-              login('demo@castapp.com', 'demo');
-              router.replace('/(tabs)');
-            }}
-          >
-            <Text style={styles.guestText}>Continue as Guest</Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>

@@ -30,10 +30,7 @@ interface HeadToHeadState {
 
 const daysFromNow = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString();
 
-const INITIAL_DUELS: HeadToHead[] = [
-  { id: 'duel-aiko', opponentId: 'demo-aiko', opponentName: 'Aiko Tanaka', opponentColor: '#EF476F', metric: 'species', title: 'Species sprint', target: 5, yourScore: 3, opponentScore: 4, status: 'active', endsAt: daysFromNow(2), isDemo: true },
-  { id: 'duel-amara', opponentId: 'demo-amara', opponentName: 'Amara Dlamini', opponentColor: '#9B5DE5', metric: 'catches', title: 'Weekend five', target: 5, yourScore: 0, opponentScore: 0, status: 'incoming', endsAt: daysFromNow(4), isDemo: true },
-];
+const INITIAL_DUELS: HeadToHead[] = [];
 
 export const useHeadToHeadStore = create<HeadToHeadState>()(
   persist(
@@ -61,7 +58,7 @@ export const useHeadToHeadStore = create<HeadToHeadState>()(
       declineDuel: (id) => set((state) => ({ duels: state.duels.filter((duel) => duel.id !== id) })),
     }),
     {
-      name: 'cast_head_to_heads_v1',
+      name: 'cast_head_to_heads_v2',
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

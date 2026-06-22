@@ -49,51 +49,22 @@ interface CatchState {
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-const sampleCatches: Catch[] = [
-  {
-    id: 'sample1',
-    species: 'Carp',
-    weight: 8.5,
-    length: 72,
-    location: 'Grafham Water',
-    bait: 'Boilies',
-    notes: 'Beautiful common carp, great fight!',
-    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    emoji: '🐟',
-  },
-  {
-    id: 'sample2',
-    species: 'Pike',
-    weight: 5.2,
-    length: 68,
-    location: 'River Thames',
-    bait: 'Deadbait (Mackerel)',
-    notes: 'Attacked the bait aggressively at 9am',
-    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    emoji: '🦷',
-  },
-  {
-    id: 'sample3',
-    species: 'Perch',
-    weight: 1.1,
-    length: 34,
-    location: 'Grand Union Canal',
-    bait: 'Worms',
-    notes: 'Monster perch on light tackle',
-    date: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-    emoji: '🎣',
-  },
-];
-
 export const useCatchStore = create<CatchState>((set, get) => ({
-  catches: sampleCatches,
+  catches: [],
   isLoading: false,
 
   loadCatches: async () => {
     try {
       const stored = await AsyncStorage.getItem('cast_catches');
       if (stored) {
-        set({ catches: JSON.parse(stored) });
+        const parsed = JSON.parse(stored);
+        const catches = Array.isArray(parsed)
+          ? parsed.filter((item) => item && !String(item.id).startsWith('sample'))
+          : [];
+        set({ catches });
+        await AsyncStorage.setItem('cast_catches', JSON.stringify(catches));
+      } else {
+        set({ catches: [] });
       }
     } catch {
       // use defaults

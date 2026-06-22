@@ -17,7 +17,7 @@ function FriendCard({ friend, onChallenge }: { friend: Friend; onChallenge: (fri
     <View style={styles.friendCard}>
       <SocialAvatar name={friend.name} color={friend.avatarColor} isOnline={friend.isOnline} />
       <View style={styles.friendBody}>
-        <View style={styles.inline}><Text style={styles.friendName}>{friend.name}</Text>{friend.isDemo ? <Text style={styles.demo}>DEMO</Text> : null}</View>
+        <View style={styles.inline}><Text style={styles.friendName}>{friend.name}</Text></View>
         <Text style={styles.friendMeta}>{friend.countryCode} · Level {friend.level} · {friend.lastActive}</Text>
         <Text style={styles.friendStat}>{friend.catchCount} catches · {friend.streak} day streak</Text>
       </View>
@@ -36,7 +36,6 @@ function DuelCard({ duel, onAccept, onDecline }: { duel: HeadToHead; onAccept: (
     <View style={styles.duelCard}>
       <View style={styles.duelHeader}>
         <View><Text style={styles.duelKicker}>{duel.status === 'incoming' ? 'CHALLENGE RECEIVED' : duel.status === 'outgoing' ? 'INVITE SENT' : `${days}D LEFT`}</Text><Text style={styles.duelTitle}>{duel.title}</Text></View>
-        {duel.isDemo ? <Text style={styles.demo}>DEMO</Text> : null}
       </View>
       <View style={styles.duelPeople}>
         <View style={styles.duelPerson}><View style={[styles.duelAvatar, { backgroundColor: colors.primary }]}><Text style={styles.duelInitial}>Y</Text></View><Text style={styles.duelName}>You</Text><Text style={styles.duelScore}>{duel.yourScore}</Text></View>
@@ -80,11 +79,15 @@ export default function SocialScreen() {
         {(['feed', 'friends', 'duels'] as SocialTab[]).map((item) => <Pressable key={item} accessibilityRole="tab" accessibilityState={{ selected: tab === item }} onPress={() => setTab(item)} style={[styles.tab, tab === item && styles.tabActive]}><Text style={[styles.tabText, tab === item && styles.tabTextActive]}>{item === 'feed' ? 'Activity' : item === 'friends' ? `Friends ${friends.length}` : 'Head-to-head'}</Text>{item === 'duels' && incoming > 0 ? <View style={styles.count}><Text style={styles.countText}>{incoming}</Text></View> : null}</Pressable>)}
       </View>
 
-      {tab === 'feed' ? <FlatList data={feed} renderItem={renderPost} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} initialNumToRender={4} windowSize={5} ListHeaderComponent={<View style={styles.context}><Icon name="information-outline" size={15} color={colors.textSecondary} /><Text style={styles.contextText}>Demo profiles show how the feed works. Your friends and catches stay on this device.</Text></View>} /> : null}
-      {tab === 'friends' ? <FlatList data={friends} keyExtractor={(item) => item.id} renderItem={({ item }) => <FriendCard friend={item} onChallenge={challenge} />} contentContainerStyle={styles.list} ListHeaderComponent={<Pressable accessibilityRole="button" onPress={() => router.push('/friends')} style={styles.manageRow}><Text style={styles.manageText}>Find anglers and requests</Text><Icon name="arrow-right" size={18} color={colors.primary} /></Pressable>} /> : null}
-      {tab === 'duels' ? <FlatList data={duels} keyExtractor={(item) => item.id} renderItem={({ item }) => <DuelCard duel={item} onAccept={() => acceptDuel(item.id)} onDecline={() => declineDuel(item.id)} />} contentContainerStyle={styles.list} ListHeaderComponent={<Pressable accessibilityRole="button" onPress={() => setTab('friends')} style={styles.manageRow}><Text style={styles.manageText}>Start a new head-to-head</Text><Icon name="plus" size={18} color={colors.primary} /></Pressable>} /> : null}
+      {tab === 'feed' ? <FlatList data={feed} renderItem={renderPost} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} initialNumToRender={4} windowSize={5} ListEmptyComponent={<EmptySocial icon="image-outline" title="No activity yet" body="Catches shared by real friends will appear here." action="Add friends" onPress={() => router.push('/friends')} />} /> : null}
+      {tab === 'friends' ? <FlatList data={friends} keyExtractor={(item) => item.id} renderItem={({ item }) => <FriendCard friend={item} onChallenge={challenge} />} contentContainerStyle={styles.list} ListHeaderComponent={<Pressable accessibilityRole="button" onPress={() => router.push('/friends')} style={styles.manageRow}><Text style={styles.manageText}>Add anglers and view requests</Text><Icon name="arrow-right" size={18} color={colors.primary} /></Pressable>} ListEmptyComponent={<EmptySocial icon="account-group-outline" title="No friends yet" body="Add a real angler before starting a head-to-head." action="Find friends" onPress={() => router.push('/friends')} />} /> : null}
+      {tab === 'duels' ? <FlatList data={duels} keyExtractor={(item) => item.id} renderItem={({ item }) => <DuelCard duel={item} onAccept={() => acceptDuel(item.id)} onDecline={() => declineDuel(item.id)} />} contentContainerStyle={styles.list} ListHeaderComponent={<Pressable accessibilityRole="button" onPress={() => setTab('friends')} style={styles.manageRow}><Text style={styles.manageText}>Start a new head-to-head</Text><Icon name="plus" size={18} color={colors.primary} /></Pressable>} ListEmptyComponent={<EmptySocial icon="sword-cross" title="No head-to-heads" body="Challenge a friend to first-to-five once they join your circle." action="View friends" onPress={() => setTab('friends')} />} /> : null}
     </SafeAreaView>
   );
+}
+
+function EmptySocial({ icon, title, body, action, onPress }: { icon: string; title: string; body: string; action: string; onPress: () => void }) {
+  return <View style={styles.emptyState}><Icon name={icon} size={34} color={colors.textTertiary} /><Text style={styles.emptyTitle}>{title}</Text><Text style={styles.emptyBody}>{body}</Text><Pressable onPress={onPress} style={styles.emptyButton}><Text style={styles.emptyButtonText}>{action}</Text></Pressable></View>;
 }
 
 const styles = StyleSheet.create({
@@ -102,8 +105,6 @@ const styles = StyleSheet.create({
   count: { minWidth: 17, height: 17, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
   countText: { color: colors.background, fontSize: 9, fontWeight: '900' },
   list: { paddingHorizontal: spacing.lg, paddingBottom: 110, paddingTop: spacing.sm },
-  context: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', paddingVertical: spacing.sm, marginBottom: spacing.sm },
-  contextText: { flex: 1, color: colors.textSecondary, fontSize: 11, lineHeight: 16 },
   manageRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.md, marginBottom: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
   manageText: { color: colors.textPrimary, fontSize: 14, fontWeight: '700' },
   friendCard: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.border },
@@ -112,7 +113,11 @@ const styles = StyleSheet.create({
   friendName: { color: colors.textPrimary, fontSize: 15, fontWeight: '800', flexShrink: 1 },
   friendMeta: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
   friendStat: { color: colors.textSecondary, fontSize: 11, marginTop: 5 },
-  demo: { color: colors.accentBlue, fontSize: 8, fontWeight: '900', letterSpacing: 0.7 },
+  emptyState: { alignItems: 'center', paddingHorizontal: spacing.xl, paddingTop: spacing.xxl, gap: spacing.sm },
+  emptyTitle: { color: colors.textPrimary, fontSize: 17, fontWeight: '700' },
+  emptyBody: { color: colors.textSecondary, textAlign: 'center', lineHeight: 19 },
+  emptyButton: { marginTop: spacing.sm, borderWidth: 1, borderColor: colors.primary, borderRadius: radius.md, paddingHorizontal: spacing.lg, paddingVertical: 10 },
+  emptyButtonText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
   challengeButton: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
   duelCard: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   duelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

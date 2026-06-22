@@ -88,8 +88,8 @@ export default function IdentifierScreen() {
     }
 
     const res = fromCamera
-      ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, base64: true })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, base64: true });
+      ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.55, base64: true, allowsEditing: false })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.55, base64: true, allowsEditing: false });
 
     if (!res.canceled && res.assets[0]) {
       const asset = res.assets[0];
@@ -155,8 +155,8 @@ export default function IdentifierScreen() {
         {!imageUri ? (
           <TouchableOpacity style={styles.scanFrame} onPress={() => pickImage(true)} activeOpacity={0.85}>
             <MaterialCommunityIcons name="camera-outline" size={44} color={colors.textSecondary} />
-            <Text style={styles.scanPlaceholderTitle}>Identify Any Fish</Text>
-            <Text style={styles.scanPlaceholderSub}>Snap a photo and AI does the rest</Text>
+            <Text style={styles.scanPlaceholderTitle}>Scan a fish</Text>
+            <Text style={styles.scanPlaceholderSub}>Best results: whole fish, side-on, good light</Text>
           </TouchableOpacity>
         ) : (
           <View style={styles.scanFrame}>
@@ -195,7 +195,7 @@ export default function IdentifierScreen() {
         {loading && (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color={colors.primary} />
-            <Text style={styles.loadingText}>Identifying your fish...</Text>
+              <Text style={styles.loadingText}>Checking body shape, fins and markings…</Text>
           </View>
         )}
 

@@ -67,10 +67,6 @@ export default function CommunityScreen() {
             <Icon name="account-group-outline" size={23} color={colors.primary} />
           </Pressable>
         </View>
-        <View style={styles.demoNotice}>
-          <Icon name="information-outline" size={16} color={colors.accentBlue} />
-          <Text style={styles.demoNoticeText}>Fictional demo profiles and catches — explore safely.</Text>
-        </View>
         <View style={styles.tabs} accessibilityRole="tablist">
           {(Object.keys(TAB_LABELS) as CommunityTab[]).map((item) => (
             <Pressable
@@ -98,10 +94,7 @@ export default function CommunityScreen() {
             <View style={styles.sessionCard}>
               <View style={styles.liveDot} />
               <View style={styles.sessionBody}>
-                <View style={styles.sessionTitleRow}>
-                  <Text style={styles.sessionName}>{item.friendName}</Text>
-                  <View style={styles.demoBadge}><Text style={styles.demoBadgeText}>DEMO</Text></View>
-                </View>
+                <View style={styles.sessionTitleRow}><Text style={styles.sessionName}>{item.friendName}</Text></View>
                 <Text style={styles.sessionLocation}>{item.locationLabel}</Text>
                 <Text style={styles.sessionTarget}>Targeting {item.targetSpecies.join(' · ')}</Text>
               </View>
@@ -109,6 +102,7 @@ export default function CommunityScreen() {
             </View>
           )}
           ListHeaderComponent={<Text style={styles.sectionHeading}>Friends fishing now</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>No friends are sharing a live session.</Text>}
         />
       ) : (
         <FlatList
@@ -121,6 +115,7 @@ export default function CommunityScreen() {
           windowSize={5}
           removeClippedSubviews
           ListHeaderComponent={<Text style={styles.sectionHeading}>{tab === 'friends' ? 'Your circle' : 'Fresh from around the world'}</Text>}
+          ListEmptyComponent={<View><Text style={styles.emptyTitle}>Nothing shared yet</Text><Text style={styles.emptyText}>Real catches will appear here when anglers choose to share them.</Text></View>}
         />
       )}
     </SafeAreaView>
@@ -135,8 +130,6 @@ const styles = StyleSheet.create({
   titleBlock: { flex: 1, alignItems: 'center' },
   title: { ...typography.h3 },
   subtitle: { color: colors.textSecondary, fontSize: 11, marginTop: 1 },
-  demoNotice: { flexDirection: 'row', alignItems: 'center', gap: 6, marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: spacing.sm, borderRadius: radius.md, backgroundColor: 'rgba(45,212,255,0.07)' },
-  demoNoticeText: { flex: 1, color: colors.accentBlue, fontSize: 11 },
   tabs: { flexDirection: 'row', marginHorizontal: spacing.lg, padding: 4, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border },
   tab: { flex: 1, minHeight: 38, flexDirection: 'row', gap: 5, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md },
   tabActive: { backgroundColor: colors.primary },
@@ -153,6 +146,6 @@ const styles = StyleSheet.create({
   sessionName: { color: colors.textPrimary, fontSize: 15, fontWeight: '800' },
   sessionLocation: { color: colors.primary, fontSize: 13, marginTop: 2 },
   sessionTarget: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
-  demoBadge: { backgroundColor: 'rgba(45,212,255,0.12)', borderRadius: radius.full, paddingHorizontal: 6, paddingVertical: 2 },
-  demoBadgeText: { color: colors.accentBlue, fontSize: 8, fontWeight: '900' },
+  emptyTitle: { color: colors.textPrimary, textAlign: 'center', fontSize: 16, fontWeight: '700', marginTop: spacing.xl },
+  emptyText: { color: colors.textSecondary, textAlign: 'center', lineHeight: 19, paddingHorizontal: spacing.xl, marginTop: spacing.sm },
 });

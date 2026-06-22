@@ -1,16 +1,19 @@
 import { useEffect, useState, Component, ReactNode } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { Stack } from 'expo-router';
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { Syne_600SemiBold, Syne_700Bold } from '@expo-google-fonts/syne';
-import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
 import { useAuthStore } from '../store/authStore';
 import { useCatchStore } from '../store/catchStore';
 import { useUserStore } from '../store/userStore';
-import { colors } from '../constants/theme';
+import { colors, fonts } from '../constants/theme';
+
+const textDefaults = (Text as any).defaultProps ?? {};
+(Text as any).defaultProps = { ...textDefaults, style: [{ fontFamily: fonts.body }, textDefaults.style] };
+const inputDefaults = (TextInput as any).defaultProps ?? {};
+(TextInput as any).defaultProps = { ...inputDefaults, style: [{ fontFamily: fonts.body }, inputDefaults.style] };
 
 const CastTheme = {
   ...DarkTheme,
@@ -69,10 +72,6 @@ export default function RootLayout() {
     Inter_400Regular,
     Inter_600SemiBold,
     Inter_700Bold,
-    Syne_600SemiBold,
-    Syne_700Bold,
-    JetBrainsMono_500Medium,
-    JetBrainsMono_700Bold,
     // Must be loaded explicitly on web — font name must match exactly what
     // @expo/vector-icons uses internally to resolve icon glyphs
     'material-community': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
@@ -112,6 +111,7 @@ export default function RootLayout() {
         screenOptions={{
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.textPrimary,
+          headerTitleStyle: { fontFamily: fonts.bodySemi },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
           animation: 'slide_from_right',

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '../components/ui/Icon';
@@ -9,10 +9,6 @@ import { colors, radius, spacing, typography } from '../constants/theme';
 
 type FriendsTab = 'friends' | 'discover' | 'requests';
 
-function DemoBadge() {
-  return <View style={styles.demoBadge}><Text style={styles.demoText}>DEMO</Text></View>;
-}
-
 function FriendRow({ friend, onRemove }: { friend: Friend; onRemove: (friend: Friend) => void }) {
   return (
     <View style={styles.card}>
@@ -20,7 +16,6 @@ function FriendRow({ friend, onRemove }: { friend: Friend; onRemove: (friend: Fr
       <View style={styles.cardBody}>
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={1}>{friend.name}</Text>
-          {friend.isDemo ? <DemoBadge /> : null}
           <Text style={styles.country}>{friend.countryCode}</Text>
         </View>
         <Text style={styles.handle}>{friend.handle ?? `Level ${friend.level}`} · {friend.lastActive}</Text>
@@ -46,7 +41,6 @@ function DiscoverRow({ friend, onAdd }: { friend: Friend; onAdd: (friend: Friend
       <View style={styles.cardBody}>
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={1}>{friend.name}</Text>
-          {friend.isDemo ? <DemoBadge /> : null}
           <Text style={styles.country}>{friend.countryCode}</Text>
         </View>
         <Text style={styles.handle}>{friend.handle} · {friend.mutualFriends} mutual</Text>
@@ -67,7 +61,6 @@ function RequestRow({ request, onAccept, onDecline }: { request: FriendRequest; 
       <View style={styles.cardBody}>
         <View style={styles.nameRow}>
           <Text style={styles.name}>{request.fromName}</Text>
-          {request.isDemo ? <DemoBadge /> : null}
           <Text style={styles.country}>{request.countryCode}</Text>
         </View>
         <Text style={styles.handle}>{outgoing ? 'Request sent' : 'Wants to connect'} · {request.sentAt}</Text>
@@ -86,6 +79,7 @@ function RequestRow({ request, onAccept, onDecline }: { request: FriendRequest; 
 export default function FriendsScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<FriendsTab>('friends');
+  const [friendQuery, setFriendQuery] = useState('');
   const friends = useFriendsStore((state) => state.friends);
   const requests = useFriendsStore((state) => state.requests);
   const suggested = useFriendsStore((state) => state.suggestedAnglers);
@@ -94,6 +88,30 @@ export default function FriendsScreen() {
   const acceptRequest = useFriendsStore((state) => state.acceptRequest);
   const declineRequest = useFriendsStore((state) => state.declineRequest);
   const sendRequest = useFriendsStore((state) => state.sendRequest);
+
+  const addByUsername = useCallback(() => {
+    const value = friendQuery.trim().replace(/^@/, '');
+    if (value.length < 2) {
+      Alert.alert('Enter a username', 'Use their CAST username or friend code.');
+      return;
+    }
+    const id = `user_${value.toLowerCase().replace(/[^a-z0-9_-]/g, '')}`;
+    sendRequest({
+      id,
+      name: value,
+      handle: `@${value}`,
+      level: 1,
+      catchCount: 0,
+      topSpecies: 'Not set',
+      streak: 0,
+      avatarColor: colors.primaryDim,
+      isOnline: false,
+      lastActive: 'Unknown',
+      mutualFriends: 0,
+    });
+    setFriendQuery('');
+    setTab('requests');
+  }, [friendQuery, sendRequest]);
 
   useEffect(() => { void hydrate(); }, [hydrate]);
 
@@ -119,7 +137,28 @@ export default function FriendsScreen() {
           <Icon name="earth" size={22} color={colors.primary} />
         </Pressable>
       </View>
-      <View style={styles.notice}><Text style={styles.noticeText}>Profiles marked DEMO are fictional and included to preview social features.</Text></View>
+      <View style={styles.addPanel}>
+        <View style={styles.searchRow}>
+          <Icon name="account-search-outline" size={20} color={colors.textTertiary} />
+          <TextInput
+            value={friendQuery}
+            onChangeText={setFriendQuery}
+            onSubmitEditing={addByUsername}
+            placeholder="Username or friend code"
+            placeholderTextColor={colors.textTertiary}
+            autoCapitalize="none"
+            returnKeyType="send"
+            style={styles.searchInput}
+          />
+          <Pressable accessibilityRole="button" accessibilityLabel="Send friend request" onPress={addByUsername} style={styles.sendButton}>
+            <Icon name="arrow-right" size={18} color={colors.background} />
+          </Pressable>
+        </View>
+        <Pressable onPress={() => Share.share({ message: 'Add me on CAST Fishing. Search for my username in Friends.' })} style={styles.inviteButton}>
+          <Icon name="share-variant-outline" size={16} color={colors.primary} />
+          <Text style={styles.inviteText}>Share an invite</Text>
+        </Pressable>
+      </View>
       <View style={styles.tabs} accessibilityRole="tablist">
         {(['friends', 'discover', 'requests'] as FriendsTab[]).map((item) => (
           <Pressable key={item} accessibilityRole="tab" accessibilityState={{ selected: tab === item }} onPress={() => setTab(item)} style={[styles.tab, tab === item && styles.tabActive]}>
@@ -130,9 +169,9 @@ export default function FriendsScreen() {
       </View>
 
       {tab === 'friends' ? (
-        <FlatList data={friends} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} renderItem={({ item }) => <FriendRow friend={item} onRemove={confirmRemove} />} />
+        <FlatList data={friends} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} renderItem={({ item }) => <FriendRow friend={item} onRemove={confirmRemove} />} ListEmptyComponent={<View style={styles.emptyState}><Icon name="account-group-outline" size={32} color={colors.textTertiary} /><Text style={styles.emptyTitle}>Your circle starts empty</Text><Text style={styles.empty}>Add a real angler by username or share an invite. CAST never fills your account with bots.</Text></View>} />
       ) : tab === 'discover' ? (
-        <FlatList data={suggested} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} renderItem={({ item }) => <DiscoverRow friend={item} onAdd={sendRequest} />} ListEmptyComponent={<Text style={styles.empty}>You’re all caught up.</Text>} />
+        <FlatList data={suggested} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} renderItem={({ item }) => <DiscoverRow friend={item} onAdd={sendRequest} />} ListEmptyComponent={<View style={styles.emptyState}><Text style={styles.emptyTitle}>No suggested anglers yet</Text><Text style={styles.empty}>Suggestions will appear when real CAST accounts connect with you.</Text></View>} />
       ) : (
         <FlatList data={requests} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} renderItem={({ item }) => <RequestRow request={item} onAccept={() => acceptRequest(item.id)} onDecline={() => declineRequest(item.id)} />} ListEmptyComponent={<Text style={styles.empty}>No pending requests.</Text>} />
       )}
@@ -147,8 +186,12 @@ const styles = StyleSheet.create({
   headerTitleBlock: { flex: 1, alignItems: 'center' },
   title: { ...typography.h3 },
   subtitle: { color: colors.textSecondary, fontSize: 11, marginTop: 1 },
-  notice: { marginHorizontal: spacing.lg, padding: spacing.sm, backgroundColor: 'rgba(45,212,255,0.07)', borderRadius: radius.md },
-  noticeText: { color: colors.accentBlue, fontSize: 11, lineHeight: 16 },
+  addPanel: { marginHorizontal: spacing.lg, padding: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border },
+  searchRow: { minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  searchInput: { flex: 1, color: colors.textPrimary, fontSize: 14, paddingVertical: 8 },
+  sendButton: { width: 38, height: 38, borderRadius: radius.md, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  inviteButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 6 },
+  inviteText: { color: colors.primary, fontSize: 12, fontWeight: '600' },
   tabs: { flexDirection: 'row', margin: spacing.lg, marginBottom: spacing.sm, padding: 4, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border },
   tab: { flex: 1, minHeight: 38, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderRadius: radius.md },
   tabActive: { backgroundColor: colors.primary },
@@ -166,8 +209,6 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
   stat: { color: colors.textSecondary, fontSize: 11, flexShrink: 1 },
   separator: { color: colors.textTertiary },
-  demoBadge: { paddingHorizontal: 5, paddingVertical: 2, borderRadius: radius.full, backgroundColor: 'rgba(45,212,255,0.12)' },
-  demoText: { color: colors.accentBlue, fontSize: 8, fontWeight: '900', letterSpacing: 0.6 },
   iconAction: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   addButton: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
   requestActions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
@@ -176,5 +217,7 @@ const styles = StyleSheet.create({
   declineButton: { paddingHorizontal: spacing.md, paddingVertical: 7, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.borderStrong },
   declineText: { color: colors.textSecondary, fontSize: 12, fontWeight: '700' },
   pending: { color: colors.secondary, fontSize: 9, fontWeight: '900', letterSpacing: 0.7 },
-  empty: { color: colors.textSecondary, textAlign: 'center', marginTop: spacing.xxl },
+  emptyState: { alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.xl, paddingTop: spacing.xxl },
+  emptyTitle: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+  empty: { color: colors.textSecondary, textAlign: 'center', lineHeight: 19 },
 });

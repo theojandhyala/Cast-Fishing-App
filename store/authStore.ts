@@ -67,21 +67,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           return true;
         }
       }
-      // Create demo user if not found
-      const user: User = {
-        id: generateId(),
-        name: email.split('@')[0],
-        email,
-        isPro: false,
-        xp: 0,
-        level: 1,
-        streak: 0,
-        favouriteSpecies: [],
-        joinedAt: new Date().toISOString(),
-      };
-      await AsyncStorage.setItem('cast_user', JSON.stringify(user));
-      set({ user, isAuthenticated: true });
-      return true;
+      return false;
     } catch {
       return false;
     }
@@ -89,6 +75,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   register: async (name: string, email: string, _password: string) => {
     try {
+      await AsyncStorage.multiRemove([
+        'cast_catches',
+        '@cast_friends_v3',
+        'cast_head_to_heads_v2',
+        '@cast_fish_id_history',
+        '@cast_pending_scan_photo',
+      ]);
       const user: User = {
         id: generateId(),
         name,
@@ -124,7 +117,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   completeOnboarding: (name: string, favouriteSpecies: string[], extras?: { fishingExperience?: User['fishingExperience']; hasLicence?: boolean; preferredFishing?: User['preferredFishing'] }) => {
     const current = get().user;
     if (!current) return;
-    const updated = { ...current, name, favouriteSpecies, xp: 100, ...extras };
+    const updated = { ...current, name, favouriteSpecies, xp: 0, level: 1, streak: 0, ...extras };
     AsyncStorage.setItem('cast_user', JSON.stringify(updated));
     set({ user: updated });
   },

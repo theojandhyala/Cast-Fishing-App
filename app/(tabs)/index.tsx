@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet,
+  View, Text, ScrollView, StyleSheet, FlatList, Modal, TextInput,
   TouchableOpacity,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -71,6 +71,25 @@ export default function HomeScreen() {
   const setDataLocation = useLocationStore((state) => state.setLocation);
 
   const [selectedSpot, setSelectedSpot] = useState<FishingSpotRecord | null>(FISHING_SPOTS[0] ?? null);
+  const [spotPickerOpen, setSpotPickerOpen] = useState(false);
+  const [spotSearch, setSpotSearch] = useState('');
+
+  const spotResults = useMemo(() => {
+    const query = spotSearch.trim().toLowerCase();
+    if (!query) return FISHING_SPOTS.slice(0, 80);
+    return FISHING_SPOTS.filter((spot) =>
+      [spot.name, spot.country, spot.region, ...spot.species]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query)),
+    ).slice(0, 80);
+  }, [spotSearch]);
+
+  const chooseSpot = (spot: FishingSpotRecord) => {
+    setSelectedSpot(spot);
+    setDataLocation({ name: spot.name, query: spot.name, latitude: spot.latitude, longitude: spot.longitude });
+    setSpotPickerOpen(false);
+    setSpotSearch('');
+  };
 
   const { weather, loading: weatherLoading, error: weatherError, refresh, updatedAt } = useWeather(
     selectedSpot?.latitude,
@@ -141,12 +160,15 @@ export default function HomeScreen() {
                 )}
                 <TouchableOpacity
                   style={s.changeBtn}
-                  onPress={refresh}
-                  disabled={weatherLoading}
+                  onPress={() => setSpotPickerOpen(true)}
                   accessibilityRole="button"
-                  accessibilityLabel="Refresh live conditions"
+                  accessibilityLabel="Choose another fishing spot"
                 >
-                  <Text style={s.changeBtnText}>{weatherLoading ? 'Updating…' : 'Refresh'}</Text>
+                  <MaterialCommunityIcons name="map-marker-outline" size={13} color={colors.primary} />
+                  <Text style={s.changeBtnText}>Change spot</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={refresh} disabled={weatherLoading} accessibilityLabel="Refresh live conditions" style={s.refreshButton}>
+                  <MaterialCommunityIcons name="refresh" size={16} color={colors.textSecondary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -229,10 +251,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               key={spot.id}
               style={[s.spotCard, selectedSpot?.id === spot.id && s.spotCardSelected]}
-              onPress={() => {
-                setSelectedSpot(spot);
-                setDataLocation({ name: spot.name, query: spot.name, latitude: spot.latitude, longitude: spot.longitude });
-              }}
+              onPress={() => chooseSpot(spot)}
               accessibilityRole="button"
               accessibilityLabel={`Show conditions for ${spot.name}`}
               activeOpacity={0.85}
@@ -355,6 +374,52 @@ export default function HomeScreen() {
         </View>
 
       </ScrollView>
+
+      <Modal visible={spotPickerOpen} transparent animationType="slide" onRequestClose={() => setSpotPickerOpen(false)}>
+        <View style={s.modalBackdrop}>
+          <View style={s.spotSheet}>
+            <View style={s.sheetHandle} />
+            <View style={s.sheetHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.sheetTitle}>Choose conditions location</Text>
+                <Text style={s.sheetSubtitle}>This previews the spot. It never starts a fishing session.</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSpotPickerOpen(false)} style={s.sheetClose} accessibilityLabel="Close spot picker">
+                <MaterialCommunityIcons name="close" size={20} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <View style={s.searchBox}>
+              <MaterialCommunityIcons name="magnify" size={19} color={colors.textTertiary} />
+              <TextInput
+                autoFocus
+                value={spotSearch}
+                onChangeText={setSpotSearch}
+                placeholder="Search town, water or species"
+                placeholderTextColor={colors.textTertiary}
+                style={s.searchInput}
+              />
+              {spotSearch ? <TouchableOpacity onPress={() => setSpotSearch('')}><MaterialCommunityIcons name="close-circle" size={18} color={colors.textTertiary} /></TouchableOpacity> : null}
+            </View>
+            <FlatList
+              data={spotResults}
+              keyExtractor={(item) => item.id}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={s.resultsList}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={[s.resultRow, selectedSpot?.id === item.id && s.resultRowSelected]} onPress={() => chooseSpot(item)}>
+                  <SpotPhoto spot={item} variant="card" style={s.resultThumb} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.resultName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={s.resultMeta} numberOfLines={1}>{[item.region, item.country, item.species.slice(0, 2).join(' · ')].filter(Boolean).join(' · ')}</Text>
+                  </View>
+                  {selectedSpot?.id === item.id ? <MaterialCommunityIcons name="check-circle" size={20} color={colors.primary} /> : <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />}
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={<Text style={s.noResults}>No matching spots. Try a nearby town or species.</Text>}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -433,10 +498,12 @@ const s = StyleSheet.create({
   scoreBadgeLabel: { fontSize: 9, fontWeight: '700' },
 
   changeBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
     borderWidth: 1, borderColor: colors.border, borderRadius: radius.full,
     paddingHorizontal: 12, paddingVertical: 5,
   },
   changeBtnText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  refreshButton: { position: 'absolute', right: -2, top: 70, width: 30, height: 30, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
 
   scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   scoreLeft: { gap: 3 },
@@ -593,4 +660,21 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.15)',
   },
   quickLinkLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, textAlign: 'center' },
+
+  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,6,10,0.72)' },
+  spotSheet: { height: '84%', backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderWidth: 1, borderColor: colors.borderStrong, paddingTop: spacing.sm },
+  sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.borderStrong, alignSelf: 'center', marginBottom: spacing.md },
+  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: spacing.lg, gap: spacing.md },
+  sheetTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.3 },
+  sheetSubtitle: { fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginTop: 3 },
+  sheetClose: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.surface },
+  searchBox: { margin: spacing.lg, marginBottom: spacing.sm, height: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  searchInput: { flex: 1, color: colors.textPrimary, fontSize: 14 },
+  resultsList: { paddingHorizontal: spacing.lg, paddingBottom: 36 },
+  resultRow: { minHeight: 68, flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.border },
+  resultRowSelected: { backgroundColor: 'rgba(68,210,203,0.07)' },
+  resultThumb: { width: 54, height: 48, borderRadius: radius.sm, overflow: 'hidden' },
+  resultName: { color: colors.textPrimary, fontSize: 14, fontWeight: '600' },
+  resultMeta: { color: colors.textSecondary, fontSize: 11, marginTop: 3 },
+  noResults: { color: colors.textSecondary, textAlign: 'center', paddingTop: spacing.xxl },
 });

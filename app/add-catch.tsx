@@ -448,7 +448,7 @@ const s = StyleSheet.create({
   },
   condPillLabel: { fontSize: 9, color: colors.textTertiary, fontFamily: fonts.bodySemi, letterSpacing: 0.5 },
   condPillValue: { fontSize: 12, color: colors.textPrimary, fontFamily: fonts.mono, marginTop: 1 },
-  condNone: { fontSize: 12, color: colors.textTertiary, fontStyle: 'italic' },
+  condNone: { fontSize: 12, color: colors.textTertiary },
 
   form: {
     marginHorizontal: spacing.lg,

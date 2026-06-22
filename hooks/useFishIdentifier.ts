@@ -28,6 +28,7 @@ export function useFishIdentifier() {
 
     try {
       if (!base64Image) throw new Error('The selected photo could not be read. Please try another image.');
+      if (base64Image.length > 9_000_000) throw new Error('That photo is too large to scan. Try a closer crop or a lower-resolution photo.');
       if (!CONFIG.AI_WORKER_URL) throw new Error('Fish scanning is not configured.');
       let res: Response | null = null;
       let lastRequestError: unknown;
@@ -51,7 +52,11 @@ export function useFishIdentifier() {
       if (!res) throw lastRequestError instanceof Error ? lastRequestError : new Error('The scanner could not connect. Please try again.');
 
       const text = await res.text();
-      if (!res.ok) throw new Error(text || 'Identification failed');
+      if (!res.ok) {
+        let message = 'Identification failed. Please try again.';
+        try { message = JSON.parse(text)?.error || message; } catch { if (text && text.length < 180) message = text; }
+        throw new Error(message);
+      }
 
       // Worker returns the model's raw JSON; strip any stray markdown fences.
       const clean = text.replace(/```json\s*|```/gi, '').trim();
@@ -70,7 +75,7 @@ export function useFishIdentifier() {
         return names.some((name) => name === normalized || name.includes(normalized) || normalized.includes(name));
       });
       const confidence = Math.max(0, Math.min(100, Number(raw.confidence) || 0));
-      if (confidence < 35) throw new Error('The photo is too ambiguous for a reliable identification. Try a clearer side-on photo of the whole fish.');
+      if (confidence < 45) throw new Error('The photo is too ambiguous for a reliable identification. Try a clear side-on photo showing the whole fish and its fins.');
       const legalSize = databaseFish?.legalSize ?? Math.max(0, Number(raw.legalSize) || 0);
       const lengthNumbers = String(raw.estimatedLength || '').match(/\d+(?:\.\d+)?/g)?.map(Number) ?? [];
       const estimatedMinimumLength = lengthNumbers.length ? Math.min(...lengthNumbers) : 0;

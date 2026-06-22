@@ -68,8 +68,8 @@ export const fonts = {
   bodyBold: 'Inter_700Bold',
   display: 'Inter_700Bold',
   displaySemi: 'Inter_600SemiBold',
-  mono: 'JetBrainsMono_500Medium',
-  monoBold: 'JetBrainsMono_700Bold',
+  mono: 'Inter_600SemiBold',
+  monoBold: 'Inter_700Bold',
 };
 
 export const typography = {

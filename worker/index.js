@@ -105,10 +105,19 @@ export default {
       if (url.pathname.endsWith('/identify')) {
         const image = payloadIn.image;
         if (!image) return json({ error: 'Missing image' }, 400, origin);
+        if (typeof image !== 'string' || image.length > 9_000_000) {
+          return json({ error: 'Image is too large. Use a photo under 7 MB.' }, 413, origin);
+        }
         const allowedMediaTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
         const mediaType = allowedMediaTypes.has(payloadIn.mediaType) ? payloadIn.mediaType : 'image/jpeg';
 
-        const identifyPrompt = `Identify the fish. Return ONLY one compact JSON line with these exact keys: species, confidence (0-100), commonName, latinName, estimatedWeight (kg range), estimatedLength (cm range), alternatives (maximum 2 names). No markdown, explanation, legal advice or extra keys. If there is no fish, set species and commonName to "No fish detected".`;
+        const identifyPrompt = `You are a cautious expert fish taxonomist. Inspect body shape, fin count and position, mouth, scales, lateral line, colour pattern and visible habitat. Return ONLY one compact valid JSON object with these exact keys: species, confidence (integer 0-100), commonName, latinName, estimatedWeight, estimatedLength, alternatives (maximum 3 species names). No markdown or extra keys.
+Rules:
+- If there is no clearly visible fish, set species and commonName to "No fish detected" and confidence to 0.
+- Calibrate confidence. Never exceed 90 unless a clear side-on view shows diagnostic features. Similar species must reduce confidence and appear in alternatives.
+- Do not invent measurements. Without a ruler or reliable scale reference, return "Not estimable from photo" for estimatedWeight and estimatedLength.
+- Use a weight range in kg and a length range in cm only when a reliable scale reference is visible.
+- Prefer the exact accepted common and Latin species name, not a broad family.`;
         const text = env.ANTHROPIC_API_KEY
           ? await callAnthropic(env.ANTHROPIC_API_KEY, {
               model: MODEL,

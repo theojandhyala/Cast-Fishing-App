@@ -1,15 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-import {
-  DEMO_SESSION_PINS,
-  DEMO_SOCIAL_POSTS,
-  DEMO_SOCIAL_USERS,
-  FriendSessionPin,
-  ReactionType,
-  SocialCatchPost,
-} from '../data/socialData';
+import { FriendSessionPin, ReactionType, SocialCatchPost } from '../data/socialData';
 
-const FRIENDS_KEY = '@cast_friends_v2';
+const FRIENDS_KEY = '@cast_friends_v3';
 
 export interface Friend {
   id: string;
@@ -42,7 +35,7 @@ export interface FriendRequest {
 }
 
 interface PersistedFriendsState {
-  version: 2;
+  version: 3;
   friends: Friend[];
   requests: FriendRequest[];
   suggestedAnglers: Friend[];
@@ -69,32 +62,13 @@ export interface FriendsState {
   save: () => Promise<void>;
 }
 
-const toFriend = (user: (typeof DEMO_SOCIAL_USERS)[number]): Friend => ({
-  id: user.id,
-  name: user.name,
-  handle: user.handle,
-  country: user.country,
-  countryCode: user.countryCode,
-  level: user.level,
-  catchCount: user.catchCount,
-  topSpecies: user.topSpecies,
-  streak: user.streak,
-  avatarColor: user.avatarColor,
-  isOnline: user.isOnline,
-  lastActive: user.lastActive,
-  mutualFriends: user.mutualFriends,
-  isDemo: true,
-});
-
-const INITIAL_FRIENDS = DEMO_SOCIAL_USERS.slice(0, 5).map(toFriend);
-const INITIAL_SUGGESTED = DEMO_SOCIAL_USERS.slice(5).map(toFriend);
-const INITIAL_REQUESTS: FriendRequest[] = [
-  { id: 'request-ravi', fromId: 'demo-ravi', fromName: 'Ravi Menon', fromLevel: 24, fromCatchCount: 143, avatarColor: '#2A9D8F', sentAt: '2h ago', type: 'incoming', countryCode: 'IN', isDemo: true },
-];
+const INITIAL_FRIENDS: Friend[] = [];
+const INITIAL_SUGGESTED: Friend[] = [];
+const INITIAL_REQUESTS: FriendRequest[] = [];
 
 const persist = async (state: FriendsState) => {
   const data: PersistedFriendsState = {
-    version: 2,
+    version: 3,
     friends: state.friends,
     requests: state.requests,
     suggestedAnglers: state.suggestedAnglers,
@@ -125,8 +99,8 @@ export const useFriendsStore = create<FriendsState>((set, get) => {
     friends: INITIAL_FRIENDS,
     requests: INITIAL_REQUESTS,
     suggestedAnglers: INITIAL_SUGGESTED,
-    feed: DEMO_SOCIAL_POSTS,
-    sessionPins: DEMO_SESSION_PINS,
+    feed: [],
+    sessionPins: [],
     reactionsByPost: {},
     isHydrated: false,
 
@@ -144,8 +118,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => {
     acceptRequest: (id) => updateAndPersist((state) => {
       const request = state.requests.find((item) => item.id === id && item.type === 'incoming');
       if (!request) return {};
-      const known = DEMO_SOCIAL_USERS.find((user) => user.id === request.fromId);
-      const friend: Friend = known ? toFriend(known) : {
+      const friend: Friend = {
         id: request.fromId,
         name: request.fromName,
         level: request.fromLevel,
@@ -214,14 +187,14 @@ export const useFriendsStore = create<FriendsState>((set, get) => {
         if (raw) {
           const stored = JSON.parse(raw) as Partial<PersistedFriendsState>;
           set({
-            friends: Array.isArray(stored.friends) ? stored.friends : INITIAL_FRIENDS,
-            requests: Array.isArray(stored.requests) ? stored.requests : INITIAL_REQUESTS,
-            suggestedAnglers: Array.isArray(stored.suggestedAnglers) ? stored.suggestedAnglers : INITIAL_SUGGESTED,
+            friends: Array.isArray(stored.friends) ? stored.friends.filter((item) => !item.isDemo) : [],
+            requests: Array.isArray(stored.requests) ? stored.requests.filter((item) => !item.isDemo) : [],
+            suggestedAnglers: Array.isArray(stored.suggestedAnglers) ? stored.suggestedAnglers.filter((item) => !item.isDemo) : [],
             reactionsByPost: stored.reactionsByPost ?? {},
           });
         }
       } catch {
-        // Keep safe demo defaults if stored data is malformed.
+        // Start empty if stored social data is malformed.
       } finally {
         set({ isHydrated: true });
       }
