@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Alert,
   TextInput,
+  ScrollView,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../components/ui/Icon';
@@ -14,9 +16,63 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useFriendsStore, Friend, FriendRequest } from '../store/friendsStore';
 import { DEMO_FRIEND_USERS } from '../store/socialStore';
+import { useUserStore } from '../store/userStore';
 import { colors, radius, spacing, elevation, typography } from '../constants/theme';
 
 type Tab = 'friends' | 'requests' | 'find';
+type RegionFilter = 'All' | 'UK' | 'Europe' | 'USA' | 'Asia' | 'Oceania';
+
+const EXTRA_DEMO_USERS = [
+  { userId: 'highland_rob', username: 'HighlandRob', displayName: 'Rob MacDonald', avatarColor: '#059669', location: 'Scotland', region: 'UK' as RegionFilter, specialty: 'Wild Brown Trout', level: 9 },
+  { userId: 'connemara_claire', username: 'ConnemClaire', displayName: 'Claire O\'Brien', avatarColor: '#7C3AED', location: 'County Galway, Ireland', region: 'Europe' as RegionFilter, specialty: 'Sea Trout & Pike', level: 6 },
+  { userId: 'seine_pierre', username: 'Pierre_Seine', displayName: 'Pierre Leblanc', avatarColor: '#2563EB', location: 'Île-de-France, France', region: 'Europe' as RegionFilter, specialty: 'Carp & Zander', level: 11 },
+  { userId: 'rhein_hans', username: 'RheinHans', displayName: 'Hans Müller', avatarColor: '#DC2626', location: 'Bavaria, Germany', region: 'Europe' as RegionFilter, specialty: 'Barbel & Asp', level: 14 },
+  { userId: 'oregon_wade', username: 'Oregon_Wade', displayName: 'Wade Thompson', avatarColor: '#D97706', location: 'Oregon, USA', region: 'USA' as RegionFilter, specialty: 'Steelhead & Salmon', level: 17 },
+  { userId: 'snook_mia', username: 'SnookMia', displayName: 'Mia Rivera', avatarColor: '#DB2777', location: 'Florida, USA', region: 'USA' as RegionFilter, specialty: 'Snook & Redfish', level: 8 },
+  { userId: 'tassie_angus', username: 'TassieAngus', displayName: 'Angus Blake', avatarColor: '#0891B2', location: 'Tasmania, Australia', region: 'Oceania' as RegionFilter, specialty: 'Sea-run Trout', level: 12 },
+  { userId: 'mahseer_raj', username: 'Mahseer_Raj', displayName: 'Raj Krishnan', avatarColor: '#65A30D', location: 'Karnataka, India', region: 'Asia' as RegionFilter, specialty: 'Mahseer & Snakehead', level: 15 },
+];
+
+const REGION_MAP: Record<string, RegionFilter> = {
+  'UK': 'UK',
+  'Scotland': 'UK',
+  'Cornwall, UK': 'UK',
+  'Norway': 'Europe',
+  'Netherlands': 'Europe',
+  'New Zealand': 'Oceania',
+  'Queensland, AU': 'Oceania',
+  'Texas, US': 'USA',
+};
+
+const CURRENTLY_FISHING = [
+  { id: 'f1', name: 'Jake Morrison', color: '#F97316', spot: 'Redmire Pool' },
+  { id: 'f3', name: 'Tom Fisher', color: '#8B5CF6', spot: 'River Severn' },
+];
+
+const RECENT_FRIEND_CATCHES = [
+  { id: 'rc1', name: 'Jake Morrison', color: '#F97316', species: 'Common Carp', weight: 12.4, location: 'Redmire Pool', ago: '1h ago', rarity: 'epic' },
+  { id: 'rc2', name: 'Tom Fisher', color: '#8B5CF6', species: 'Pike', weight: 8.2, location: 'River Severn', ago: '4h ago', rarity: 'rare' },
+  { id: 'rc3', name: 'Emma Clarke', color: '#EC4899', species: 'Perch', weight: 1.8, location: 'Grafham Water', ago: '6h ago', rarity: 'uncommon' },
+];
+
+const RARITY_COLORS: Record<string, string> = {
+  common: '#8B95A7', uncommon: '#4ADE80', rare: '#3B82F6', epic: '#A855F7', legendary: '#F59E0B',
+};
+
+function PulsingDot() {
+  const scale = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.5, duration: 800, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1, duration: 800, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  return (
+    <Animated.View style={[styles.pulseRing, { transform: [{ scale }] }]} />
+  );
+}
 
 function getInitials(name: string) {
   return name
@@ -198,9 +254,11 @@ function RequestCard({
 export default function FriendsScreen() {
   const router = useRouter();
   const { friends, requests, removeFriend, acceptRequest, declineRequest } = useFriendsStore();
+  const profile = useUserStore((s) => s.profile);
   const [tab, setTab] = useState<Tab>('friends');
   const [search, setSearch] = useState('');
   const [sentIds, setSentIds] = useState<string[]>([]);
+  const [regionFilter, setRegionFilter] = useState<RegionFilter>('All');
 
   const incomingCount = requests.filter((r) => r.type === 'incoming').length;
 
@@ -208,12 +266,16 @@ export default function FriendsScreen() {
     !search || f.name.toLowerCase().includes(search.toLowerCase())
   );
 
-  const filteredDemoUsers = DEMO_FRIEND_USERS.filter(
-    (u) =>
-      !search ||
-      u.username.toLowerCase().includes(search.toLowerCase()) ||
-      u.displayName.toLowerCase().includes(search.toLowerCase())
-  );
+  const allDemoUsers = [
+    ...DEMO_FRIEND_USERS.map((u) => ({ ...u, region: (REGION_MAP[u.location] ?? 'Other') as RegionFilter, level: 8 })),
+    ...EXTRA_DEMO_USERS,
+  ];
+
+  const filteredDemoUsers = allDemoUsers.filter((u) => {
+    const matchSearch = !search || u.username.toLowerCase().includes(search.toLowerCase()) || u.displayName.toLowerCase().includes(search.toLowerCase());
+    const matchRegion = regionFilter === 'All' || u.region === regionFilter;
+    return matchSearch && matchRegion;
+  });
 
   const handleSend = (user: DemoUser) => {
     setSentIds((prev) => [...prev, user.userId]);
@@ -286,18 +348,88 @@ export default function FriendsScreen() {
 
       {/* Content */}
       {tab === 'friends' && (
-        <FlatList
-          data={filteredFriends}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+          {/* Currently Fishing */}
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionLive}>
+              <View style={styles.liveDot} />
+              <Text style={styles.sectionTitle}>Currently Fishing</Text>
+            </View>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fishingNowScroll}>
+            {CURRENTLY_FISHING.map((f) => (
+              <TouchableOpacity
+                key={f.id}
+                style={styles.fishingNowCard}
+                onPress={() => Alert.alert('Join Session', 'Live session joining coming soon!')}
+                activeOpacity={0.8}
+              >
+                <View style={{ position: 'relative', alignItems: 'center' }}>
+                  <LinearGradient colors={[f.color, f.color + '88']} style={styles.fishingNowAvatar}>
+                    <Text style={styles.fishingNowInitials}>{getInitials(f.name)}</Text>
+                  </LinearGradient>
+                  <PulsingDot />
+                  <View style={styles.fishingNowOnline} />
+                </View>
+                <Text style={styles.fishingNowName} numberOfLines={1}>{f.name.split(' ')[0]}</Text>
+                <View style={styles.fishingNowSpot}>
+                  <Icon name="map-marker" size={9} color={colors.primary} />
+                  <Text style={styles.fishingNowSpotText} numberOfLines={1}>{f.spot}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={[styles.fishingNowCard, styles.fishingNowEmpty]}
+              onPress={() => setTab('find')}
+            >
+              <View style={styles.fishingNowAddCircle}>
+                <Icon name="account-plus" size={20} color={colors.primary} />
+              </View>
+              <Text style={styles.fishingNowName}>Add More</Text>
+            </TouchableOpacity>
+          </ScrollView>
+
+          {/* Recent Catches from Friends */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Catches</Text>
+            <TouchableOpacity onPress={() => router.push('/feed' as any)}>
+              <Text style={styles.seeAll}>See all</Text>
+            </TouchableOpacity>
+          </View>
+          {RECENT_FRIEND_CATCHES.map((c) => (
+            <View key={c.id} style={styles.catchFeedCard}>
+              <LinearGradient colors={[c.color, c.color + '88']} style={styles.catchFeedAvatar}>
+                <Text style={styles.catchFeedInitials}>{getInitials(c.name)}</Text>
+              </LinearGradient>
+              <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.catchFeedName}>{c.name}</Text>
+                  <Text style={styles.catchFeedAgo}>{c.ago}</Text>
+                </View>
+                <Text style={styles.catchFeedSpecies}>
+                  caught a <Text style={[styles.catchFeedBold, { color: RARITY_COLORS[c.rarity] }]}>{c.species}</Text>
+                  {' · '}{c.weight}kg
+                </Text>
+                <View style={styles.catchFeedMeta}>
+                  <Icon name="map-marker" size={11} color={colors.textTertiary} />
+                  <Text style={styles.catchFeedLocation}>{c.location}</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={styles.reactBtn} onPress={() => Alert.alert('👍', `You reacted to ${c.name}'s catch!`)}>
+                <Icon name="thumb-up-outline" size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          ))}
+
+          {/* Friends List */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>All Friends ({filteredFriends.length})</Text>
+          </View>
+          {filteredFriends.length === 0 ? (
             <View style={styles.empty}>
               <Icon name="account-group-outline" size={48} color={colors.textTertiary} />
               <Text style={styles.emptyTitle}>{search ? 'No matches' : 'No friends yet'}</Text>
-              <Text style={styles.emptySub}>
-                {search ? 'Try a different search' : 'Find anglers to connect with'}
-              </Text>
+              <Text style={styles.emptySub}>{search ? 'Try a different search' : 'Find anglers to connect with'}</Text>
               {!search && (
                 <TouchableOpacity style={styles.findBtn} onPress={() => setTab('find')}>
                   <Icon name="account-search" size={16} color="#0A0E1A" />
@@ -305,10 +437,14 @@ export default function FriendsScreen() {
                 </TouchableOpacity>
               )}
             </View>
-          }
-          renderItem={({ item }) => <FriendCard friend={item} onRemove={removeFriend} />}
-          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        />
+          ) : (
+            <View style={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}>
+              {filteredFriends.map((item) => (
+                <FriendCard key={item.id} friend={item} onRemove={removeFriend} />
+              ))}
+            </View>
+          )}
+        </ScrollView>
       )}
 
       {tab === 'requests' && (
@@ -336,27 +472,62 @@ export default function FriendsScreen() {
       )}
 
       {tab === 'find' && (
-        <FlatList
-          data={filteredDemoUsers}
-          keyExtractor={(item) => item.userId}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+          {/* Region filter */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.regionScroll}>
+            {(['All', 'UK', 'Europe', 'USA', 'Asia', 'Oceania'] as RegionFilter[]).map((r) => (
+              <TouchableOpacity
+                key={r}
+                style={[styles.regionChip, regionFilter === r && styles.regionChipActive]}
+                onPress={() => setRegionFilter(r)}
+              >
+                <Text style={[styles.regionChipText, regionFilter === r && styles.regionChipTextActive]}>{r}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          {filteredDemoUsers.length === 0 ? (
             <View style={styles.empty}>
               <Icon name="account-search-outline" size={48} color={colors.textTertiary} />
               <Text style={styles.emptyTitle}>No results</Text>
-              <Text style={styles.emptySub}>Try a different search term</Text>
+              <Text style={styles.emptySub}>Try a different filter or search</Text>
             </View>
-          }
-          renderItem={({ item }) => (
-            <FindPeopleCard
-              user={item}
-              onSend={() => handleSend(item)}
-              sent={sentIds.includes(item.userId)}
-            />
+          ) : (
+            <View style={{ paddingHorizontal: spacing.lg, gap: spacing.sm }}>
+              {filteredDemoUsers.map((item) => (
+                <FindPeopleCard
+                  key={item.userId}
+                  user={item}
+                  onSend={() => handleSend(item)}
+                  sent={sentIds.includes(item.userId)}
+                />
+              ))}
+            </View>
           )}
-          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        />
+
+          {/* Invite Card */}
+          <View style={styles.inviteCard}>
+            <LinearGradient colors={['rgba(0,212,170,0.15)', 'rgba(0,212,170,0.05)']} style={styles.inviteGrad}>
+              <Icon name="qrcode" size={32} color={colors.primary} />
+              <Text style={styles.inviteTitle}>Share your CAST ID</Text>
+              <View style={styles.inviteHandle}>
+                <Text style={styles.inviteAt}>@</Text>
+                <Text style={styles.inviteUsername}>{profile?.username ?? 'CastAngler'}</Text>
+              </View>
+              <Text style={styles.inviteSub}>Let other anglers find and add you</Text>
+              <View style={styles.inviteBtns}>
+                <TouchableOpacity style={styles.inviteBtn} onPress={() => Alert.alert('Copied!', 'Your CAST profile link has been copied to clipboard.')}>
+                  <Icon name="content-copy" size={14} color={colors.primary} />
+                  <Text style={styles.inviteBtnText}>Copy Link</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.inviteBtn, styles.inviteBtnPrimary]} onPress={() => Alert.alert('Share', 'Share sheet coming soon!')}>
+                  <Icon name="share-variant" size={14} color="#0A0E1A" />
+                  <Text style={[styles.inviteBtnText, { color: '#0A0E1A' }]}>Share</Text>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
+        </ScrollView>
       )}
     </SafeAreaView>
   );
@@ -546,4 +717,92 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   findBtnText: { fontSize: 13, fontWeight: '700', color: '#0A0E1A' },
+
+  // Currently Fishing
+  sectionHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
+  },
+  sectionLive: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' },
+  seeAll: { fontSize: 12, color: colors.primary, fontWeight: '600' },
+
+  fishingNowScroll: { paddingHorizontal: spacing.lg, gap: spacing.md, paddingBottom: spacing.sm },
+  fishingNowCard: {
+    alignItems: 'center', width: 72,
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.border,
+    paddingVertical: spacing.sm, paddingHorizontal: spacing.xs,
+  },
+  fishingNowEmpty: { borderStyle: 'dashed', borderColor: colors.primary },
+  fishingNowAvatar: {
+    width: 44, height: 44, borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+  },
+  fishingNowInitials: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  fishingNowOnline: {
+    position: 'absolute', bottom: 4, right: 0,
+    width: 12, height: 12, borderRadius: 6,
+    backgroundColor: '#22C55E', borderWidth: 2, borderColor: colors.surface,
+  },
+  pulseRing: {
+    position: 'absolute', bottom: 2, right: -2,
+    width: 14, height: 14, borderRadius: 7,
+    backgroundColor: 'rgba(34,197,94,0.3)',
+  },
+  fishingNowAddCircle: {
+    width: 44, height: 44, borderRadius: 22,
+    borderWidth: 1.5, borderColor: colors.primary, borderStyle: 'dashed',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+  },
+  fishingNowName: { fontSize: 11, fontWeight: '600', color: colors.textPrimary, textAlign: 'center' },
+  fishingNowSpot: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 2 },
+  fishingNowSpotText: { fontSize: 9, color: colors.primary, flex: 1, textAlign: 'center' },
+
+  // Recent Catches
+  catchFeedCard: {
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: spacing.lg, marginBottom: spacing.sm,
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md,
+  },
+  catchFeedAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  catchFeedInitials: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  catchFeedName: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+  catchFeedAgo: { fontSize: 11, color: colors.textTertiary },
+  catchFeedSpecies: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  catchFeedBold: { fontWeight: '700' },
+  catchFeedMeta: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
+  catchFeedLocation: { fontSize: 11, color: colors.textTertiary },
+  reactBtn: { padding: 8 },
+
+  // Region filter
+  regionScroll: { paddingHorizontal: spacing.lg, gap: spacing.sm, paddingVertical: spacing.sm },
+  regionChip: {
+    paddingHorizontal: spacing.md, paddingVertical: 6,
+    borderRadius: radius.full, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  regionChipActive: { backgroundColor: 'rgba(0,212,170,0.15)', borderColor: colors.primary },
+  regionChipText: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
+  regionChipTextActive: { color: colors.primary },
+
+  // Invite card
+  inviteCard: { margin: spacing.lg, borderRadius: radius.xl, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)' },
+  inviteGrad: { alignItems: 'center', padding: spacing.xl, gap: spacing.sm },
+  inviteTitle: { fontSize: 16, fontWeight: '800', color: colors.textPrimary },
+  inviteHandle: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface2, borderRadius: radius.full, paddingHorizontal: spacing.lg, paddingVertical: 8 },
+  inviteAt: { fontSize: 16, color: colors.textSecondary, fontWeight: '600' },
+  inviteUsername: { fontSize: 16, color: colors.primary, fontWeight: '700' },
+  inviteSub: { fontSize: 12, color: colors.textSecondary, textAlign: 'center' },
+  inviteBtns: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  inviteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1, borderColor: colors.primary,
+    borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 8,
+  },
+  inviteBtnPrimary: { backgroundColor: colors.primary, borderColor: colors.primary },
+  inviteBtnText: { fontSize: 12, fontWeight: '700', color: colors.primary },
 });

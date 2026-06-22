@@ -5,13 +5,16 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocationStore } from '../store/locationStore';
 import { useWeather } from '../hooks/useWeather';
+import { useTides } from '../hooks/useTides';
 import { colors, radius, spacing, typography, fonts } from '../constants/theme';
+import Svg, { Path, Circle, Line, Text as SvgText } from 'react-native-svg';
 
 const SOLUNAR_WINDOWS = [
   { time: '05:30', duration: '1h 40m', quality: 'major', label: 'Major Feeding' },
@@ -30,13 +33,106 @@ const FORECAST = [
   { day: 'Sun', icon: 'weather-partly-cloudy', high: 14, low: 8, score: 6 },
 ];
 
-const TIDE_CURVE = [0.4, 0.55, 0.75, 0.95, 1.0, 0.85, 0.6, 0.4];
 const SOLUNAR_BARS = [25, 40, 55, 70, 85, 100, 90, 65];
+
+const CHART_WIDTH = Dimensions.get('window').width - 48 - 32;
+const CHART_HEIGHT = 100;
+
+interface TideChartProps {
+  points: { time: string; height: number; timestamp: number }[];
+  min: number;
+  max: number;
+  currentHour: number;
+}
+
+function TideChart({ points, min, max, currentHour }: TideChartProps) {
+  if (points.length < 2) return null;
+
+  const w = CHART_WIDTH;
+  const h = CHART_HEIGHT;
+  const range = max - min || 1;
+
+  const toX = (i: number) => (i / 24) * w;
+  const toY = (v: number) => h - ((v - min) / range) * (h - 16) - 4;
+
+  // Build smooth cubic bezier path
+  const coords = points.map((p, i) => ({ x: toX(i), y: toY(p.height) }));
+
+  let pathD = `M ${coords[0].x},${coords[0].y}`;
+  for (let i = 1; i < coords.length; i++) {
+    const prev = coords[i - 1];
+    const curr = coords[i];
+    const cp1x = prev.x + (curr.x - prev.x) / 3;
+    const cp1y = prev.y;
+    const cp2x = curr.x - (curr.x - prev.x) / 3;
+    const cp2y = curr.y;
+    pathD += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${curr.x},${curr.y}`;
+  }
+
+  // Area path: close back to bottom
+  const areaD =
+    pathD +
+    ` L ${coords[coords.length - 1].x},${h} L ${coords[0].x},${h} Z`;
+
+  // Current hour vertical line x position (clamped)
+  const clampedHour = Math.min(Math.max(currentHour, 0), 24);
+  const lineX = toX(clampedHour);
+  const currentPoint = points[Math.min(currentHour, points.length - 1)];
+  const lineY = currentPoint ? toY(currentPoint.height) : h / 2;
+
+  // Time label positions: 00:00=0, 06:00=6, 12:00=12, 18:00=18, 24:00=24
+  const timeLabels = [
+    { label: '00:00', x: toX(0) },
+    { label: '06:00', x: toX(6) },
+    { label: '12:00', x: toX(12) },
+    { label: '18:00', x: toX(18) },
+    { label: '24:00', x: toX(24) },
+  ];
+
+  return (
+    <Svg width={w} height={h + 16} viewBox={`0 0 ${w} ${h + 16}`}>
+      {/* Filled area under curve */}
+      <Path d={areaD} fill="rgba(0,212,170,0.12)" />
+      {/* Tide curve */}
+      <Path d={pathD} stroke="#00D4AA" strokeWidth={2} fill="none" />
+      {/* Current hour vertical line */}
+      <Line
+        x1={lineX}
+        y1={0}
+        x2={lineX}
+        y2={h}
+        stroke="rgba(0,212,170,0.5)"
+        strokeWidth={1}
+        strokeDasharray="3,3"
+      />
+      {/* Current position circle */}
+      <Circle cx={lineX} cy={lineY} r={4} fill="#00D4AA" />
+      {/* Time labels */}
+      {timeLabels.map(({ label, x }) => (
+        <SvgText
+          key={label}
+          x={x}
+          y={h + 13}
+          fontSize={9}
+          fill={colors.textTertiary}
+          fontFamily={fonts.mono}
+          textAnchor={label === '00:00' ? 'start' : label === '24:00' ? 'end' : 'middle'}
+        >
+          {label}
+        </SvgText>
+      ))}
+    </Svg>
+  );
+}
 
 export default function ConditionsScreen() {
   const router = useRouter();
   const { location } = useLocationStore();
+  const locationWithCoords = location as (typeof location & { coords?: { latitude: number; longitude: number } }) | null;
+  const coordLat = locationWithCoords?.coords?.latitude;
+  const coordLng = locationWithCoords?.coords?.longitude;
   const { weather } = useWeather(location?.query);
+  const tideData = useTides(coordLat, coordLng);
 
   const w = weather || {
     temp: 18,
@@ -96,26 +192,64 @@ export default function ConditionsScreen() {
 
         {/* Tide */}
         <View style={styles.card}>
-          <Text style={styles.cardLabel}>Tide</Text>
-          <View style={styles.tideRow}>
-            <Text style={styles.tideValue}>1.2<Text style={styles.tideUnit}>m</Text></Text>
-            <View>
-              <Text style={styles.tideTrend}>Rising</Text>
-              <Text style={styles.tideSub}>High 18:42</Text>
+          <View style={styles.tideCardHeader}>
+            <Text style={styles.cardLabel}>Tide</Text>
+            <View style={[
+              styles.sourceChip,
+              tideData.source === 'uk_ea' && styles.sourceChipLive,
+              tideData.source === 'noaa' && styles.sourceChipLive,
+              tideData.source === 'computed' && styles.sourceChipEst,
+            ]}>
+              <Text style={[
+                styles.sourceChipText,
+                tideData.source === 'computed' && styles.sourceChipTextEst,
+              ]}>
+                {tideData.source === 'uk_ea'
+                  ? 'LIVE · EA'
+                  : tideData.source === 'noaa'
+                  ? 'LIVE · NOAA'
+                  : 'Est.'}
+              </Text>
             </View>
           </View>
-          <View style={styles.curveWrap}>
-            {TIDE_CURVE.map((v, i) => (
-              <View key={i} style={[styles.curveBar, { height: `${v * 100}%` }]} />
-            ))}
-          </View>
-          <View style={styles.curveLabels}>
-            <Text style={styles.curveLabel}>00:00</Text>
-            <Text style={styles.curveLabel}>06:00</Text>
-            <Text style={styles.curveLabel}>12:00</Text>
-            <Text style={styles.curveLabel}>18:00</Text>
-            <Text style={styles.curveLabel}>24:00</Text>
-          </View>
+          {tideData.loading ? (
+            <View style={styles.tideSkeleton} />
+          ) : (
+            <>
+              <View style={styles.tideRow}>
+                <Text style={styles.tideValue}>
+                  {tideData.currentHeight.toFixed(1)}
+                  <Text style={styles.tideUnit}>m</Text>
+                </Text>
+                <View>
+                  <Text style={styles.tideTrend}>
+                    {tideData.trend === 'rising'
+                      ? 'Rising ▲'
+                      : tideData.trend === 'falling'
+                      ? 'Falling ▼'
+                      : 'Slack ~'}
+                    {'  '}
+                    <Text style={styles.tideTrendRate}>
+                      {Math.abs(tideData.trendRate).toFixed(2)}m/hr
+                    </Text>
+                  </Text>
+                  <Text style={styles.tideSub}>
+                    High {tideData.nextHigh.time} · {tideData.nextHigh.height.toFixed(1)}m
+                  </Text>
+                  <Text style={styles.tideSub}>
+                    Low {tideData.nextLow.time} · {tideData.nextLow.height.toFixed(1)}m
+                  </Text>
+                </View>
+              </View>
+              <TideChart
+                points={tideData.points}
+                min={tideData.range.min}
+                max={tideData.range.max}
+                currentHour={new Date().getHours()}
+              />
+              <Text style={styles.tideStation}>Data: {tideData.stationName}</Text>
+            </>
+          )}
         </View>
 
         {/* Solunar */}
@@ -228,13 +362,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   cardLabel: { ...typography.caption, marginBottom: spacing.sm },
+  tideCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  sourceChip: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+    backgroundColor: 'rgba(0,212,170,0.18)',
+  },
+  sourceChipLive: { backgroundColor: 'rgba(0,212,170,0.18)' },
+  sourceChipEst: { backgroundColor: 'rgba(255,183,77,0.18)' },
+  sourceChipText: { fontSize: 9, fontWeight: '700', color: '#00D4AA', letterSpacing: 0.5 },
+  sourceChipTextEst: { color: '#FFB74D' },
   tideRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: spacing.md },
   tideValue: { ...typography.monoLarge, fontSize: 32 },
   tideUnit: { fontSize: 15, color: colors.textSecondary, fontFamily: fonts.mono },
-  tideTrend: { ...typography.label, color: colors.primary, textAlign: 'right' },
+  tideTrend: { ...typography.label, color: colors.primary, textAlign: 'right', fontSize: 13 },
+  tideTrendRate: { fontSize: 10, color: colors.textSecondary, fontFamily: fonts.mono },
   tideSub: { ...typography.caption, fontSize: 10, textTransform: 'none', textAlign: 'right', marginTop: 2 },
-  curveWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 56, gap: 4 },
-  curveBar: { flex: 1, backgroundColor: 'rgba(0,212,170,0.35)', borderRadius: radius.xs, minHeight: 4 },
+  tideSkeleton: { height: 116, backgroundColor: colors.surface2, borderRadius: radius.md, marginVertical: spacing.sm },
+  tideStation: { fontSize: 9, color: colors.textTertiary, fontFamily: fonts.mono, marginTop: 4 },
   curveLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   curveLabel: { fontSize: 9, color: colors.textTertiary, fontFamily: fonts.mono },
 
