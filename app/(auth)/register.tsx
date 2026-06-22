@@ -51,7 +51,7 @@ export default function RegisterScreen() {
         <View style={styles.header}>
           <Text style={styles.back} onPress={() => router.back()}>← Back</Text>
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join thousands of UK anglers</Text>
+          <Text style={styles.subtitle}>Build your fishing profile from scratch</Text>
         </View>
 
         <View style={styles.form}>

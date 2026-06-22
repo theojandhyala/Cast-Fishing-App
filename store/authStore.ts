@@ -22,6 +22,7 @@ export interface User {
   weightUnit?: 'kg' | 'lbs';
   tempUnit?: 'celsius' | 'fahrenheit';
   defaultLocation?: string;
+  hasCompletedOnboarding?: boolean;
 }
 
 interface AuthState {
@@ -47,7 +48,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const stored = await AsyncStorage.getItem('cast_user');
       if (stored) {
-        const user = JSON.parse(stored);
+        const parsed = JSON.parse(stored) as User;
+        if (parsed.email === 'demo@castapp.com') {
+          await AsyncStorage.removeItem('cast_user');
+          set({ user: null, isAuthenticated: false, isLoading: false });
+          return;
+        }
+        const user = { ...parsed, hasCompletedOnboarding: parsed.hasCompletedOnboarding ?? true };
+        await AsyncStorage.setItem('cast_user', JSON.stringify(user));
         set({ user, isAuthenticated: true, isLoading: false });
       } else {
         set({ isLoading: false });
@@ -92,6 +100,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         streak: 0,
         favouriteSpecies: [],
         joinedAt: new Date().toISOString(),
+        hasCompletedOnboarding: false,
       };
       await AsyncStorage.setItem('cast_user', JSON.stringify(user));
       set({ user, isAuthenticated: true });
@@ -117,7 +126,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   completeOnboarding: (name: string, favouriteSpecies: string[], extras?: { fishingExperience?: User['fishingExperience']; hasLicence?: boolean; preferredFishing?: User['preferredFishing'] }) => {
     const current = get().user;
     if (!current) return;
-    const updated = { ...current, name, favouriteSpecies, xp: 0, level: 1, streak: 0, ...extras };
+    const updated = { ...current, name, favouriteSpecies, xp: 0, level: 1, streak: 0, hasCompletedOnboarding: true, ...extras };
     AsyncStorage.setItem('cast_user', JSON.stringify(updated));
     set({ user: updated });
   },
