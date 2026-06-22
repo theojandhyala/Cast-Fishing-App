@@ -67,7 +67,8 @@ export default function RootLayout() {
     if (existing) return;
     const style = document.createElement('style');
     style.id = 'cast-global-styles';
-    style.textContent = `[dir='auto'],input,textarea,button{font-family:'Inter_400Regular',sans-serif;font-style:normal;}`;
+    style.textContent = `@font-face{font-family:'material-community';src:url('/assets/node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.6e435534bd35da5fef04168860a9b8fa.ttf') format('truetype');font-style:normal;font-weight:normal;font-display:block;}
+[dir='auto'],input,textarea,button{font-family:'Inter_400Regular',sans-serif;font-style:normal;}`;
     document.head.appendChild(style);
   }, []);
 
