@@ -10,7 +10,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../../components/ui/Icon';
+import { FishPhoto } from '../../components/fish/FishPhoto';
 import { colors, fonts, radius, spacing } from '../../constants/theme';
 import { useAuthStore } from '../../store/authStore';
 import { useProfileStore } from '../../store/profileStore';
@@ -38,29 +38,27 @@ const REGIONS = [
 ] as const;
 
 const SPECIES = [
-  { id: 'carp', name: 'Carp', group: 'Freshwater' },
-  { id: 'largemouth-bass', name: 'Largemouth Bass', group: 'Freshwater' },
-  { id: 'trout', name: 'Trout', group: 'Freshwater' },
-  { id: 'salmon', name: 'Salmon', group: 'Migratory' },
-  { id: 'northern-pike', name: 'Northern Pike', group: 'Predator' },
-  { id: 'catfish', name: 'Catfish', group: 'Freshwater' },
-  { id: 'perch', name: 'Perch', group: 'Freshwater' },
-  { id: 'barramundi', name: 'Barramundi', group: 'Estuary' },
-  { id: 'sea-bass', name: 'Sea Bass', group: 'Saltwater' },
-  { id: 'snapper', name: 'Snapper', group: 'Saltwater' },
-  { id: 'tuna', name: 'Tuna', group: 'Offshore' },
-  { id: 'marlin', name: 'Marlin', group: 'Big game' },
-  { id: 'mahi-mahi', name: 'Mahi-mahi', group: 'Offshore' },
-  { id: 'tarpon', name: 'Tarpon', group: 'Saltwater' },
-  { id: 'giant-trevally', name: 'Giant Trevally', group: 'Saltwater' },
-  { id: 'yellowtail', name: 'Yellowtail', group: 'Offshore' },
+  { id: 'carp', name: 'Carp', group: 'Freshwater', scientificName: 'Cyprinus carpio', accent: '#D7A84A' },
+  { id: 'largemouth-bass', name: 'Largemouth Bass', group: 'Freshwater', scientificName: 'Micropterus salmoides', accent: '#73A05B' },
+  { id: 'trout', name: 'Brown Trout', group: 'Freshwater', scientificName: 'Salmo trutta', accent: '#8EC5D6' },
+  { id: 'salmon', name: 'Atlantic Salmon', group: 'Migratory', scientificName: 'Salmo salar', accent: '#F08A72' },
+  { id: 'northern-pike', name: 'Northern Pike', group: 'Predator', scientificName: 'Esox lucius', accent: '#7E9A53' },
+  { id: 'catfish', name: 'Wels Catfish', group: 'Freshwater', scientificName: 'Silurus glanis', accent: '#9A8B7A' },
+  { id: 'perch', name: 'European Perch', group: 'Freshwater', scientificName: 'Perca fluviatilis', accent: '#E6A83B' },
+  { id: 'barramundi', name: 'Barramundi', group: 'Estuary', scientificName: 'Lates calcarifer', accent: '#A9C7D6' },
+  { id: 'sea-bass', name: 'European Sea Bass', group: 'Saltwater', scientificName: 'Dicentrarchus labrax', accent: '#82A9B8' },
+  { id: 'snapper', name: 'Red Snapper', group: 'Saltwater', scientificName: 'Lutjanus campechanus', accent: '#E7655A' },
+  { id: 'tuna', name: 'Bluefin Tuna', group: 'Offshore', scientificName: 'Thunnus thynnus', accent: '#4B7EA8' },
+  { id: 'marlin', name: 'Blue Marlin', group: 'Big game', scientificName: 'Makaira nigricans', accent: '#346C9C' },
+  { id: 'mahi-mahi', name: 'Mahi-mahi', group: 'Offshore', scientificName: 'Coryphaena hippurus', accent: '#35C5B3' },
+  { id: 'tarpon', name: 'Atlantic Tarpon', group: 'Saltwater', scientificName: 'Megalops atlanticus', accent: '#A9B7C3' },
+  { id: 'giant-trevally', name: 'Giant Trevally', group: 'Saltwater', scientificName: 'Caranx ignobilis', accent: '#687A86' },
+  { id: 'yellowtail', name: 'Yellowtail Kingfish', group: 'Offshore', scientificName: 'Seriola lalandi', accent: '#E2B93B' },
 ] as const;
 
 export default function OnboardingScreen() {
-  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const scrollRef = useRef<ScrollView>(null);
   const entrance = useRef(new Animated.Value(1)).current;
   const authUser = useAuthStore((state) => state.user);
   const completeAuthOnboarding = useAuthStore((state) => state.completeOnboarding);
@@ -90,7 +88,6 @@ export default function OnboardingScreen() {
   const goTo = (nextStep: number) => {
     const safeStep = Math.max(0, Math.min(TOTAL_STEPS - 1, nextStep));
     setStep(safeStep);
-    scrollRef.current?.scrollTo({ x: safeStep * width, animated: true });
     animateScreen();
   };
 
@@ -154,31 +151,27 @@ export default function OnboardingScreen() {
         <Animated.View style={[styles.progressFill, { width: `${((step + 1) / TOTAL_STEPS) * 100}%` }]} />
       </View>
 
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        scrollEnabled={false}
-        showsHorizontalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        style={styles.pager}
-      >
-        <View style={[styles.page, { width }]}>
-          <Animated.View style={[styles.pageContent, styles.welcomeContent, animatedStyle]}>
+      <View style={styles.pager}>
+        <Animated.View style={[styles.page, animatedStyle]}>
+          {step === 0 ? (
+          <View style={[styles.pageContent, styles.welcomeContent]}>
             <View style={styles.heroVisual}>
               <View style={styles.heroGlow} />
-              <View style={styles.heroRing}><Icon name="fish" size={76} color={colors.primary} /></View>
+              <View style={styles.heroRing}>
+                <Text style={styles.heroScore}>86</Text>
+                <Text style={styles.heroScoreLabel}>FISHING SCORE</Text>
+              </View>
               <View style={[styles.floatingPill, styles.pillLeft]}><Icon name="map-marker" size={16} color={colors.accentBlue} /><Text style={styles.pillText}>Find waters</Text></View>
               <View style={[styles.floatingPill, styles.pillRight]}><Icon name="trophy-outline" size={16} color={colors.secondary} /><Text style={styles.pillText}>Earn XP</Text></View>
             </View>
             <Text style={styles.kicker}>YOUR WATER. YOUR STORY.</Text>
             <Text style={styles.title}>Every great catch starts with a cast.</Text>
             <Text style={styles.subtitle}>Build your angling profile, discover what’s biting, and turn every session into progress.</Text>
-          </Animated.View>
-        </View>
+          </View>
+          ) : null}
 
-        <View style={[styles.page, { width }]}>
-          <Animated.View style={[styles.pageContent, animatedStyle]}>
+          {step === 1 ? (
+          <View style={styles.pageContent}>
             <View style={styles.stepIcon}><Icon name="account-outline" size={28} color={colors.primary} /></View>
             <Text style={styles.kicker}>MAKE IT YOURS</Text>
             <Text style={styles.title}>What should anglers call you?</Text>
@@ -201,11 +194,11 @@ export default function OnboardingScreen() {
               <Text style={styles.characterCount}>{username.trim().length}/24</Text>
             </View>
             {usernameTouched && !usernameValid ? <Text style={styles.errorText}>Use between 2 and 24 characters.</Text> : null}
-          </Animated.View>
-        </View>
+          </View>
+          ) : null}
 
-        <View style={[styles.page, { width }]}>
-          <Animated.View style={[styles.pageContent, styles.centeredContent, animatedStyle]}>
+          {step === 2 ? (
+          <View style={[styles.pageContent, styles.centeredContent]}>
             <Text style={styles.kicker}>PUT A FACE TO THE CATCH</Text>
             <Text style={styles.title}>Add a profile photo</Text>
             <Text style={styles.subtitle}>Optional, but it makes your catch cards unmistakably yours.</Text>
@@ -215,11 +208,11 @@ export default function OnboardingScreen() {
             </TouchableOpacity>
             <TouchableOpacity onPress={pickPhoto} style={styles.textButton}><Text style={styles.textButtonLabel}>{photoUri ? 'Choose a different photo' : 'Choose from library'}</Text></TouchableOpacity>
             <Text style={styles.optionalText}>You can always add one later.</Text>
-          </Animated.View>
-        </View>
+          </View>
+          ) : null}
 
-        <View style={[styles.page, { width }]}>
-          <Animated.View style={[styles.pageContent, animatedStyle]}>
+          {step === 3 ? (
+          <View style={styles.pageContent}>
             <View style={styles.stepIcon}><Icon name="earth" size={28} color={colors.primary} /></View>
             <Text style={styles.kicker}>SET YOUR HOME WATERS</Text>
             <Text style={styles.title}>Where do you fish?</Text>
@@ -236,11 +229,11 @@ export default function OnboardingScreen() {
                 );
               })}
             </ScrollView>
-          </Animated.View>
-        </View>
+          </View>
+          ) : null}
 
-        <View style={[styles.page, { width }]}>
-          <Animated.View style={[styles.pageContent, animatedStyle]}>
+          {step === 4 ? (
+          <View style={styles.pageContent}>
             <View style={styles.stepIcon}><Icon name="target" size={28} color={colors.primary} /></View>
             <Text style={styles.kicker}>CHOOSE YOUR CHASE</Text>
             <Text style={styles.title}>What are you after?</Text>
@@ -249,17 +242,28 @@ export default function OnboardingScreen() {
               {SPECIES.map((species) => {
                 const selected = targetSpecies.includes(species.id);
                 return (
-                  <TouchableOpacity key={species.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} activeOpacity={0.8} onPress={() => toggleSpecies(species.id)} style={[styles.speciesCard, selected && styles.selectedCard]}>
-                    <View style={[styles.fishIcon, selected && styles.fishIconSelected]}><Icon name="fish" size={23} color={selected ? colors.background : colors.textSecondary} /></View>
+                  <TouchableOpacity
+                    key={species.id}
+                    accessibilityLabel={`${species.name}, ${species.group}`}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: selected }}
+                    activeOpacity={0.8}
+                    onPress={() => toggleSpecies(species.id)}
+                    style={[styles.speciesCard, { borderColor: `${species.accent}42` }, selected && styles.selectedCard]}
+                  >
+                    <FishPhoto scientificName={species.scientificName} commonName={species.name} accent={species.accent} style={styles.speciesPhoto} />
                     <View style={styles.speciesCopy}><Text style={[styles.speciesName, selected && styles.selectedText]}>{species.name}</Text><Text style={styles.speciesGroup}>{species.group}</Text></View>
-                    {selected ? <Icon name="check-circle" size={19} color={colors.primary} /> : null}
+                    <View style={[styles.speciesCheck, selected && styles.speciesCheckSelected]}>
+                      {selected ? <Icon name="check" size={14} color={colors.background} /> : null}
+                    </View>
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
-          </Animated.View>
-        </View>
-      </ScrollView>
+          </View>
+          ) : null}
+        </Animated.View>
+      </View>
 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
         {step > 0 ? <TouchableOpacity accessibilityRole="button" onPress={() => goTo(step - 1)} style={styles.backButton}><Icon name="arrow-left" size={21} color={colors.textPrimary} /></TouchableOpacity> : null}
@@ -288,7 +292,9 @@ const styles = StyleSheet.create({
   centeredContent: { alignItems: 'center', paddingTop: 58 },
   heroVisual: { height: 230, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xl },
   heroGlow: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(0,212,170,0.07)' },
-  heroRing: { width: 156, height: 156, borderRadius: 78, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,212,170,0.08)', borderWidth: 1, borderColor: 'rgba(0,212,170,0.28)' },
+  heroRing: { width: 156, height: 156, borderRadius: 78, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,212,170,0.08)', borderWidth: 1, borderColor: 'rgba(0,212,170,0.28)', overflow: 'hidden' },
+  heroScore: { color: colors.primary, fontFamily: fonts.display, fontSize: 46, lineHeight: 50, letterSpacing: -2 },
+  heroScoreLabel: { color: colors.textSecondary, fontFamily: fonts.bodyBold, fontSize: 9, letterSpacing: 1.6, marginTop: 3 },
   floatingPill: { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: radius.full, paddingHorizontal: 12, paddingVertical: 8 },
   pillLeft: { left: 2, bottom: 38 },
   pillRight: { right: 2, top: 30 },
@@ -314,12 +320,13 @@ const styles = StyleSheet.create({
   selectedCard: { borderColor: colors.primary, backgroundColor: 'rgba(0,212,170,0.09)' },
   selectedText: { color: colors.textPrimary },
   speciesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingTop: spacing.lg, paddingBottom: spacing.xl },
-  speciesCard: { width: '48.5%', minHeight: 78, flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  fishIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' },
-  fishIconSelected: { backgroundColor: colors.primary },
-  speciesCopy: { flex: 1 },
-  speciesName: { color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 13 },
+  speciesCard: { width: '48.5%', minHeight: 82, flexDirection: 'row', alignItems: 'center', gap: 9, padding: 8, paddingRight: 20, position: 'relative', borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1 },
+  speciesPhoto: { width: 56, height: 56, borderRadius: 14 },
+  speciesCopy: { flex: 1, minWidth: 0 },
+  speciesName: { color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12, lineHeight: 15 },
   speciesGroup: { color: colors.textTertiary, fontFamily: fonts.body, fontSize: 10, marginTop: 2 },
+  speciesCheck: { position: 'absolute', right: 5, top: 5, width: 18, height: 18, borderRadius: 9, borderWidth: 1, borderColor: colors.borderStrong, backgroundColor: 'rgba(10,14,26,0.75)', alignItems: 'center', justifyContent: 'center' },
+  speciesCheckSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
   footer: { flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.md, paddingHorizontal: spacing.lg, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: 'rgba(10,14,26,0.96)' },
   backButton: { width: 54, minHeight: 54, borderRadius: radius.md, borderWidth: 1, borderColor: colors.borderStrong, alignItems: 'center', justifyContent: 'center' },
   nextButton: { flex: 1, minHeight: 54, borderRadius: radius.md, backgroundColor: colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm },

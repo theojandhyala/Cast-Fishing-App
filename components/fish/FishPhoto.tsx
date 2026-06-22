@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
-import { Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Linking, StyleProp, StyleSheet, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { colors, radius } from '../../constants/theme';
 import { useFishImage } from '../../hooks/useFishImage';
 import { Icon } from '../ui/Icon';
 
-export function FishPhoto({ scientificName, commonName, accent, variant = 'thumbnail' }: {
+export function FishPhoto({ scientificName, commonName, accent, variant = 'thumbnail', style }: {
   scientificName: string;
   commonName: string;
   accent: string;
   variant?: 'thumbnail' | 'hero';
+  style?: StyleProp<ViewStyle>;
 }) {
   const { image, loading } = useFishImage(scientificName);
   const [failed, setFailed] = useState(false);
   const isHero = variant === 'hero';
 
   return (
-    <View style={[isHero ? styles.hero : styles.thumbnail, { backgroundColor: `${accent}1F` }]}>
+    <View style={[isHero ? styles.hero : styles.thumbnail, { backgroundColor: `${accent}1F` }, style]}>
       {image && !failed ? (
         <Image
           source={{ uri: image.uri }}
