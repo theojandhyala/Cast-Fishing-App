@@ -8,6 +8,7 @@ import { useFonts } from 'expo-font';
 import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
 import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useAuthStore } from '../store/authStore';
 import { useCatchStore } from '../store/catchStore';
 import { useUserStore } from '../store/userStore';
@@ -74,15 +75,12 @@ export default function RootLayout() {
     Inter_400Regular,
     Inter_600SemiBold,
     Inter_700Bold,
-    // Must be loaded explicitly on web — font name must match exactly what
-    // @expo/vector-icons uses internally to resolve icon glyphs
-    'material-community': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
-    MaterialCommunityIcons: require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
+    ...MaterialCommunityIcons.font,
   });
 
   useEffect(() => {
     if (fontsLoaded || fontError) return;
-    const timeout = setTimeout(() => setFontLoadTimedOut(true), 3000);
+    const timeout = setTimeout(() => setFontLoadTimedOut(true), 5000);
     return () => clearTimeout(timeout);
   }, [fontsLoaded, fontError]);
 
