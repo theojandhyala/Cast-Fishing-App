@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  FlatList, TouchableOpacity, Image,
+  FlatList, TouchableOpacity,
 } from 'react-native';
+import { FishSpeciesPhoto } from '../../components/fish/FishSpeciesPhoto';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { useRouter } from 'expo-router';
@@ -152,11 +153,11 @@ export default function CatchesScreen() {
                 }
                 activeOpacity={0.75}
               >
-                {item.photo ? (
-                  <Image source={{ uri: item.photo }} style={s.catchPhoto} />
-                ) : (
-                  <View style={[s.catchAccentBar, { backgroundColor: accentColor }]} />
-                )}
+                <FishSpeciesPhoto
+                  species={item.species}
+                  photo={item.photo}
+                  style={s.catchPhoto}
+                />
 
                 <View style={s.catchContent}>
                   {/* Row 1: Species + weight badge */}
