@@ -66,6 +66,11 @@ export default function AddCatchScreen() {
   const tideData = useTides(lat, lng);
   const solunar = useSolunar(lat ?? 52.5, lng ?? -1.5);
 
+  if (!params.scanned) {
+    router.replace('/identifier' as any);
+    return null;
+  }
+
   const prefill = params.species
     ? SPECIES_OPTIONS.find((s) => s.name.toLowerCase() === params.species!.toLowerCase())
     : null;

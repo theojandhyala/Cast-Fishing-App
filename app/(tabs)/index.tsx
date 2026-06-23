@@ -19,6 +19,7 @@ import { SpotPhoto } from '../../components/map/SpotPhoto';
 import { useLocationStore } from '../../store/locationStore';
 import { FishSpeciesPhoto } from '../../components/fish/FishSpeciesPhoto';
 import { fishingWindowLabel, fishingWindowQuality, selectPrimaryFishingWindow } from '../../utils/fishingWindows';
+import { CastLogo } from '../../components/ui/CastLogo';
 
 type SpotWithDist = FishingSpotRecord & { _distKm?: number };
 
@@ -137,7 +138,7 @@ export default function HomeScreen() {
             <MaterialCommunityIcons name="menu" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
           <View style={s.brandBlock}>
-            <Text style={s.logo}>CAST</Text>
+            <CastLogo size="sm" />
           </View>
           <TouchableOpacity
             style={s.bellWrap}

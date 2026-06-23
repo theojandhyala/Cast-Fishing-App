@@ -32,6 +32,7 @@ function CenterButton({ onPress }: { onPress?: () => void }) {
       >
         <MaterialCommunityIcons name="camera-iris" size={26} color={colors.background} />
       </LinearGradient>
+      <Text style={styles.centerBtnLabel}>SCAN</Text>
     </TouchableOpacity>
   );
 }
@@ -201,16 +202,23 @@ const styles = StyleSheet.create({
     marginTop: -18,
   },
   centerBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOpacity: 0.28,
-    shadowRadius: 9,
+    shadowColor: '#00D4AA',
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
     shadowOffset: { width: 0, height: 4 },
-    elevation: 10,
+    elevation: 12,
+  },
+  centerBtnLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: 1.5,
+    marginTop: 4,
   },
 
   // Session banner

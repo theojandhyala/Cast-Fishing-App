@@ -51,6 +51,7 @@ export default function RegisterScreen() {
       >
         <View style={styles.header}>
           <Text accessibilityRole="link" accessibilityLabel="Go back" style={styles.back} onPress={() => router.back()}>← Back</Text>
+          <CastLogo size="lg" showWordmark />
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Build your fishing profile from scratch</Text>
         </View>
