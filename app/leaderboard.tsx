@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -272,30 +272,66 @@ function SpotTab() {
 }
 
 function FriendsTab() {
-  const sorted = [...FRIENDS_DATA].sort((a, b) => b.biggestFish - a.biggestFish);
-  const top3 = sorted.slice(0, 3);
-  const rest = sorted.slice(3);
+  const catches = useCatchStore(s => s.catches);
+  const user = useAuthStore(s => s.user);
+
+  // Build the current user's real stats from their catch store
+  const myStats = useMemo(() => {
+    if (!catches.length) return { totalCatches: 0, biggestFish: 0, totalWeight: 0 };
+    const weights = catches.filter(c => c.weight).map(c => c.weight!);
+    return {
+      totalCatches: catches.length,
+      biggestFish: weights.length ? Math.max(...weights) : 0,
+      totalWeight: weights.reduce((a, b) => a + b, 0),
+    };
+  }, [catches]);
+
+  // Use FRIENDS_DATA for other users but inject real user stats
+  const leaderboardData = useMemo(() => {
+    const myEntry: RankEntry = {
+      id: 'user',
+      name: user?.name || user?.email?.split('@')[0] || 'You',
+      avatar: user?.name?.slice(0, 2).toUpperCase() || 'ME',
+      biggestFish: myStats.biggestFish,
+      catches: myStats.totalCatches,
+      change: 'up' as const,
+      changeAmount: 0,
+    };
+    // Merge with mock friends data, sort by catches desc
+    const combined = [myEntry, ...FRIENDS_DATA.filter(f => f.id !== 'user')];
+    return combined.sort((a, b) => b.catches - a.catches).map((e, i) => ({ ...e, rank: i + 1 }));
+  }, [myStats, user]);
+
+  const top3 = leaderboardData.slice(0, 3);
+  const rest = leaderboardData.slice(3);
+  const myRank = leaderboardData.findIndex(e => e.id === 'user') + 1;
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
+      {/* User's rank chip if not in top 3 */}
+      {myRank > 3 && (
+        <View style={s.myRankBanner}>
+          <Text style={s.myRankText}>Your rank: #{myRank} · {myStats.totalCatches} catches</Text>
+        </View>
+      )}
+
       <View style={s.podiumRow}>
-        <PodiumCard entry={top3[1]} rank={2} />
-        <PodiumCard entry={top3[0]} rank={1} />
-        <PodiumCard entry={top3[2]} rank={3} />
+        {top3[1] && <PodiumCard entry={top3[1]} rank={2} />}
+        {top3[0] && <PodiumCard entry={top3[0]} rank={1} />}
+        {top3[2] && <PodiumCard entry={top3[2]} rank={3} />}
       </View>
 
-      {rest.map((entry, i) => (
-        <LeaderRow key={entry.id} entry={entry} rank={i + 4} isUser={entry.id === 'user'} />
+      {rest.map((entry) => (
+        <LeaderRow key={entry.id} entry={entry} rank={entry.rank} isUser={entry.id === 'user'} />
       ))}
 
       <TouchableOpacity
         style={s.inviteButton}
-        onPress={() => Alert.alert('Invite Friends', 'Share your Cast profile link with friends to add them.')}
+        onPress={() => Alert.alert('Invite Friends', 'Share your Cast profile to let friends join your leaderboard.')}
       >
         <MaterialCommunityIcons name="account-plus-outline" size={18} color={colors.primary} />
         <Text style={s.inviteText}>Invite Friends</Text>
       </TouchableOpacity>
-
       <View style={{ height: 40 }} />
     </ScrollView>
   );
@@ -491,6 +527,10 @@ const s = StyleSheet.create({
   spotHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   spotName: { color: colors.textPrimary, fontSize: 15, fontWeight: '800' },
   spotSubtitle: { color: colors.textTertiary, fontSize: 11, marginBottom: spacing.md },
+
+  // My rank banner
+  myRankBanner: { backgroundColor: 'rgba(0,212,170,0.08)', borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)', padding: 12, marginBottom: 16, alignItems: 'center' },
+  myRankText: { fontSize: 13, fontWeight: '700', color: colors.primary },
 
   // Invite
   inviteButton: {

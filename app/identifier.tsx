@@ -117,19 +117,17 @@ export default function IdentifierScreen() {
     ]);
   };
 
-  const pickImage = async (fromCamera: boolean) => {
-    const permission = fromCamera
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const [capturedUri, setCapturedUri] = useState<string | null>(null);
+
+  const openCamera = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
 
     if (permission.status !== 'granted') {
       Alert.alert('Permission needed', 'Please allow access to continue.');
       return;
     }
 
-    const res = fromCamera
-      ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.55, base64: true, allowsEditing: false })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.55, base64: true, allowsEditing: false });
+    const res = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.55, base64: true, allowsEditing: false });
 
     if (!res.canceled && res.assets[0]) {
       const asset = res.assets[0];
@@ -152,6 +150,7 @@ export default function IdentifierScreen() {
       }
 
       setImageUri(asset.uri);
+      setCapturedUri(asset.uri);
       setImageBase64(asset.base64);
       setImageMediaType(asset.mimeType || 'image/jpeg');
       setRecorded(false);
@@ -165,6 +164,7 @@ export default function IdentifierScreen() {
   const handleReset = () => {
     setImageUri(null);
     setImageBase64(null);
+    setCapturedUri(null);
     setRecorded(false);
     setRecordedData(null);
     reset();
@@ -186,8 +186,6 @@ export default function IdentifierScreen() {
     const lengthStr = parseMidpoint(result.estimatedLength);
     const weightNum = weightStr ? parseFloat(weightStr) : undefined;
     const lengthNum = lengthStr ? parseFloat(lengthStr) : undefined;
-    const photoUri = imageUri ?? undefined;
-
     // Map weather pressureTrend ('stable' from API) to store type ('steady')
     let pressureTrend: 'rising' | 'falling' | 'steady' | undefined;
     if (weather?.pressureTrend === 'rising') pressureTrend = 'rising';
@@ -199,7 +197,7 @@ export default function IdentifierScreen() {
       weight: weightNum ?? 0,
       length: lengthNum,
       location: location?.name,
-      photo: photoUri,
+      photo: capturedUri ?? undefined,
       pressure: weather?.pressure,
       pressureTrend,
       moonPhase: solunar.moonPhase,
@@ -223,7 +221,7 @@ export default function IdentifierScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Scan frame */}
         {!imageUri ? (
-          <TouchableOpacity style={styles.scanFrame} onPress={() => pickImage(true)} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.scanFrame} onPress={openCamera} activeOpacity={0.85}>
             <View style={[styles.corner, styles.cornerTL]} />
             <View style={[styles.corner, styles.cornerTR]} />
             <View style={[styles.corner, styles.cornerBL]} />
@@ -262,15 +260,14 @@ export default function IdentifierScreen() {
 
         {!imageUri && (
           <View style={styles.pickRow}>
-            <TouchableOpacity style={styles.pickBtn} onPress={() => pickImage(true)}>
+            <TouchableOpacity style={styles.pickBtn} onPress={openCamera}>
               <MaterialCommunityIcons name="camera" size={18} color={colors.primary} />
               <Text style={styles.pickBtnText}>Camera</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.pickBtn} onPress={() => pickImage(false)}>
-              <MaterialCommunityIcons name="image-outline" size={18} color={colors.primary} />
-              <Text style={styles.pickBtnText}>Gallery</Text>
-            </TouchableOpacity>
           </View>
+        )}
+        {!imageUri && (
+          <Text style={styles.integrityNote}>Live camera only — no uploads to ensure catch integrity</Text>
         )}
 
         {loading && (
@@ -455,6 +452,7 @@ const styles = StyleSheet.create({
   removeImage: { position: 'absolute', top: spacing.sm, right: spacing.sm },
 
   scanCountText: { fontSize: 11, color: colors.textTertiary, textAlign: 'center', marginBottom: spacing.sm },
+  integrityNote: { fontSize: 11, color: colors.textSecondary, textAlign: 'center', marginTop: 8, marginBottom: spacing.sm },
   pickRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   pickBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
