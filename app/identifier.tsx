@@ -15,8 +15,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFishIdentifier } from '../hooks/useFishIdentifier';
-import { CastButton } from '../components/ui/CastButton';
-import { colors, radius, spacing, typography, fonts, elevation } from '../constants/theme';
+import { colors, radius, spacing, typography, fonts } from '../constants/theme';
+import { useCatchStore } from '../store/catchStore';
+import { useLocationStore } from '../store/locationStore';
+import { useWeather } from '../hooks/useWeather';
+import { useSolunar } from '../hooks/useSolunar';
 
 const HISTORY_KEY = '@cast_fish_id_history';
 
@@ -34,7 +37,13 @@ export default function IdentifierScreen() {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imageMediaType, setImageMediaType] = useState('image/jpeg');
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [recorded, setRecorded] = useState(false);
+  const [recordedData, setRecordedData] = useState<{ species: string; weight: string; length: string } | null>(null);
   const { identify, loading, result, error, reset } = useFishIdentifier();
+  const { addCatch } = useCatchStore();
+  const location = useLocationStore((s) => s.location);
+  const { weather } = useWeather(location?.latitude, location?.longitude);
+  const solunar = useSolunar(location?.latitude ?? 51.5, location?.longitude ?? -0.1);
 
   useEffect(() => { loadHistory(); }, []);
   useEffect(() => {
@@ -100,6 +109,8 @@ export default function IdentifierScreen() {
       setImageUri(asset.uri);
       setImageBase64(asset.base64);
       setImageMediaType(asset.mimeType || 'image/jpeg');
+      setRecorded(false);
+      setRecordedData(null);
       reset();
       await identify(asset.base64, asset.mimeType || 'image/jpeg');
     }
@@ -108,6 +119,8 @@ export default function IdentifierScreen() {
   const handleReset = () => {
     setImageUri(null);
     setImageBase64(null);
+    setRecorded(false);
+    setRecordedData(null);
     reset();
   };
 
@@ -118,26 +131,37 @@ export default function IdentifierScreen() {
     const a = parseFloat(nums[0]);
     const b = parseFloat(nums[1]);
     const mid = (a + b) / 2;
-    // If both numbers are integers and mid is whole, return no decimals
     return Number.isInteger(mid) ? mid.toFixed(0) : mid.toFixed(1);
   };
 
-  const handleSaveCatch = async () => {
+  const handleRecordCatch = () => {
     if (!result) return;
-    const weight = parseMidpoint(result.estimatedWeight);
-    const length = parseMidpoint(result.estimatedLength);
-    if (imageBase64) {
-      try {
-        await AsyncStorage.setItem('@cast_pending_scan_photo', `data:${imageMediaType};base64,${imageBase64}`);
-      } catch {}
-    }
-    router.replace({ pathname: '/add-catch', params: {
+    const weightStr = parseMidpoint(result.estimatedWeight);
+    const lengthStr = parseMidpoint(result.estimatedLength);
+    const weightNum = weightStr ? parseFloat(weightStr) : undefined;
+    const lengthNum = lengthStr ? parseFloat(lengthStr) : undefined;
+    const photoUri = imageUri ?? undefined;
+
+    // Map weather pressureTrend ('stable' from API) to store type ('steady')
+    let pressureTrend: 'rising' | 'falling' | 'steady' | undefined;
+    if (weather?.pressureTrend === 'rising') pressureTrend = 'rising';
+    else if (weather?.pressureTrend === 'falling') pressureTrend = 'falling';
+    else if (weather?.pressureTrend) pressureTrend = 'steady';
+
+    addCatch({
       species: result.commonName,
-      weight,
-      length,
-      confidence: String(result.confidence),
-      scanned: '1',
-    } } as any);
+      weight: weightNum ?? 0,
+      length: lengthNum,
+      location: location?.name,
+      photo: photoUri,
+      pressure: weather?.pressure,
+      pressureTrend,
+      moonPhase: solunar.moonPhase,
+      hourOfDay: new Date().getHours(),
+    });
+
+    setRecordedData({ species: result.commonName, weight: weightStr, length: lengthStr });
+    setRecorded(true);
   };
 
   return (
@@ -146,7 +170,7 @@ export default function IdentifierScreen() {
         <TouchableOpacity onPress={() => router.back()} hitSlop={10}>
           <MaterialCommunityIcons name="chevron-left" size={26} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{mode === 'catch' ? 'CAST Lens Catch' : 'Fish ID'}</Text>
+        <Text style={styles.headerTitle}>CAST LENS</Text>
         <View style={{ width: 26 }} />
       </View>
 
@@ -154,7 +178,11 @@ export default function IdentifierScreen() {
         {/* Scan frame */}
         {!imageUri ? (
           <TouchableOpacity style={styles.scanFrame} onPress={() => pickImage(true)} activeOpacity={0.85}>
-            <MaterialCommunityIcons name="camera-outline" size={44} color={colors.textSecondary} />
+            <View style={[styles.corner, styles.cornerTL]} />
+            <View style={[styles.corner, styles.cornerTR]} />
+            <View style={[styles.corner, styles.cornerBL]} />
+            <View style={[styles.corner, styles.cornerBR]} />
+            <MaterialCommunityIcons name="camera-iris" size={44} color="rgba(0,212,170,0.4)" />
             <Text style={styles.scanPlaceholderTitle}>Scan a fish</Text>
             <Text style={styles.scanPlaceholderSub}>Best results: whole fish, side-on, good light</Text>
           </TouchableOpacity>
@@ -195,7 +223,7 @@ export default function IdentifierScreen() {
         {loading && (
           <View style={styles.loadingRow}>
             <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={styles.loadingText}>Checking body shape, fins and markings…</Text>
+            <Text style={styles.loadingText}>Checking body shape, fins and markings…</Text>
           </View>
         )}
 
@@ -206,21 +234,52 @@ export default function IdentifierScreen() {
           </View>
         )}
 
+        {/* Success state */}
+        {recorded && recordedData && (
+          <View style={styles.successCard}>
+            <View style={styles.successIconWrap}>
+              <MaterialCommunityIcons name="check-circle" size={48} color="#00D4AA" />
+            </View>
+            <Text style={styles.successTitle}>Catch Recorded!</Text>
+            <Text style={styles.successSpecies}>{recordedData.species}</Text>
+            <View style={styles.successMeasures}>
+              {recordedData.length ? (
+                <View style={styles.measureChip}>
+                  <Text style={styles.measureChipLabel}>LENGTH</Text>
+                  <Text style={styles.measureChipValue}>{recordedData.length} cm</Text>
+                </View>
+              ) : null}
+              {recordedData.weight ? (
+                <View style={styles.measureChip}>
+                  <Text style={styles.measureChipLabel}>WEIGHT</Text>
+                  <Text style={styles.measureChipValue}>{recordedData.weight} kg</Text>
+                </View>
+              ) : null}
+            </View>
+            <TouchableOpacity style={styles.scanAnotherBtn} onPress={handleReset}>
+              <MaterialCommunityIcons name="camera-iris" size={16} color={colors.primary} />
+              <Text style={styles.scanAnotherText}>Scan Another</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Result */}
-        {result && (
+        {result && !recorded && (
           <View style={styles.resultCard}>
             <View style={styles.idTagRow}>
               <MaterialCommunityIcons name="check-decagram" size={12} color={colors.accentBlue} />
               <Text style={styles.idTag}>Identified</Text>
             </View>
             <View style={styles.resultHeader}>
-              <Text style={styles.resultSpecies}>{result.commonName}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.resultSpecies}>{result.commonName}</Text>
+                <Text style={styles.resultLatin}>{result.latinName}</Text>
+              </View>
               <View style={styles.matchBadge}>
                 <MaterialCommunityIcons name="target" size={11} color={colors.accentBlue} />
-                <Text style={styles.matchBadgeText}>{result.confidence}% Match</Text>
+                <Text style={styles.matchBadgeText}>{result.confidence}%</Text>
               </View>
             </View>
-            <Text style={styles.resultLatin}>{result.latinName}</Text>
 
             <View style={[styles.statusChip, result.legalSize > 0 && result.isLegal ? styles.statusChipLegal : styles.statusChipWarn]}>
               <MaterialCommunityIcons
@@ -235,10 +294,22 @@ export default function IdentifierScreen() {
               </Text>
             </View>
 
-            <View style={styles.idRows}>
-              <View style={styles.idRow}><Text style={styles.idRowLabel}>Length</Text><Text style={styles.idRowValue}>{result.estimatedLength}</Text></View>
-              <View style={styles.idRow}><Text style={styles.idRowLabel}>Weight</Text><Text style={styles.idRowValue}>{result.estimatedWeight}</Text></View>
-              {result.legalSize > 0 && <View style={styles.idRow}><Text style={styles.idRowLabel}>Legal Size</Text><Text style={styles.idRowValue}>{result.legalSize}cm</Text></View>}
+            {/* Stats row */}
+            <View style={styles.statsRow}>
+              <View style={styles.statChip}>
+                <Text style={styles.statChipLabel}>LENGTH</Text>
+                <Text style={styles.statChipValue}>{result.estimatedLength}</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statChip}>
+                <Text style={styles.statChipLabel}>WEIGHT</Text>
+                <Text style={styles.statChipValue}>{result.estimatedWeight}</Text>
+              </View>
+              <View style={styles.statDivider} />
+              <View style={styles.statChip}>
+                <Text style={styles.statChipLabel}>MATCH</Text>
+                <Text style={[styles.statChipValue, { color: colors.accentBlue }]}>{result.confidence}%</Text>
+              </View>
             </View>
 
             <Text style={styles.aboutLabel}>About</Text>
@@ -258,21 +329,26 @@ export default function IdentifierScreen() {
             )}
 
             <View style={styles.resultActions}>
-              <CastButton title="Scan Again" onPress={handleReset} variant="ghost" style={{ flex: 1 }} />
-              <CastButton title={mode === 'catch' ? 'Review Catch' : 'Log as Catch →'} onPress={handleSaveCatch} style={{ flex: 1 }} />
+              <TouchableOpacity style={styles.scanAgainBtn} onPress={handleReset}>
+                <Text style={styles.scanAgainText}>Scan Again</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.recordBtn} onPress={handleRecordCatch}>
+                <MaterialCommunityIcons name="check-circle-outline" size={18} color="#031A12" />
+                <Text style={styles.recordBtnText}>RECORD CATCH</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
 
         {/* History */}
-        {history.length > 0 && (
+        {history.length > 0 && !recorded && (
           <View style={styles.historySection}>
             <View style={styles.historyHeader}>
               <Text style={styles.cardLabel}>Recent Identifications</Text>
               <TouchableOpacity onPress={clearHistory}><Text style={styles.clearText}>Clear</Text></TouchableOpacity>
             </View>
-            {history.map(item => (
-              <View key={item.id} style={styles.historyItem}>
+            {history.map((item, idx) => (
+              <View key={item.id} style={[styles.historyItem, idx > 0 && styles.historyDivider]}>
                 <View style={styles.historyIcon}><MaterialCommunityIcons name="fish" size={16} color={colors.primary} /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.historySpecies}>{item.species}</Text>
@@ -291,73 +367,50 @@ export default function IdentifierScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: '#050A12' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
   },
-  headerTitle: { ...typography.label, fontSize: 15 },
+  headerTitle: { fontSize: 13, fontWeight: '800', color: colors.primary, letterSpacing: 2 },
   content: { padding: spacing.lg, paddingTop: spacing.sm },
 
   scanFrame: {
-    height: 280, backgroundColor: colors.surface, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
+    width: '100%', height: 320,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: radius.lg,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.15)',
+    alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden', position: 'relative', marginBottom: spacing.md,
-    ...elevation.card,
   },
-  scanPlaceholderTitle: { ...typography.h3, marginTop: spacing.md },
-  scanPlaceholderSub: { ...typography.bodySmall, marginTop: 4 },
+  scanPlaceholderTitle: { ...typography.h3, marginTop: spacing.md, color: colors.textPrimary },
+  scanPlaceholderSub: { ...typography.bodySmall, marginTop: 4, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.xl },
   scanImage: { width: '100%', height: '100%' },
-  corner: { position: 'absolute', width: 26, height: 26, borderColor: colors.accentBlue },
-  cornerTL: { top: 12, left: 12, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: radius.sm },
-  cornerTR: { top: 12, right: 12, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: radius.sm, borderColor: colors.primary },
-  cornerBL: { bottom: 12, left: 12, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: radius.sm, borderColor: colors.primary },
-  cornerBR: { bottom: 12, right: 12, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: radius.sm },
+  corner: { position: 'absolute', width: 28, height: 28, borderColor: '#00D4AA' },
+  cornerTL: { top: 14, left: 14, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: radius.sm },
+  cornerTR: { top: 14, right: 14, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: radius.sm },
+  cornerBL: { bottom: 14, left: 14, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: radius.sm },
+  cornerBR: { bottom: 14, right: 14, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: radius.sm },
   scanBadge: {
     position: 'absolute', top: 14, left: 14, flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(10,14,26,0.85)', borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 5,
-    borderWidth: 1, borderColor: colors.borderStrong,
+    backgroundColor: 'rgba(5,10,18,0.88)', borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)',
   },
   scanDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
-  scanBadgeText: { fontSize: 9, fontWeight: '800', color: colors.primary, letterSpacing: 1 },
+  scanBadgeText: { fontSize: 9, fontWeight: '800', color: colors.primary, letterSpacing: 1.2 },
   removeImage: { position: 'absolute', top: spacing.sm, right: spacing.sm },
+
   pickRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   pickBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingVertical: 12, borderRadius: radius.md, borderWidth: 1, borderColor: colors.borderStrong,
+    paddingVertical: 13, borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
   },
-  pickBtnText: { ...typography.label, color: colors.primary },
+  pickBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+
   loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: spacing.lg },
   loadingText: { ...typography.bodySmall },
-
-  resultCard: { backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, ...elevation.card },
-  idTagRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
-  idTag: { ...typography.caption, color: colors.accentBlue },
-  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  resultSpecies: { ...typography.h2, fontSize: 24 },
-  resultLatin: { ...typography.bodySmall, marginTop: 2, marginBottom: spacing.md },
-  matchBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(45,212,255,0.12)', borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(45,212,255,0.3)' },
-  matchBadgeText: { fontSize: 11, fontWeight: '800', color: colors.accentBlue },
-  statusChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderRadius: radius.md, paddingVertical: 8, paddingHorizontal: 10,
-    borderWidth: 1, marginBottom: spacing.md,
-  },
-  statusChipLegal: { backgroundColor: 'rgba(0,212,170,0.08)', borderColor: 'rgba(0,212,170,0.25)' },
-  statusChipWarn: { backgroundColor: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.25)' },
-  statusChipText: { fontSize: 12, fontFamily: fonts.bodySemi },
-  idRows: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.sm, marginBottom: spacing.md },
-  idRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7 },
-  idRowLabel: { fontSize: 13, color: colors.textSecondary },
-  idRowValue: { ...typography.mono, fontSize: 13 },
-  aboutLabel: { ...typography.caption, marginBottom: 4 },
-  aboutText: { ...typography.bodySmall, lineHeight: 19, marginBottom: spacing.md },
-  tipRow: { flexDirection: 'row', gap: spacing.sm, backgroundColor: 'rgba(245,158,11,0.06)', borderRadius: radius.md, padding: spacing.sm, marginBottom: spacing.md, alignItems: 'flex-start' },
-  tipText: { flex: 1, fontSize: 12, color: colors.secondary, lineHeight: 17 },
-  altChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
-  altChip: { backgroundColor: colors.surface2, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 3 },
-  altChipText: { fontSize: 12, color: colors.textSecondary },
-  resultActions: { flexDirection: 'row', gap: spacing.sm },
 
   errorBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -367,13 +420,129 @@ const styles = StyleSheet.create({
   },
   errorText: { flex: 1, fontSize: 12, color: colors.secondary, lineHeight: 17 },
 
-  historySection: { marginTop: spacing.lg, backgroundColor: colors.surface, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', ...elevation.raised },
-  historyHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
-  cardLabel: { ...typography.caption },
+  // Success state
+  successCard: {
+    backgroundColor: 'rgba(0,60,40,0.25)',
+    borderRadius: radius.lg,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)',
+    padding: spacing.xl,
+    alignItems: 'center', gap: 10,
+    marginBottom: spacing.lg,
+  },
+  successIconWrap: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: 'rgba(0,212,170,0.1)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.25)',
+  },
+  successTitle: { fontSize: 22, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.3 },
+  successSpecies: { fontSize: 16, fontWeight: '700', color: '#00D4AA' },
+  successMeasures: { flexDirection: 'row', gap: spacing.sm, marginTop: 6 },
+  measureChip: {
+    backgroundColor: 'rgba(0,212,170,0.08)', borderRadius: radius.md,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
+    paddingHorizontal: 16, paddingVertical: 10, alignItems: 'center',
+  },
+  measureChipLabel: { fontSize: 9, fontWeight: '800', color: colors.primary, letterSpacing: 1.5, marginBottom: 3 },
+  measureChipValue: { fontSize: 16, fontWeight: '900', color: colors.textPrimary },
+  scanAnotherBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginTop: 8, borderRadius: radius.full,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)',
+    paddingHorizontal: 24, paddingVertical: 12,
+  },
+  scanAnotherText: { fontSize: 14, fontWeight: '700', color: colors.primary },
+
+  // Result card
+  resultCard: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(0,212,170,0.15)',
+    padding: spacing.lg, marginBottom: spacing.lg,
+  },
+  idTagRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 },
+  idTag: { fontSize: 10, fontWeight: '800', color: colors.accentBlue, letterSpacing: 1.2, textTransform: 'uppercase' },
+  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
+  resultSpecies: { fontSize: 26, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.5 },
+  resultLatin: { fontSize: 13, fontWeight: '500', color: '#00D4AA', marginBottom: spacing.md, fontStyle: 'italic' },
+  matchBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(45,212,255,0.12)', borderRadius: radius.sm,
+    paddingHorizontal: 8, paddingVertical: 4,
+    borderWidth: 1, borderColor: 'rgba(45,212,255,0.3)',
+  },
+  matchBadgeText: { fontSize: 11, fontWeight: '800', color: colors.accentBlue },
+
+  statusChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderRadius: radius.md, paddingVertical: 8, paddingHorizontal: 10,
+    borderWidth: 1, marginBottom: spacing.md,
+  },
+  statusChipLegal: { backgroundColor: 'rgba(0,212,170,0.08)', borderColor: 'rgba(0,212,170,0.25)' },
+  statusChipWarn: { backgroundColor: 'rgba(245,158,11,0.08)', borderColor: 'rgba(245,158,11,0.25)' },
+  statusChipText: { fontSize: 12, fontFamily: fonts.bodySemi },
+
+  // Stats row
+  statsRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: radius.md,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.1)',
+    marginBottom: spacing.md,
+  },
+  statChip: { flex: 1, alignItems: 'center', paddingVertical: 12 },
+  statChipLabel: { fontSize: 8, fontWeight: '800', color: colors.textTertiary, letterSpacing: 1.5, marginBottom: 4 },
+  statChipValue: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+  statDivider: { width: 1, height: 32, backgroundColor: 'rgba(0,212,170,0.12)' },
+
+  aboutLabel: { fontSize: 10, fontWeight: '800', color: colors.textTertiary, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 },
+  aboutText: { ...typography.bodySmall, lineHeight: 19, marginBottom: spacing.md },
+  tipRow: {
+    flexDirection: 'row', gap: spacing.sm,
+    backgroundColor: 'rgba(245,158,11,0.06)', borderRadius: radius.md,
+    padding: spacing.sm, marginBottom: spacing.md, alignItems: 'flex-start',
+  },
+  tipText: { flex: 1, fontSize: 12, color: colors.secondary, lineHeight: 17 },
+  altChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.md },
+  altChip: {
+    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: radius.full,
+    paddingHorizontal: spacing.sm, paddingVertical: 3,
+  },
+  altChipText: { fontSize: 12, color: colors.textSecondary },
+
+  resultActions: { flexDirection: 'row', gap: spacing.sm, marginTop: 4 },
+  scanAgainBtn: {
+    flex: 1, paddingVertical: 14, borderRadius: radius.md,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.25)',
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  scanAgainText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  recordBtn: {
+    flex: 1.6, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 14, borderRadius: radius.md,
+    backgroundColor: '#00D4AA',
+  },
+  recordBtnText: { fontSize: 13, fontWeight: '900', color: '#031A12', letterSpacing: 0.5 },
+
+  // History
+  historySection: {
+    marginTop: spacing.lg,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)',
+    overflow: 'hidden',
+  },
+  historyHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: spacing.md, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  cardLabel: { fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 1.2, textTransform: 'uppercase' },
   clearText: { fontSize: 12, color: colors.danger, fontWeight: '700' },
-  historyItem: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
-  historyIcon: { width: 32, height: 32, borderRadius: radius.md, backgroundColor: 'rgba(0,212,170,0.1)', alignItems: 'center', justifyContent: 'center' },
+  historyItem: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, gap: spacing.md },
+  historyDivider: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
+  historyIcon: {
+    width: 32, height: 32, borderRadius: radius.md,
+    backgroundColor: 'rgba(0,212,170,0.1)', alignItems: 'center', justifyContent: 'center',
+  },
   historySpecies: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   historyDate: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
-  historyConfidence: { ...typography.mono, fontSize: 13, color: colors.primary },
+  historyConfidence: { fontSize: 13, fontWeight: '700', color: colors.primary },
 });

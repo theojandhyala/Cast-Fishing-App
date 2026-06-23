@@ -230,7 +230,7 @@ export default function CatchesScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1, backgroundColor: '#050A12' },
 
   // Tabs
   tabRow: {
@@ -269,10 +269,10 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(0,212,170,0.15)',
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
@@ -294,10 +294,16 @@ const s = StyleSheet.create({
   catchRow: {
     flex: 1,
     minWidth: 0,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderLeftWidth: 3,
+    borderLeftColor: '#00D4AA',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,212,170,0.12)',
+    borderRightWidth: 1,
+    borderRightColor: 'rgba(0,212,170,0.08)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,212,170,0.08)',
     overflow: 'hidden',
   },
   photoWrap: { position: 'relative' },
@@ -341,13 +347,10 @@ const s = StyleSheet.create({
   },
   statCard: {
     width: '47%',
-    backgroundColor: colors.surface,
+    backgroundColor: 'transparent',
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
     padding: spacing.md,
-    gap: 8,
-    ...elevation.raised,
+    gap: 4,
   },
   statIcon: {
     width: 40,
@@ -356,7 +359,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statVal: { fontSize: 24, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.8 },
+  statVal: { fontSize: 28, fontWeight: '900', color: '#00D4AA', letterSpacing: -0.8 },
   statLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
 
   section: { paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
@@ -383,6 +386,6 @@ const s = StyleSheet.create({
     flex: 1, height: 5, backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: 3, overflow: 'hidden',
   },
-  speciesBar: { height: '100%', backgroundColor: colors.primary, borderRadius: 3 },
+  speciesBar: { height: '100%', backgroundColor: '#00D4AA', borderRadius: 3 },
   speciesCount: { width: 28, fontSize: 13, fontWeight: '800', color: colors.primary, textAlign: 'right' },
 });

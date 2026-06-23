@@ -24,13 +24,13 @@ function CenterButton({ onPress }: { onPress?: () => void }) {
       onPress={onPress}
       activeOpacity={0.85}
       accessibilityRole="button"
-      accessibilityLabel="Add catch"
+      accessibilityLabel="Scan a fish"
     >
       <LinearGradient
         colors={[colors.primary, '#2BA9A8']}
         style={styles.centerBtn}
       >
-        <MaterialCommunityIcons name="plus" size={28} color={colors.background} />
+        <MaterialCommunityIcons name="camera-iris" size={26} color={colors.background} />
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -139,7 +139,7 @@ export default function TabsLayout() {
             tabBarLabel: () => null,
             tabBarIcon: () => null,
             tabBarButton: () => (
-              <CenterButton onPress={() => router.push('/add-catch' as any)} />
+              <CenterButton onPress={() => router.push('/identifier' as any)} />
             ),
           }}
         />

@@ -150,7 +150,7 @@ export default function HomeScreen() {
 
         {/* ── Greeting ── */}
         <View style={s.greet}>
-          <Text style={s.greetLine}>{getGreeting()}, {firstName}</Text>
+          <Text style={s.greetLine}>{getGreeting()}, <Text style={s.greetLineName}>{firstName}</Text></Text>
           <Text style={s.greetSub}>Here's what the water looks like today.</Text>
         </View>
 
@@ -190,7 +190,8 @@ export default function HomeScreen() {
                 {/* Score label row */}
                 <View style={s.scoreRow}>
                   <View style={s.scoreLeft}>
-                    <Text style={[s.scoreNum, { color: scoreInfo.color }]}>{w.fishingScore}</Text>
+                    <View style={s.scoreGlow} />
+                    <Text style={s.scoreNum}>{w.fishingScore}</Text>
                     <Text style={[s.scoreLabelText, { color: scoreInfo.color }]}>{scoreInfo.label} conditions</Text>
                     <Text style={s.scoreDesc}>Fishing score out of 100</Text>
                   </View>
@@ -438,7 +439,7 @@ export default function HomeScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1, backgroundColor: '#050A12' },
 
   header: {
     flexDirection: 'row', alignItems: 'center',
@@ -454,6 +455,7 @@ const s = StyleSheet.create({
 
   greet: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.lg },
   greetLine: { fontSize: 18, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.3 },
+  greetLineName: { color: '#00D4AA' },
   greetSub: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
 
   ctaWrap: {
@@ -492,10 +494,11 @@ const s = StyleSheet.create({
   // ── Conditions card
   condCard: {
     marginHorizontal: spacing.lg, marginBottom: 28,
-    backgroundColor: colors.surface, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: radius.lg,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.18)',
     padding: spacing.lg, gap: 16,
-    ...elevation.raised,
+    shadowColor: '#00D4AA', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
+    elevation: 3,
   },
   condHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   condLabel: { fontSize: 10, fontWeight: '800', color: colors.textTertiary, letterSpacing: 1.5, textTransform: 'uppercase' },
@@ -520,7 +523,8 @@ const s = StyleSheet.create({
 
   scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   scoreLeft: { gap: 3 },
-  scoreNum: { fontSize: 48, fontWeight: '900', letterSpacing: -2, lineHeight: 52 },
+  scoreNum: { fontSize: 52, fontWeight: '900', letterSpacing: -2, lineHeight: 56, color: '#00D4AA' },
+  scoreGlow: { position: 'absolute', width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(0,212,170,0.08)', top: -10, left: -14 },
   scoreLabelText: { fontSize: 14, fontWeight: '800', letterSpacing: -0.3 },
   scoreDesc: { fontSize: 11, color: colors.textTertiary },
   scoreRight: { flex: 1, gap: 10 },
@@ -555,7 +559,7 @@ const s = StyleSheet.create({
   },
   sectionBar: { width: 3, height: 18, borderRadius: 2, backgroundColor: colors.primary },
   sectionTitleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.2 },
+  sectionTitle: { fontSize: 12, fontWeight: '800', color: colors.textPrimary, letterSpacing: 1.5, textTransform: 'uppercase' },
   nearBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: radius.full,
