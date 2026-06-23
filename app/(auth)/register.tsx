@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { CastButton } from '../../components/ui/CastButton';
 import { colors, radius, spacing } from '../../constants/theme';
+import { CastLogo } from '../../components/ui/CastLogo';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');

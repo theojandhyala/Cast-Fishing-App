@@ -9,13 +9,13 @@ import {
   Platform,
   ScrollView,
   Alert,
-  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { CastButton } from '../../components/ui/CastButton';
 import { colors, radius, spacing } from '../../constants/theme';
+import { CastLogo } from '../../components/ui/CastLogo';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -52,12 +52,7 @@ export default function LoginScreen() {
         />
 
         <View style={styles.header}>
-          <Image
-            source={require('../../assets/logo-mark.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.appName}>CAST</Text>
+          <CastLogo size="lg" showWordmark />
           <Text style={styles.tagline}>Your Premium Fishing Companion</Text>
         </View>
 
