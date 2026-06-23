@@ -1,107 +1,67 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { useCatchStore } from '../../store/catchStore';
-import { colors, radius, spacing } from '../../constants/theme';
+import { colors, spacing, radius } from '../../constants/theme';
+
+const ACHIEVEMENTS = [
+  { icon: 'fish', name: 'First Cast', progress: 1, total: 1 },
+  { icon: 'trophy', name: '10 Catches', progress: 10, total: 10 },
+  { icon: 'star', name: 'Species Hunter', progress: 3, total: 10 },
+  { icon: 'fire', name: '7-Day Streak', progress: 3, total: 7 },
+  { icon: 'medal', name: 'Big Haul', progress: 0, total: 1 },
+];
 
 const MENU_SECTIONS = [
   {
-    section: 'MY FISHING',
+    title: 'MY FISHING',
     items: [
-      { icon: 'account-circle', label: 'My Profile', route: '/profile', desc: 'XP, level & badges', comingSoon: false, isPro: false },
-      { icon: 'chart-bar', label: 'My Stats', route: '/my-stats', desc: 'Full fishing analytics', comingSoon: false, isPro: false },
-      { icon: 'trophy', label: 'My Records', route: '/records', desc: 'PBs vs UK records', comingSoon: false, isPro: false },
-      { icon: 'toolbox', label: 'My Gear', route: '/gear-tracker', desc: 'Tackle & kit tracker', comingSoon: false, isPro: false },
-      { icon: 'calendar-clock', label: 'Trip Planner', route: '/trip-planner', desc: 'Plan your sessions', comingSoon: false, isPro: false },
-      { icon: 'share-variant', label: 'Share a Catch', route: '/catch-card-share', desc: 'Create shareable catch cards', comingSoon: false, isPro: false },
-      { icon: 'magnify', label: 'Search', route: '/search', desc: 'Search spots, species, knots', comingSoon: false, isPro: false },
-      { icon: 'book-open', label: 'Fishing Journal', route: '/fishing-journal', desc: 'Session notes & memories', comingSoon: false, isPro: false },
+      { icon: 'calendar-month', label: 'Fishing Calendar', route: '/fishing-calendar' },
+      { icon: 'trophy', label: 'Personal Records', route: '/records' },
+      { icon: 'robot-outline', label: 'AI Advisor', route: '/ai-advisor' },
+      { icon: 'chart-line', label: 'Conditions & Intel', route: '/conditions' },
     ],
   },
   {
-    section: 'TOOLS',
+    title: 'ACCOUNT',
     items: [
-      { icon: 'book-open-page-variant', label: 'Fish Encyclopedia', route: '/fish-encyclopedia', desc: '25+ species with rarity system', comingSoon: false, isPro: false },
-      { icon: 'database', label: 'Fish Database', route: '/fish-database', desc: 'Global fish database with rarities', comingSoon: false, isPro: true },
-      { icon: 'radar', label: 'Fish Radar', route: '/fish-radar', desc: "What's active near you", comingSoon: false, isPro: false },
-      { icon: 'format-list-bulleted', label: 'Quest Log', route: '/quests', desc: 'Daily, weekly & story quests', comingSoon: false, isPro: false },
-      { icon: 'compare', label: 'Species Compare', route: '/species-compare', desc: 'Compare any two fish', comingSoon: false, isPro: false },
-      { icon: 'robot', label: 'AI Advisor', route: '/ai-advisor', desc: 'Ask anything about fishing', comingSoon: false, isPro: true },
-      { icon: 'lightbulb', label: 'Fish Tips', route: '/fish-tips', desc: 'Species tips & bite times', comingSoon: false, isPro: false },
-      { icon: 'calendar-month', label: 'Fishing Calendar', route: '/fishing-calendar', desc: 'Moon, tides & scores', comingSoon: false, isPro: false },
-      { icon: 'food-drumstick', label: 'Bait Guide', route: '/bait-guide', desc: '30+ baits & bait match', comingSoon: false, isPro: false },
-      { icon: 'link-variant', label: 'Knot Library', route: '/knots', desc: '20 essential knots', comingSoon: false, isPro: false },
-      { icon: 'weather-partly-cloudy', label: 'Weather & Tides', route: '/weather-detail', desc: 'Full conditions dashboard', comingSoon: false, isPro: false },
-      { icon: 'camera', label: 'Fish Identifier', route: '/identifier', desc: 'Photo ID tool', comingSoon: false, isPro: false },
-      { icon: 'hook', label: 'Rig Builder', route: '/rig-builder', desc: '15 rig tutorials', comingSoon: false, isPro: false },
-      { icon: 'water', label: 'Water Conditions', route: '/water-conditions', desc: 'Temp, clarity & levels', comingSoon: false, isPro: false },
-      { icon: 'store', label: 'Tackle Shops', route: '/tackle-shops', desc: 'Find local tackle shops', comingSoon: false, isPro: false },
-      { icon: 'shopping', label: 'Marketplace', route: '/marketplace', desc: 'Gear deals & fishing kit', comingSoon: false, isPro: false },
-      { icon: 'account-tie', label: 'Fishing Guides', route: '/fishing-guides', desc: 'Hire a professional guide', comingSoon: false, isPro: false },
-      { icon: 'target', label: 'Casting Calculator', route: '/casting-calculator', desc: 'Estimate casting distance', comingSoon: false, isPro: false },
-      { icon: 'moon-waxing-crescent', label: 'Moon Calendar', route: '/moon-calendar', desc: 'Lunar fishing guide', comingSoon: false, isPro: true },
-    ],
-  },
-  {
-    section: 'RULES',
-    items: [
-      { icon: 'file-document', label: 'Licence & Regulations', route: '/licence-checker', desc: 'Licence, seasons & sizes', comingSoon: false, isPro: false },
-      { icon: 'ruler', label: 'Size Limits', route: '/licence-checker', desc: 'Legal size checker', comingSoon: false, isPro: false },
-      { icon: 'calendar-remove', label: 'Closed Seasons', route: '/licence-checker', desc: 'When you can fish', comingSoon: false, isPro: false },
-      { icon: 'shield-check', label: 'Safety & Emergency', route: '/safety', desc: 'First aid, contacts & water safety', comingSoon: false, isPro: false },
-    ],
-  },
-  {
-    section: 'COMMUNITY',
-    items: [
-      { icon: 'account-group', label: 'Friends', route: '/friends', desc: 'Find and connect with other anglers', comingSoon: false, isPro: false },
-      { icon: 'account-group', label: 'Community Feed', route: '/community', desc: 'See what others are catching', comingSoon: false, isPro: false },
-      { icon: 'podium', label: 'Leaderboards', route: '/leaderboards', desc: 'Top anglers this week', comingSoon: false, isPro: false },
-      { icon: 'account-multiple', label: 'Fishing Clubs', route: '/clubs', desc: 'Join and create clubs', comingSoon: true, isPro: false },
-      { icon: 'medal', label: 'Challenges', route: '/challenges', desc: 'Weekly & monthly goals', comingSoon: false, isPro: false },
-      { icon: 'trophy-outline', label: 'Competitions', route: '/competitions', desc: 'Local & virtual competitions', comingSoon: true, isPro: false },
-      { icon: 'shopping', label: 'Gear Marketplace', route: '/marketplace', desc: 'Shop deals with the community', comingSoon: false, isPro: false },
-      { icon: 'account-tie', label: 'Find a Guide', route: '/fishing-guides', desc: 'Connect with professional guides', comingSoon: false, isPro: false },
-    ],
-  },
-  {
-    section: 'ACCOUNT',
-    items: [
-      { icon: 'crown', label: 'Upgrade to Pro', route: '/pro', desc: 'Unlock all features', comingSoon: false, isPro: false },
-      { icon: 'cog', label: 'Settings', route: '/settings', desc: 'Preferences & account', comingSoon: false, isPro: false },
-      { icon: 'bell', label: 'Notifications', route: '/notifications', desc: 'Alert preferences', comingSoon: false, isPro: false },
-      { icon: 'help-circle', label: 'Help & Feedback', route: null as string | null, desc: '', comingSoon: false, isPro: false },
-      { icon: 'star', label: 'Rate the App', route: null as string | null, desc: '', comingSoon: false, isPro: false },
+      { icon: 'crown', label: 'Manage Subscription', route: '/pro' },
+      { icon: 'cog', label: 'Settings', route: '/settings' },
+      { icon: 'help-circle-outline', label: 'Help & Support', route: null as string | null },
     ],
   },
 ];
 
 export default function MoreScreen() {
   const { user, logout } = useAuthStore();
-  const { getStats } = useCatchStore();
+  const { catches, getStats } = useCatchStore();
   const router = useRouter();
   const stats = getStats();
-  const [isOnline, setIsOnline] = useState(true);
 
-  useEffect(() => {
-    const check = async () => {
-      try {
-        const r = await fetch('https://1.1.1.1', { method: 'HEAD' });
-        setIsOnline(r.ok || r.status < 500);
-      } catch { setIsOnline(false); }
-    };
-    check();
-  }, []);
+  const initials = user?.name
+    ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'AN';
+
+  const speciesCount = Object.keys(stats.speciesCounts ?? {}).length;
+
+  const catchStreak = React.useMemo(() => {
+    if (!catches.length) return 0;
+    const days = new Set(catches.map((c) => new Date(c.date).toDateString()));
+    let streak = 0;
+    const today = new Date();
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      if (days.has(d.toDateString())) streak++;
+      else break;
+    }
+    return streak;
+  }, [catches]);
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -111,258 +71,335 @@ export default function MoreScreen() {
         style: 'destructive',
         onPress: () => {
           logout();
-          router.replace('/(auth)/login');
+          router.replace('/(auth)/login' as any);
         },
       },
     ]);
   };
 
-  const xpProgress = user ? (user.xp % 1000) / 1000 : 0;
-  const initials = user?.name
-    ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
-    : 'AN';
-
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={s.safe} edges={['top']}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      >
 
-        {/* ── Profile Header ── */}
-        <View style={styles.profileHeader}>
-          {/* Avatar */}
-          <View style={styles.avatarRing}>
-            <Text style={styles.avatarInitials}>{initials}</Text>
-          </View>
-
-          <Text style={styles.userName}>{user?.name || 'Angler'}</Text>
-          <Text style={styles.userHandle}>@{(user?.email?.split('@')[0] || 'angler').toLowerCase()}</Text>
-
-          {/* XP bar */}
-          <View style={styles.xpBarContainer}>
-            <View style={styles.xpBar}>
-              <View style={[styles.xpFill, { width: `${xpProgress * 100}%` as any }]} />
+        {/* Profile Header */}
+        <View style={s.profileHeader}>
+          <View style={s.avatarWrap}>
+            <View style={s.avatar}>
+              <Text style={s.avatarInitials}>{initials}</Text>
             </View>
-            <Text style={styles.xpBarPct}>{Math.round(xpProgress * 100)}%</Text>
           </View>
-          <Text style={styles.xpToNext}>to Level {(user?.level || 1) + 1}</Text>
-
-          {/* Stats row */}
-          <View style={styles.statsRow}>
-            {[
-              { val: stats.total.toString(), label: 'Catches' },
-              { val: Object.keys(stats.speciesCounts).length.toString(), label: 'Species' },
-              { val: `${user?.streak || 0}d`, label: 'Streak' },
-              { val: `${user?.level || 1}`, label: 'Level' },
-            ].map((item, i) => (
-              <React.Fragment key={item.label}>
-                {i > 0 && <View style={styles.statsDivider} />}
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{item.val}</Text>
-                  <Text style={styles.statLabel}>{item.label}</Text>
+          <View style={s.profileInfo}>
+            <View style={s.profileNameRow}>
+              <Text style={s.profileName}>{user?.name || 'Angler'}</Text>
+              {user?.isPro && (
+                <View style={s.proBadge}>
+                  <Text style={s.proBadgeText}>PRO</Text>
                 </View>
-              </React.Fragment>
+              )}
+            </View>
+            <Text style={s.profileEmail}>{user?.email || ''}</Text>
+          </View>
+          <TouchableOpacity
+            style={s.editBtn}
+            onPress={() => router.push('/profile' as any)}
+            activeOpacity={0.75}
+          >
+            <Text style={s.editBtnText}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Stats Dashboard */}
+        <View style={s.statsSection}>
+          <View style={s.statsGrid}>
+            {[
+              { icon: 'fish', value: String(stats.total), label: 'Total Catches', color: colors.primary },
+              { icon: 'leaf', value: String(speciesCount), label: 'Species', color: colors.secondary },
+              { icon: 'clock-outline', value: '—', label: 'Hours Fished', color: colors.accent },
+              { icon: 'fire', value: `${catchStreak}d`, label: 'Day Streak', color: colors.accent },
+            ].map((item) => (
+              <View key={item.label} style={s.statCard}>
+                <MaterialCommunityIcons name={item.icon as any} size={18} color={item.color} />
+                <Text style={[s.statValue, { color: item.color }]}>{item.value}</Text>
+                <Text style={s.statLabel}>{item.label}</Text>
+              </View>
             ))}
           </View>
         </View>
 
-        {/* Offline banner */}
-        {!isOnline && (
-          <View style={styles.offlineBanner}>
-            <MaterialCommunityIcons name="wifi-off" size={14} color={colors.secondary} />
-            <Text style={styles.offlineText}>Offline — data syncs when connection returns</Text>
-          </View>
-        )}
-
-        {/* ── Menu Sections ── */}
-        {MENU_SECTIONS.map((section) => {
-          return (
-          <View key={section.section} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.section}</Text>
-            <View style={styles.menuCard}>
-              {section.items.map((item, index) => (
-                <TouchableOpacity
-                  key={item.label}
-                  style={[
-                    styles.menuItem,
-                    index < section.items.length - 1 && styles.menuItemBorder,
-                    item.comingSoon && styles.menuItemDimmed,
-                  ]}
-                  onPress={() => {
-                    if (item.comingSoon) {
-                      Alert.alert('Coming Soon', 'This feature is coming in a future update!');
-                      return;
-                    }
-                    if (item.route) {
-                      router.push(item.route as any);
-                    } else if (item.label === 'Rate the App') {
-                      Alert.alert('Rate CAST', 'Thank you for using CAST! A rating on the App Store means the world to us.');
-                    } else if (item.label === 'Help & Feedback') {
-                      Alert.alert('Coming Soon', 'This feature is coming in a future update!');
-                    }
-                  }}
-                >
-                  <View style={styles.menuIconWrap}>
-                    <MaterialCommunityIcons name={item.icon as any} size={20} color={colors.primary} />
+        {/* Achievements */}
+        <View style={s.sectionWrap}>
+          <Text style={s.sectionHeader}>ACHIEVEMENTS</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.achievementsScroll}
+          >
+            {ACHIEVEMENTS.map((ach) => {
+              const pct = Math.min(1, ach.progress / ach.total);
+              const done = pct >= 1;
+              return (
+                <View key={ach.name} style={s.achievementCard}>
+                  <View style={[s.achievementIconCircle, done && s.achievementIconDone]}>
+                    <MaterialCommunityIcons
+                      name={ach.icon as any}
+                      size={22}
+                      color={done ? colors.bg : colors.primary}
+                    />
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.menuLabel, item.comingSoon && styles.menuLabelDimmed]}>{item.label}</Text>
-                    {item.desc ? <Text style={styles.menuDesc}>{item.desc}</Text> : null}
-                  </View>
-                  {item.isPro && (
-                    <View style={styles.proBadge}>
-                      <Text style={styles.proBadgeText}>PRO</Text>
+                  <Text style={s.achievementName} numberOfLines={2}>{ach.name}</Text>
+                  {!done && (
+                    <View style={s.achievementProgressTrack}>
+                      <View style={[s.achievementProgressFill, { width: `${pct * 100}%` as any }]} />
                     </View>
                   )}
-                  {item.comingSoon ? (
-                    <MaterialCommunityIcons name="lock-outline" size={16} color={colors.textTertiary} />
-                  ) : (
-                    <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
-                  )}
+                </View>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Menu Sections */}
+        {MENU_SECTIONS.map((section) => (
+          <View key={section.title} style={s.sectionWrap}>
+            <Text style={s.sectionHeader}>{section.title}</Text>
+            <View style={s.menuCard}>
+              {section.items.map((item, i) => (
+                <TouchableOpacity
+                  key={item.label}
+                  style={[s.menuRow, i > 0 && s.menuRowBorder]}
+                  onPress={() => {
+                    if (item.route) router.push(item.route as any);
+                    else Alert.alert('Coming Soon', 'This feature is coming soon!');
+                  }}
+                  activeOpacity={0.75}
+                >
+                  <View style={s.menuIconWrap}>
+                    <MaterialCommunityIcons name={item.icon as any} size={18} color={colors.textSecondary} />
+                  </View>
+                  <Text style={s.menuLabel}>{item.label}</Text>
+                  <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textTertiary} />
                 </TouchableOpacity>
               ))}
             </View>
           </View>
-          );
-        })}
+        ))}
 
-        {/* ── Sign Out ── */}
-        <TouchableOpacity style={styles.signOut} onPress={handleLogout}>
-          <Text style={styles.signOutText}>Sign Out</Text>
+        {/* Sign Out */}
+        <TouchableOpacity
+          style={s.signOut}
+          onPress={handleLogout}
+          activeOpacity={0.75}
+        >
+          <Text style={s.signOutText}>Sign Out</Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>CAST v1.0.0 • Made for Anglers Worldwide</Text>
-        <View style={{ height: 80 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.bg },
 
-  // ── Profile Header ──
+  // Profile header
   profileHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xl,
     paddingHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingVertical: spacing.md,
+    gap: 14,
   },
-  avatarRing: {
-    width: 70, height: 70, borderRadius: 35,
-    borderWidth: 2, borderColor: colors.primary,
+  avatarWrap: {},
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: colors.surface2,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: spacing.md,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarInitials: {
-    fontSize: 22, fontWeight: '800', color: '#00D4AA',
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.primary,
   },
-  userName: {
-    fontSize: 20, fontWeight: '800', color: colors.textPrimary, marginBottom: 3,
-  },
-  userHandle: {
-    fontSize: 13, color: colors.textSecondary, marginBottom: spacing.md,
-  },
-
-  // XP bar
-  xpBarContainer: {
-    width: '78%', flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4,
-  },
-  xpBar: {
-    flex: 1, height: 6, backgroundColor: colors.surface2,
-    borderRadius: 3, overflow: 'hidden',
-  },
-  xpFill: {
-    height: '100%', backgroundColor: colors.primary, borderRadius: 3,
-  },
-  xpBarPct: {
-    fontSize: 11, fontWeight: '700', color: '#00D4AA',
-  },
-  xpToNext: {
-    fontSize: 10, color: colors.textTertiary, marginBottom: spacing.lg,
-  },
-
-  // Stats row
-  statsRow: {
+  profileInfo: { flex: 1 },
+  profileNameRow: {
     flexDirection: 'row',
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    alignItems: 'center',
+    gap: 8,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.2,
+  },
+  proBadge: {
+    backgroundColor: colors.accentDim,
+    borderRadius: radius.xs,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: colors.accent,
+  },
+  proBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.accent,
+    letterSpacing: 0.5,
+  },
+  profileEmail: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  editBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.borderMid,
+  },
+  editBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+
+  // Stats
+  statsSection: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  statCard: {
+    width: '47.5%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    gap: 6,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  statLabel: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+
+  sectionWrap: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+  },
+  sectionHeader: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textTertiary,
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+
+  // Achievements
+  achievementsScroll: {
+    gap: 10,
+    paddingBottom: 4,
+  },
+  achievementCard: {
+    width: 140,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    gap: 8,
+  },
+  achievementIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primaryDim,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  achievementIconDone: {
+    backgroundColor: colors.primary,
+  },
+  achievementName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    lineHeight: 18,
+  },
+  achievementProgressTrack: {
+    height: 4,
+    backgroundColor: colors.surface3,
+    borderRadius: radius.full,
+    overflow: 'hidden',
+  },
+  achievementProgressFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: radius.full,
+  },
+
+  // Menu
+  menuCard: {
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: 16,
-  },
-  statItem: { flex: 1, alignItems: 'center', gap: 3 },
-  statValue: { fontSize: 18, fontWeight: '800', color: '#00D4AA' },
-  statLabel: { fontSize: 10, color: colors.textSecondary },
-  statsDivider: { width: 1, height: 28, backgroundColor: colors.border, alignSelf: 'center' },
-
-  // Offline banner
-  offlineBanner: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginHorizontal: spacing.lg, marginTop: 8,
-    backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: radius.sm,
-    padding: 10, borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)',
-  },
-  offlineText: { fontSize: 12, color: colors.secondary, flex: 1 },
-
-  // ── Section ──
-  section: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    marginTop: spacing.md,
-  },
-  sectionTitle: {
-    fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.25)',
-    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: spacing.xs,
-  },
-  menuCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border,
   },
-  menuItem: {
+  menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-    gap: spacing.md,
-    minHeight: 52,
+    paddingVertical: 16,
+    gap: 14,
   },
-  menuItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  menuRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  menuItemDimmed: { opacity: 0.55 },
   menuIconWrap: {
-    width: 36, height: 36, borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  menuLabel: { fontSize: 15, color: colors.textPrimary, fontWeight: '600' },
-  menuLabelDimmed: { color: colors.textSecondary },
-  menuDesc: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
-  proBadge: {
-    backgroundColor: 'rgba(245,158,11,0.18)',
+    width: 32,
+    height: 32,
     borderRadius: radius.sm,
-    borderWidth: 1, borderColor: 'rgba(245,158,11,0.35)',
-    paddingHorizontal: 6, paddingVertical: 2,
+    backgroundColor: colors.surface2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  proBadgeText: { fontSize: 9, fontWeight: '900', color: '#F59E0B', letterSpacing: 0.5 },
+  menuLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+    color: colors.textPrimary,
+  },
 
-  // ── Sign Out ──
+  // Sign out
   signOut: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
-    paddingVertical: spacing.md,
     alignItems: 'center',
+    paddingVertical: spacing.md,
   },
-  signOutText: { fontSize: 15, fontWeight: '600', color: colors.danger },
-  version: {
-    fontSize: 10, color: 'rgba(255,255,255,0.15)', textAlign: 'center', marginBottom: spacing.md,
+  signOutText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.danger,
   },
 });

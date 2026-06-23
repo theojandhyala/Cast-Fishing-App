@@ -90,6 +90,13 @@ export const typography = {
   micro: { fontSize: 10, fontWeight: '600' as const, letterSpacing: 0.8 },
   mono: { fontSize: 15, fontWeight: '500' as const },
   monoLarge: { fontSize: 28, fontWeight: '700' as const, letterSpacing: -0.5 },
+  // Backwards compat aliases for screens not yet migrated
+  bodyBold: { fontSize: 15, fontWeight: '700' as const },
+  monoBold: { fontSize: 15, fontWeight: '700' as const },
+  displaySemi: { fontSize: 56, fontWeight: '700' as const, letterSpacing: -1.5 },
+  h4: { fontSize: 16, fontWeight: '600' as const },
+  bodySmall: { fontSize: 13, fontWeight: '400' as const },
+  label2: { fontSize: 11, fontWeight: '600' as const, letterSpacing: 0.5 },
 };
 
 // Backwards compat — some screens import `fonts` from theme

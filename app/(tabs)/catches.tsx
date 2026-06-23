@@ -1,39 +1,52 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  FlatList, TouchableOpacity, TextInput,
+  FlatList, TouchableOpacity, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { useCatchStore } from '../../store/catchStore';
-import { colors, radius, spacing, elevation } from '../../constants/theme';
-import { FishSpeciesPhoto } from '../../components/fish/FishSpeciesPhoto';
+import { colors, spacing, radius } from '../../constants/theme';
 
-const TABS = ['Catches', 'Stats'] as const;
-type Tab = typeof TABS[number];
-type SortMode = 'Newest' | 'Heaviest' | 'Longest';
+type TimeFilter = 'all' | 'week' | 'month';
+
+const SPECIES_COLORS: Record<string, string> = {
+  default: '#00D4AA',
+  Salmon: '#FF6B35',
+  Trout: '#4ECDC4',
+  Bass: '#45B7D1',
+  Pike: '#96CEB4',
+  Carp: '#FFEAA7',
+  Tuna: '#6C5CE7',
+  Barramundi: '#00B4D8',
+  'Murray Cod': '#06D6A0',
+};
+
+function getSpeciesColor(species: string): string {
+  for (const key of Object.keys(SPECIES_COLORS)) {
+    if (species.toLowerCase().includes(key.toLowerCase())) return SPECIES_COLORS[key];
+  }
+  return SPECIES_COLORS.default;
+}
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${months[d.getMonth()]} ${d.getDate()}`;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 export default function CatchesScreen() {
   const { catches, getStats } = useCatchStore();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<Tab>('Catches');
-  const [saved, setSaved] = useState<Set<string>>(new Set());
-  const [search, setSearch] = useState('');
-  const [sortMode, setSortMode] = useState<SortMode>('Newest');
-  const [timeFilter, setTimeFilter] = useState<'all' | 'week' | 'month'>('all');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const stats = getStats();
 
-  const totalWeight = catches.reduce((sum, c) => sum + (c.weight || 0), 0);
-  const speciesCount = Object.keys(stats.speciesCounts || {}).length;
-  const topSpecies = Object.entries(stats.speciesCounts || {})
-    .sort((a, b) => b[1] - a[1]);
+  const totalWeight = catches.reduce((sum, c) => sum + (c.weight ?? 0), 0);
+  const biggestCatch = catches.reduce(
+    (best, c) => (!best || (c.weight ?? 0) > (best.weight ?? 0) ? c : best),
+    null as typeof catches[number] | null,
+  );
+  const speciesCount = Object.keys(stats.speciesCounts ?? {}).length;
 
   const filteredCatches = useMemo(() => {
     if (timeFilter === 'all') return catches;
@@ -41,437 +54,378 @@ export default function CatchesScreen() {
     const cutoff = new Date(now);
     if (timeFilter === 'week') cutoff.setDate(now.getDate() - 7);
     else cutoff.setMonth(now.getMonth() - 1);
-    return catches.filter(c => new Date(c.date) >= cutoff);
+    return catches.filter((c) => new Date(c.date) >= cutoff);
   }, [catches, timeFilter]);
 
-  const visibleCatches = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    const matches = query
-      ? filteredCatches.filter((item) => [item.species, item.location, item.bait].some((value) => value?.toLocaleLowerCase().includes(query)))
-      : [...filteredCatches];
-    return matches.sort((a, b) =>
-      sortMode === 'Heaviest'
-        ? (b.weight || 0) - (a.weight || 0)
-        : sortMode === 'Longest'
-          ? (b.length || 0) - (a.length || 0)
-          : new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-  }, [filteredCatches, search, sortMode]);
-
-  const cycleSort = () =>
-    setSortMode((current) =>
-      current === 'Newest' ? 'Heaviest' : current === 'Heaviest' ? 'Longest' : 'Newest'
-    );
-
-  const toggleSaved = (id: string) =>
-    setSaved((prev) => {
-      const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
-      return n;
-    });
+  const FILTER_LABELS: { key: TimeFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'week', label: 'This Week' },
+    { key: 'month', label: 'This Month' },
+  ];
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-
-      {/* ── Header ── */}
+      {/* Header */}
       <View style={s.header}>
-        <View>
+        <View style={s.headerLeft}>
           <Text style={s.headerTitle}>Logbook</Text>
-          <Text style={s.headerSub}>{catches.length} catches</Text>
+          <View style={s.countBadge}>
+            <Text style={s.countBadgeText}>{catches.length}</Text>
+          </View>
         </View>
         <TouchableOpacity
           style={s.addBtn}
-          onPress={() => router.push('/add-catch' as any)}
-          accessibilityRole="button"
-          accessibilityLabel="Log a catch"
+          onPress={() => router.push('/identifier' as any)}
+          activeOpacity={0.75}
         >
-          <MaterialCommunityIcons name="plus" size={20} color={colors.background} />
+          <MaterialCommunityIcons name="plus" size={20} color={colors.bg} />
         </TouchableOpacity>
       </View>
 
-      {/* ── Tab Pills ── */}
-      <View style={s.tabPillRow}>
-        {TABS.map((tab) => (
+      {/* Filter Pills */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={s.filterPills}
+      >
+        {FILTER_LABELS.map((f) => (
           <TouchableOpacity
-            key={tab}
-            style={[s.tabPill, activeTab === tab && s.tabPillActive]}
-            onPress={() => setActiveTab(tab)}
-            activeOpacity={0.85}
+            key={f.key}
+            style={[s.filterPill, timeFilter === f.key && s.filterPillActive]}
+            onPress={() => setTimeFilter(f.key)}
+            activeOpacity={0.75}
           >
-            <Text style={[s.tabPillText, activeTab === tab && s.tabPillTextActive]}>
-              {tab}
+            <Text style={[s.filterPillText, timeFilter === f.key && s.filterPillTextActive]}>
+              {f.label}
             </Text>
           </TouchableOpacity>
         ))}
+      </ScrollView>
+
+      {/* Stats Bar */}
+      <View style={s.statsBar}>
+        <View style={s.statItem}>
+          <Text style={s.statValue}>{totalWeight.toFixed(1)} kg</Text>
+          <Text style={s.statLabel}>Total Weight</Text>
+        </View>
+        <View style={s.statDivider} />
+        <View style={s.statItem}>
+          <Text style={s.statValue}>
+            {biggestCatch?.weight ? `${biggestCatch.weight} kg` : '—'}
+          </Text>
+          <Text style={s.statLabel}>Biggest</Text>
+        </View>
+        <View style={s.statDivider} />
+        <View style={s.statItem}>
+          <Text style={s.statValue}>{speciesCount}</Text>
+          <Text style={s.statLabel}>Species</Text>
+        </View>
       </View>
 
-      {activeTab === 'Catches' ? (
-        <>
-          {/* Time filter pills */}
-          <View style={s.timeFilterRow}>
-            {(['all', 'week', 'month'] as const).map((f) => (
-              <TouchableOpacity
-                key={f}
-                style={[s.timeFilterPill, timeFilter === f && s.timeFilterPillActive]}
-                onPress={() => setTimeFilter(f)}
-              >
-                <Text style={[s.timeFilterText, timeFilter === f && s.timeFilterTextActive]}>
-                  {f === 'all' ? 'All' : f === 'week' ? 'Week' : 'Month'}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* Search + Sort */}
-          <View style={s.filterRow}>
-            <View style={s.searchBox}>
-              <MaterialCommunityIcons name="magnify" size={17} color={colors.textTertiary} />
-              <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search catches..."
-                placeholderTextColor={colors.textTertiary}
-                style={s.searchInput}
-              />
-              {search ? (
-                <TouchableOpacity onPress={() => setSearch('')}>
-                  <MaterialCommunityIcons name="close-circle" size={16} color={colors.textTertiary} />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-            <TouchableOpacity
-              style={s.sortBtn}
-              onPress={cycleSort}
-              accessibilityRole="button"
-              accessibilityLabel={`Sort catches. Currently: ${sortMode}`}
-            >
-              <MaterialCommunityIcons name="sort-variant" size={18} color={colors.textSecondary} />
-              <Text style={s.sortBtnText}>{sortMode}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {catches.length === 0 ? (
-            <View style={s.empty}>
-              <MaterialCommunityIcons name="fish" size={48} color="rgba(0,212,170,0.25)" />
-              <Text style={s.emptyTitle}>No catches yet</Text>
-              <Text style={s.emptySub}>Every angler starts somewhere.{'\n'}Log your first catch today.</Text>
-              <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/add-catch' as any)}>
-                <MaterialCommunityIcons name="plus" size={16} color={colors.background} />
-                <Text style={s.emptyBtnText}>Log First Catch</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <FlatList
-              data={visibleCatches}
-              keyExtractor={(item) => item.id}
-              numColumns={2}
-              columnWrapperStyle={s.catchGridRow}
-              contentContainerStyle={s.catchGrid}
-              showsVerticalScrollIndicator={false}
-              renderItem={({ item }) => {
-                const isSaved = saved.has(item.id);
-                return (
-                  <TouchableOpacity
-                    style={s.catchCard}
-                    onPress={() => router.push({ pathname: '/catch-detail', params: { id: item.id } } as any)}
-                    activeOpacity={0.85}
-                  >
-                    <View style={s.catchCardBg}>
-                      <FishSpeciesPhoto species={item.species} photo={item.photo} style={s.catchPhoto} />
-                      <TouchableOpacity
-                        style={s.bookmarkBtn}
-                        onPress={(e) => { e.stopPropagation(); toggleSaved(item.id); }}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <MaterialCommunityIcons
-                          name={isSaved ? 'bookmark' : 'bookmark-outline'}
-                          size={16}
-                          color={isSaved ? colors.primary : 'rgba(255,255,255,0.5)'}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                    <View style={s.catchCardBody}>
-                      <Text style={s.catchSpecies} numberOfLines={1}>{item.species}</Text>
-                      <View style={s.catchChips}>
-                        {item.weight ? (
-                          <View style={s.chipTeal}>
-                            <Text style={s.chipTealText}>{item.weight}kg</Text>
-                          </View>
-                        ) : null}
-                        {item.length ? (
-                          <View style={s.chipGray}>
-                            <Text style={s.chipGrayText}>{item.length}cm</Text>
-                          </View>
-                        ) : null}
-                      </View>
-                      {item.location ? (
-                        <View style={s.catchLocation}>
-                          <MaterialCommunityIcons name="map-marker-outline" size={10} color={colors.textTertiary} />
-                          <Text style={s.catchLocationText} numberOfLines={1}>{item.location}</Text>
-                        </View>
-                      ) : null}
-                      <Text style={s.catchDate}>{formatDate(item.date)}</Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          )}
-        </>
+      {filteredCatches.length === 0 ? (
+        <View style={s.empty}>
+          <MaterialCommunityIcons name="fish" size={48} color={colors.textTertiary} />
+          <Text style={s.emptyTitle}>No catches yet</Text>
+          <Text style={s.emptySub}>Scan your first fish to get started.</Text>
+          <TouchableOpacity
+            style={s.emptyBtn}
+            onPress={() => router.push('/identifier' as any)}
+            activeOpacity={0.75}
+          >
+            <Text style={s.emptyBtnText}>Scan a Fish</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
-        // ── Stats Tab ──
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        <FlatList
+          data={filteredCatches}
+          keyExtractor={(item) => item.id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.feedContent}
+          renderItem={({ item }) => {
+            const accentColor = getSpeciesColor(item.species);
+            return (
+              <TouchableOpacity
+                style={s.catchCard}
+                onPress={() =>
+                  router.push({ pathname: '/catch-detail', params: { id: item.id } } as any)
+                }
+                activeOpacity={0.75}
+              >
+                {item.photo ? (
+                  <Image source={{ uri: item.photo }} style={s.catchPhoto} />
+                ) : (
+                  <View style={[s.catchAccentBar, { backgroundColor: accentColor }]} />
+                )}
 
-          {catches.length === 0 ? (
-            <View style={s.empty}>
-              <MaterialCommunityIcons name="fish" size={48} color="rgba(0,212,170,0.25)" />
-              <Text style={s.emptyTitle}>No catches yet</Text>
-              <Text style={s.emptySub}>Log catches to see your fishing statistics.</Text>
-              <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/add-catch' as any)}>
-                <Text style={s.emptyBtnText}>Start Fishing</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <>
-              {/* Big numbers */}
-              <View style={s.bigStats}>
-                {[
-                  { val: String(catches.length), label: 'Total' },
-                  { val: String(speciesCount), label: 'Species' },
-                  { val: stats.heaviest ? `${stats.heaviest.weight}kg` : '—', label: 'Heaviest' },
-                  { val: String(catches.filter((c) => {
-                    const d = new Date(c.date);
-                    const now = new Date();
-                    return d >= new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-                  }).length), label: 'This Week' },
-                ].map((item) => (
-                  <View key={item.label} style={s.bigStatItem}>
-                    <Text style={s.bigStatVal}>{item.val}</Text>
-                    <Text style={s.bigStatLabel}>{item.label}</Text>
-                  </View>
-                ))}
-              </View>
-
-              {/* Weight stats row */}
-              {catches.length > 0 && (() => {
-                const weights = catches.filter(c => c.weight).map(c => c.weight!);
-                if (!weights.length) return null;
-                const avg = weights.reduce((a, b) => a + b, 0) / weights.length;
-                const max = Math.max(...weights);
-                return (
-                  <View style={s.weightRow}>
-                    {[
-                      { label: 'Best', val: `${max.toFixed(1)}kg` },
-                      { label: 'Avg', val: `${avg.toFixed(1)}kg` },
-                      { label: 'Count', val: `${weights.length}` },
-                    ].map(({ label, val }) => (
-                      <View key={label} style={s.weightStat}>
-                        <Text style={s.weightVal}>{val}</Text>
-                        <Text style={s.weightLabel}>{label}</Text>
+                <View style={s.catchContent}>
+                  {/* Row 1: Species + weight badge */}
+                  <View style={s.catchRow1}>
+                    <Text style={s.catchSpecies}>{item.species}</Text>
+                    {item.weight ? (
+                      <View style={[s.weightBadge, { backgroundColor: accentColor + '22' }]}>
+                        <Text style={[s.weightBadgeText, { color: accentColor }]}>
+                          {item.weight} kg
+                        </Text>
                       </View>
-                    ))}
+                    ) : null}
                   </View>
-                );
-              })()}
 
-              {/* Species chart */}
-              {topSpecies.length > 0 && (
-                <View style={s.speciesSection}>
-                  <Text style={s.sectionTitle}>Top Species</Text>
-                  <View style={s.speciesCard}>
-                    {topSpecies.slice(0, 6).map(([species, count], i) => {
-                      const pct = (count / topSpecies[0][1]) * 100;
-                      return (
-                        <View key={species} style={[s.speciesRow, i > 0 && s.speciesRowBorder]}>
-                          <Text style={s.speciesName} numberOfLines={1}>{species}</Text>
-                          <View style={s.speciesBarWrap}>
-                            <View style={[s.speciesBar, { width: `${pct}%` as any }]} />
-                          </View>
-                          <Text style={s.speciesCount}>{count}</Text>
-                        </View>
-                      );
-                    })}
+                  {/* Row 2: Date + location */}
+                  <View style={s.catchRow2}>
+                    <Text style={s.catchMeta}>{formatDate(item.date)}</Text>
+                    {item.location ? (
+                      <>
+                        <Text style={s.catchMetaDot}>·</Text>
+                        <MaterialCommunityIcons
+                          name="map-marker-outline"
+                          size={12}
+                          color={colors.textTertiary}
+                        />
+                        <Text style={s.catchMeta} numberOfLines={1}>
+                          {item.location}
+                        </Text>
+                      </>
+                    ) : null}
+                  </View>
+
+                  {/* Row 3: Condition chips */}
+                  <View style={s.catchRow3}>
+                    {item.length ? (
+                      <View style={s.condChip}>
+                        <Text style={s.condChipText}>{item.length} cm</Text>
+                      </View>
+                    ) : null}
+                    {item.bait ? (
+                      <View style={s.condChip}>
+                        <Text style={s.condChipText}>{item.bait}</Text>
+                      </View>
+                    ) : null}
                   </View>
                 </View>
-              )}
-            </>
-          )}
-        </ScrollView>
+              </TouchableOpacity>
+            );
+          }}
+        />
       )}
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#050A12' },
+  safe: { flex: 1, backgroundColor: colors.bg },
 
-  // ── Header ──
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
   headerTitle: {
-    fontSize: 22, fontWeight: '700', color: colors.textPrimary,
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
   },
-  headerSub: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  countBadge: {
+    backgroundColor: colors.primaryDim,
+    borderRadius: radius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  countBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+  },
   addBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#00D4AA', alignItems: 'center', justifyContent: 'center',
-  },
-
-  // ── Tab Pills ──
-  tabPillRow: {
-    flexDirection: 'row',
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    backgroundColor: colors.surface2,
-    borderRadius: 50,
-    padding: 3, gap: 3,
-  },
-  tabPill: {
-    flex: 1, paddingVertical: 9,
-    borderRadius: 50,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  tabPillActive: { backgroundColor: colors.primary },
-  tabPillText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
-  tabPillTextActive: { color: colors.background, fontWeight: '700' },
 
-  // Time filter pills
-  timeFilterRow: {
-    flexDirection: 'row', gap: 8,
-    paddingHorizontal: spacing.lg, marginBottom: spacing.sm,
+  filterPills: {
+    paddingHorizontal: spacing.lg,
+    gap: 8,
+    marginBottom: spacing.sm,
   },
-  timeFilterPill: {
-    paddingHorizontal: 14, paddingVertical: 7,
+  filterPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: radius.full,
     backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  timeFilterPillActive: {
-    backgroundColor: 'rgba(0,212,170,0.12)',
+  filterPillActive: {
+    backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
-  timeFilterText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
-  timeFilterTextActive: { color: colors.primary },
+  filterPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  filterPillTextActive: {
+    color: colors.bg,
+  },
 
-  // ── Filter Row ──
-  filterRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: spacing.lg, marginBottom: spacing.sm,
-  },
-  searchBox: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: 14, paddingVertical: 10,
-  },
-  searchInput: { flex: 1, color: colors.textPrimary, fontSize: 13, paddingVertical: 0 },
-  sortBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: colors.surface, borderRadius: radius.full,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: 12, paddingVertical: 10,
-  },
-  sortBtnText: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
-
-  // ── Catch Grid ──
-  catchGrid: { paddingHorizontal: spacing.md, paddingBottom: 100, gap: spacing.sm },
-  catchGridRow: { gap: spacing.sm },
-  catchCard: {
-    flex: 1, minWidth: 0,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    overflow: 'hidden',
-  },
-  catchCardBg: { position: 'relative' },
-  catchPhoto: { width: '100%', height: 108 },
-  bookmarkBtn: {
-    position: 'absolute', top: 7, right: 7,
-    width: 28, height: 28, borderRadius: 6,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(2,11,17,0.72)',
-  },
-  catchCardBody: { padding: 10, gap: 4 },
-  catchSpecies: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  catchChips: { flexDirection: 'row', gap: 5, flexWrap: 'wrap' },
-  chipTeal: {
-    backgroundColor: 'rgba(0,212,170,0.15)', borderRadius: 4,
-    paddingHorizontal: 6, paddingVertical: 2,
-  },
-  chipTealText: { fontSize: 10, fontWeight: '700', color: '#00D4AA' },
-  chipGray: {
-    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 4,
-    paddingHorizontal: 6, paddingVertical: 2,
-    borderWidth: 1, borderColor: colors.border,
-  },
-  chipGrayText: { fontSize: 10, color: colors.textSecondary },
-  catchLocation: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  catchLocationText: { fontSize: 10, color: colors.textSecondary, flex: 1 },
-  catchDate: { fontSize: 10, color: 'rgba(255,255,255,0.3)' },
-
-  // ── Empty ──
-  empty: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    gap: 12, paddingTop: 80, paddingHorizontal: 40,
-  },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
-  emptySub: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
-  emptyBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8,
-    borderRadius: radius.full, backgroundColor: '#00D4AA',
-    paddingHorizontal: 24, paddingVertical: 13,
-  },
-  emptyBtnText: { fontSize: 14, fontWeight: '700', color: colors.background },
-
-  // ── Stats Tab ──
-  bigStats: {
+  // Stats bar
+  statsBar: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  bigStatItem: {
-    flex: 1, alignItems: 'center', gap: 4,
-  },
-  bigStatVal: { fontSize: 36, fontWeight: '800', color: '#00D4AA' },
-  bigStatLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: 'rgba(255,255,255,0.4)' },
-
-  // Weight stats row
-  weightRow: {
-    flexDirection: 'row', justifyContent: 'space-around',
-    backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    padding: 16, marginBottom: 12,
+    alignItems: 'center',
     marginHorizontal: spacing.lg,
-  },
-  weightStat: { alignItems: 'center' },
-  weightVal: { fontSize: 18, fontWeight: '800', color: colors.primary },
-  weightLabel: { fontSize: 10, color: colors.textSecondary, marginTop: 2 },
-
-  speciesSection: {
-    paddingHorizontal: spacing.lg, marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 12,
-  },
-  speciesCard: {
+    marginBottom: spacing.md,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: 12,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 3,
+  },
+  statDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: colors.border,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textTertiary,
+    letterSpacing: 0.3,
+  },
+
+  // Feed
+  feedContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 120,
+    gap: 10,
+  },
+  catchCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
     overflow: 'hidden',
   },
-  speciesRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: spacing.md, paddingVertical: 12,
+  catchPhoto: {
+    width: '100%',
+    height: 200,
   },
-  speciesRowBorder: { borderTopWidth: 1, borderTopColor: colors.border },
-  speciesName: { width: 110, fontSize: 13, fontWeight: '600', color: colors.textPrimary },
-  speciesBarWrap: {
-    flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: radius.full, overflow: 'hidden',
+  catchAccentBar: {
+    width: 4,
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    borderTopLeftRadius: radius.lg,
+    borderBottomLeftRadius: radius.lg,
   },
-  speciesBar: { height: '100%', backgroundColor: colors.primary, borderRadius: radius.full },
-  speciesCount: { width: 24, fontSize: 13, fontWeight: '800', color: '#00D4AA', textAlign: 'right' },
+  catchContent: {
+    padding: 16,
+    paddingLeft: 20,
+    gap: 6,
+  },
+  catchRow1: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  catchSpecies: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    flex: 1,
+    letterSpacing: -0.2,
+  },
+  weightBadge: {
+    borderRadius: radius.xs,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  weightBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  catchRow2: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  catchMeta: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  catchMetaDot: {
+    fontSize: 12,
+    color: colors.textTertiary,
+  },
+  catchRow3: {
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  condChip: {
+    backgroundColor: colors.surface2,
+    borderRadius: radius.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  condChipText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+
+  // Empty
+  empty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    gap: 10,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  emptySub: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  emptyBtn: {
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: radius.full,
+    backgroundColor: colors.primary,
+  },
+  emptyBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.bg,
+  },
 });
