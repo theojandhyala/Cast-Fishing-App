@@ -4,11 +4,13 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  TouchableOpacity,
   LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../components/ui/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import { useCatchStore, Catch } from '../store/catchStore';
 import { useAuthStore } from '../store/authStore';
 import { colors, radius, spacing, fonts, typography } from '../constants/theme';
@@ -462,6 +464,7 @@ const sectionStyles = StyleSheet.create({
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function MyStatsScreen() {
+  const router = useRouter();
   const { catches } = useCatchStore();
   const { user } = useAuthStore();
   const currentHour = new Date().getHours();
@@ -547,6 +550,14 @@ export default function MyStatsScreen() {
             <StatPill label="Species" value={Object.keys(stats.speciesCounts).length} />
             <StatPill label="Locations" value={stats.locationSet.length} />
           </View>
+          <TouchableOpacity
+            onPress={() => router.push('/leaderboard' as any)}
+            style={styles.leaderboardBtn}
+          >
+            <Icon name="trophy-outline" size={16} color={colors.primary} />
+            <Text style={styles.leaderboardBtnText}>View Leaderboard</Text>
+            <Icon name="arrow-right" size={14} color={colors.primary} />
+          </TouchableOpacity>
         </LinearGradient>
 
         <View style={styles.content}>
@@ -636,6 +647,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.xl,
+  },
+  leaderboardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: spacing.md,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,170,0.35)',
+    backgroundColor: 'rgba(0,212,170,0.07)',
+    alignSelf: 'flex-start',
+  },
+  leaderboardBtnText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '700',
   },
   headerTop: {
     flexDirection: 'row',

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Icon } from '../../components/ui/Icon';
@@ -48,6 +48,59 @@ function DuelCard({ duel, onAccept, onDecline }: { duel: HeadToHead; onAccept: (
   );
 }
 
+const FRIENDS_TOP3 = [
+  { name: 'Jake M.', avatar: 'JM', biggestFish: 11.3, rank: 1 },
+  { name: 'Sarah K.', avatar: 'SK', biggestFish: 9.7, rank: 2 },
+  { name: 'Tom C.', avatar: 'TC', biggestFish: 8.4, rank: 3 },
+];
+const RANK_COLORS_LB = ['#FFD700', '#C0C0C0', '#CD7F32'];
+
+function FriendsLeaderboardBanner({ onSeeAll }: { onSeeAll: () => void }) {
+  return (
+    <View style={lbStyles.banner}>
+      <View style={lbStyles.bannerHeader}>
+        <View style={lbStyles.bannerLeft}>
+          <Icon name="trophy-outline" size={14} color={colors.primary} />
+          <Text style={lbStyles.bannerTitle}>FRIENDS LEADERBOARD</Text>
+        </View>
+        <Pressable onPress={onSeeAll} style={lbStyles.seeAll} accessibilityRole="button" accessibilityLabel="See all friends leaderboard">
+          <Text style={lbStyles.seeAllText}>See All</Text>
+          <Icon name="arrow-right" size={13} color={colors.primary} />
+        </Pressable>
+      </View>
+      {FRIENDS_TOP3.map((f) => (
+        <View key={f.rank} style={lbStyles.row}>
+          <View style={[lbStyles.rankBadge, { backgroundColor: RANK_COLORS_LB[f.rank - 1] + '22' }]}>
+            {f.rank === 1
+              ? <Icon name="crown" size={12} color={RANK_COLORS_LB[0]} />
+              : <Icon name="medal" size={12} color={RANK_COLORS_LB[f.rank - 1]} />}
+          </View>
+          <View style={[lbStyles.avatar, { backgroundColor: RANK_COLORS_LB[f.rank - 1] + '18', borderColor: RANK_COLORS_LB[f.rank - 1] + '55' }]}>
+            <Text style={[lbStyles.avatarText, { color: RANK_COLORS_LB[f.rank - 1] }]}>{f.avatar}</Text>
+          </View>
+          <Text style={lbStyles.name} numberOfLines={1}>{f.name}</Text>
+          <Text style={[lbStyles.fish, { color: RANK_COLORS_LB[f.rank - 1] }]}>{f.biggestFish}kg</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const lbStyles = StyleSheet.create({
+  banner: { marginHorizontal: spacing.lg, marginBottom: spacing.md, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(0,212,170,0.14)', padding: spacing.md },
+  bannerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
+  bannerLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bannerTitle: { color: colors.primary, fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  seeAllText: { color: colors.primary, fontSize: 11, fontWeight: '700' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5 },
+  rankBadge: { width: 26, height: 26, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 30, height: 30, borderRadius: 15, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 9, fontWeight: '800' },
+  name: { flex: 1, color: colors.textPrimary, fontSize: 12, fontWeight: '600' },
+  fish: { fontSize: 13, fontWeight: '800' },
+});
+
 export default function SocialScreen() {
   const router = useRouter();
   const [tab, setTab] = useState<SocialTab>('feed');
@@ -79,7 +132,7 @@ export default function SocialScreen() {
         {(['feed', 'friends', 'duels'] as SocialTab[]).map((item) => <Pressable key={item} accessibilityRole="tab" accessibilityState={{ selected: tab === item }} onPress={() => setTab(item)} style={[styles.tab, tab === item && styles.tabActive]}><Text style={[styles.tabText, tab === item && styles.tabTextActive]}>{item === 'feed' ? 'Activity' : item === 'friends' ? `Friends ${friends.length}` : 'Head-to-head'}</Text>{item === 'duels' && incoming > 0 ? <View style={styles.count}><Text style={styles.countText}>{incoming}</Text></View> : null}</Pressable>)}
       </View>
 
-      {tab === 'feed' ? <FlatList data={feed} renderItem={renderPost} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} initialNumToRender={4} windowSize={5} ListEmptyComponent={<EmptySocial icon="image-outline" title="No activity yet" body="Catches shared by real friends will appear here." action="Add friends" onPress={() => router.push('/friends')} />} /> : null}
+      {tab === 'feed' ? <FlatList data={feed} renderItem={renderPost} keyExtractor={(item) => item.id} contentContainerStyle={styles.list} initialNumToRender={4} windowSize={5} ListHeaderComponent={<FriendsLeaderboardBanner onSeeAll={() => router.push({ pathname: '/leaderboard', params: { tab: 'friends' } } as any)} />} ListEmptyComponent={<EmptySocial icon="image-outline" title="No activity yet" body="Catches shared by real friends will appear here." action="Add friends" onPress={() => router.push('/friends')} />} /> : null}
       {tab === 'friends' ? <FlatList data={friends} keyExtractor={(item) => item.id} renderItem={({ item }) => <FriendCard friend={item} onChallenge={challenge} />} contentContainerStyle={styles.list} ListHeaderComponent={<Pressable accessibilityRole="button" onPress={() => router.push('/friends')} style={styles.manageRow}><Text style={styles.manageText}>Add anglers and view requests</Text><Icon name="arrow-right" size={18} color={colors.primary} /></Pressable>} ListEmptyComponent={<EmptySocial icon="account-group-outline" title="No friends yet" body="Add a real angler before starting a head-to-head." action="Find friends" onPress={() => router.push('/friends')} />} /> : null}
       {tab === 'duels' ? <FlatList data={duels} keyExtractor={(item) => item.id} renderItem={({ item }) => <DuelCard duel={item} onAccept={() => acceptDuel(item.id)} onDecline={() => declineDuel(item.id)} />} contentContainerStyle={styles.list} ListHeaderComponent={<Pressable accessibilityRole="button" onPress={() => setTab('friends')} style={styles.manageRow}><Text style={styles.manageText}>Start a new head-to-head</Text><Icon name="plus" size={18} color={colors.primary} /></Pressable>} ListEmptyComponent={<EmptySocial icon="sword-cross" title="No head-to-heads" body="Challenge a friend to first-to-five once they join your circle." action="View friends" onPress={() => setTab('friends')} />} /> : null}
     </SafeAreaView>

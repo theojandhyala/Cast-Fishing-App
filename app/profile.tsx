@@ -76,7 +76,8 @@ function SparklineChart({ catches }: { catches: any[] }) {
 const MENU_ITEMS = [
   { icon: 'account-group-outline', label: 'Friends', route: '/friends' },
   { icon: 'earth', label: 'Community & Head-to-head', route: '/(tabs)/social' },
-  { icon: 'trophy-outline', label: 'Achievements', route: '/challenges' },
+  { icon: 'trophy-outline', label: 'Leaderboard', route: '/leaderboard' },
+  { icon: 'medal-outline', label: 'Achievements', route: '/challenges' },
   { icon: 'bag-personal-outline', label: 'Gear', route: '/gear-tracker' },
   { icon: 'heart-outline', label: 'Favourite Spots', route: '/map' },
   { icon: 'cog-outline', label: 'Settings', route: '/settings' },
