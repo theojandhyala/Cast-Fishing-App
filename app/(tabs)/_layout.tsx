@@ -2,16 +2,19 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Tabs, useRouter } from 'expo-router';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
-import { LinearGradient } from 'expo-linear-gradient';
-import { colors, radius, spacing } from '../../constants/theme';
+import { colors, spacing } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
 
-const TAB_BAR_HEIGHT = 64;
+const TAB_BAR_HEIGHT = 72;
 
-function TabIcon({ name, color, focused, label }: { name: string; color: string; focused: boolean; label: string }) {
+function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   return (
     <View style={styles.iconWrap}>
-      <MaterialCommunityIcons name={name as any} size={22} color={color} />
+      <MaterialCommunityIcons
+        name={name as any}
+        size={24}
+        color={focused ? colors.primary : colors.textTertiary}
+      />
       {focused && <View style={styles.indicator} />}
     </View>
   );
@@ -22,17 +25,13 @@ function CenterButton({ onPress }: { onPress?: () => void }) {
     <TouchableOpacity
       style={styles.centerBtnWrap}
       onPress={onPress}
-      activeOpacity={0.85}
+      activeOpacity={0.75}
       accessibilityRole="button"
       accessibilityLabel="Scan a fish"
     >
-      <LinearGradient
-        colors={[colors.primary, '#2BA9A8']}
-        style={styles.centerBtn}
-      >
-        <MaterialCommunityIcons name="camera-iris" size={26} color={colors.background} />
-      </LinearGradient>
-      <Text style={styles.centerBtnLabel}>SCAN</Text>
+      <View style={styles.centerBtn}>
+        <MaterialCommunityIcons name="camera-iris" size={26} color={colors.bg} />
+      </View>
     </TouchableOpacity>
   );
 }
@@ -60,16 +59,11 @@ function SessionBanner() {
     <View style={styles.bannerWrap} pointerEvents="box-none">
       <TouchableOpacity
         activeOpacity={0.88}
-        onPress={() => router.push('/session')}
+        onPress={() => router.push('/session' as any)}
         accessibilityRole="button"
         accessibilityLabel={`Return to your active session at ${activeSession.spotName}`}
       >
-        <LinearGradient
-          colors={['#001F18', '#002E22']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.banner}
-        >
+        <View style={styles.banner}>
           <View style={styles.bannerLeft}>
             <View style={styles.activeDot} />
             <View style={{ flex: 1 }}>
@@ -82,7 +76,7 @@ function SessionBanner() {
             <Text style={styles.bannerTime}>{timeStr}</Text>
             <MaterialCommunityIcons name="chevron-right" size={16} color="rgba(0,212,170,0.5)" />
           </View>
-        </LinearGradient>
+        </View>
       </TouchableOpacity>
     </View>
   );
@@ -101,45 +95,37 @@ export default function TabsLayout() {
             borderTopWidth: 1,
             borderTopColor: colors.border,
             height: TAB_BAR_HEIGHT,
-            paddingBottom: 10,
-            paddingTop: 6,
+            paddingBottom: 12,
+            paddingTop: 8,
             elevation: 8,
             shadowColor: '#000',
             shadowOpacity: 0.3,
             shadowRadius: 8,
           },
           tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.textSecondary,
-          tabBarLabelStyle: {
-            fontSize: 10,
-            fontWeight: '700',
-            letterSpacing: 0.3,
-            marginTop: 2,
-          },
+          tabBarInactiveTintColor: colors.textTertiary,
+          tabBarShowLabel: false,
         }}
       >
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Home',
-            tabBarIcon: ({ color, focused }) => (
-              <TabIcon name={focused ? 'home' : 'home-outline'} color={color} focused={focused} label="Home" />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="map"
-          options={{
-            title: 'Spots',
-            tabBarIcon: ({ color, focused }) => (
-              <TabIcon name="map-marker-multiple-outline" color={color} focused={focused} label="Spots" />
+            tabBarIcon: ({ focused }) => (
+              <TabIcon name={focused ? 'home' : 'home-outline'} focused={focused} />
             ),
           }}
         />
         <Tabs.Screen
           name="session"
           options={{
-            title: '',
+            tabBarIcon: ({ focused }) => (
+              <TabIcon name={focused ? 'timer' : 'timer-outline'} focused={focused} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="identifier-tab"
+          options={{
             tabBarLabel: () => null,
             tabBarIcon: () => null,
             tabBarButton: () => (
@@ -150,23 +136,32 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="catches"
           options={{
-            title: 'Logbook',
-            tabBarIcon: ({ color, focused }) => (
-              <TabIcon name={focused ? 'book-open-variant' : 'book-open-outline'} color={color} focused={focused} label="Logbook" />
+            tabBarIcon: ({ focused }) => (
+              <TabIcon name={focused ? 'fish' : 'fish-outline'} focused={focused} />
             ),
           }}
         />
         <Tabs.Screen
-          name="friends"
+          name="conditions"
           options={{
-            title: 'Explore',
-            tabBarIcon: ({ color, focused }) => (
-              <TabIcon name="dots-grid" color={color} focused={focused} label="Explore" />
+            tabBarIcon: ({ focused }) => (
+              <TabIcon name="chart-line" focused={focused} />
             ),
           }}
         />
+        <Tabs.Screen
+          name="more"
+          options={{
+            tabBarIcon: ({ focused }) => (
+              <TabIcon name={focused ? 'account' : 'account-outline'} focused={focused} />
+            ),
+          }}
+        />
+
+        {/* Hidden tabs */}
+        <Tabs.Screen name="map" options={{ href: null }} />
+        <Tabs.Screen name="friends" options={{ href: null }} />
         <Tabs.Screen name="profile" options={{ href: null }} />
-        <Tabs.Screen name="more" options={{ href: null }} />
         <Tabs.Screen name="tips" options={{ href: null }} />
         <Tabs.Screen name="social" options={{ href: null }} />
         <Tabs.Screen name="add-tab" options={{ href: null }} />
@@ -180,48 +175,42 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.bg,
   },
   iconWrap: {
     alignItems: 'center',
     justifyContent: 'center',
     width: 44,
-    height: 32,
+    height: 36,
   },
   indicator: {
     position: 'absolute',
-    bottom: -8,
+    bottom: -6,
     width: 4,
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.primary,
   },
 
-  // Center + button
+  // Center FAB button
   centerBtnWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -18,
+    marginTop: -16,
   },
   centerBtn: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#00D4AA',
-    shadowOpacity: 0.3,
-    shadowRadius: 14,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },
     elevation: 12,
-  },
-  centerBtnLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: colors.primary,
-    letterSpacing: 1.5,
-    marginTop: 4,
   },
 
   // Session banner
@@ -237,6 +226,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: 11,
+    backgroundColor: '#001F18',
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,212,170,0.25)',
   },

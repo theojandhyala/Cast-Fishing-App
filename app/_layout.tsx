@@ -117,7 +117,7 @@ export default function RootLayout() {
         screenOptions={{
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.textPrimary,
-          headerTitleStyle: { fontFamily: fonts.bodySemi },
+          headerTitleStyle: { fontSize: 15, fontWeight: '600' },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
           animation: 'slide_from_right',
