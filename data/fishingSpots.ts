@@ -1,6 +1,7 @@
 import { CURATED_FISHING_SPOTS } from './fishingSpotsCurated';
 import type { OsmFishingSpotTuple } from './osmFishingSpots.generated';
 import { FishingSpotRecord, SpotDatasetMetadata } from '../types/fishingSpot';
+import { enrichSpecies } from './speciesEnrichment';
 
 function coverageFromCoordinate(latitude: number, longitude: number): FishingSpotRecord['coverageRegion'] {
   if (latitude >= 49 && latitude <= 61 && longitude >= -11 && longitude <= 2) return 'uk_ireland';
@@ -17,7 +18,8 @@ function coverageFromCoordinate(latitude: number, longitude: number): FishingSpo
 function adaptOsmFishingSpot(tuple: OsmFishingSpotTuple): FishingSpotRecord {
   const [id, name, latitude, longitude, type, area, speciesList, accessTag] = tuple;
   const [, osmType, osmId] = id.match(/^osm-(node|way|relation)-(\d+)$/) ?? [];
-  const species = speciesList ? speciesList.split('|').map((item) => item.trim()).filter(Boolean) : [];
+  const rawSpecies = speciesList ? speciesList.split('|').map((item) => item.trim()).filter(Boolean) : [];
+  const species = enrichSpecies(latitude, longitude, type, rawSpecies);
   const isPrivate = accessTag === 'private' || type === 'private';
   return {
     id, name, country: area, region: area, coverageRegion: coverageFromCoordinate(latitude, longitude), continent: area,

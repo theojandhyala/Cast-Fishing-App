@@ -12,6 +12,7 @@ import { useSessionStore } from '../store/sessionStore';
 import { useLocationStore } from '../store/locationStore';
 import { useWeather } from '../hooks/useWeather';
 import { useMarineConditions } from '../hooks/useMarineConditions';
+import { getRegion } from '../data/speciesEnrichment';
 import { SpotPhoto } from '../components/map/SpotPhoto';
 import { useSpotStore } from '../store/spotStore';
 
@@ -51,6 +52,7 @@ export default function SpotDetailsScreen() {
   const { isSpotSaved, toggleSavedSpot } = useSpotStore();
   const saved = spot ? isSpotSaved(spot.id) : false;
   const isMarineSpot = !!spot && ['sea', 'ocean', 'estuary'].includes(spot.type);
+  const isSalmonRiver = !!spot && spot.type === 'river' && ['uk_ireland', 'scandinavia', 'north_america_north'].includes(getRegion(spot.latitude, spot.longitude));
   const { weather, loading: weatherLoading, error: weatherError } = useWeather(spot?.latitude, spot?.longitude);
   const { marine, loading: marineLoading, error: marineError } = useMarineConditions(spot?.latitude, spot?.longitude, isMarineSpot);
 
@@ -126,21 +128,26 @@ export default function SpotDetailsScreen() {
         {/* Species */}
         <View style={s.section}>
           <Text style={s.sectionTitle}>Species</Text>
-          {spot.species.length ? <View style={s.speciesRow}>
-            {spot.species.slice(0, 4).map((sp: string) => (
-              <View key={sp} style={s.speciesItem}>
-                <View style={s.speciesCircle}>
-                  <MaterialCommunityIcons name="fish" size={20} color={colors.primary} />
+          {spot.species.length ? <View>
+            <View style={s.speciesRow}>
+              {spot.species.slice(0, 4).map((sp: string) => (
+                <View key={sp} style={s.speciesItem}>
+                  <View style={s.speciesCircle}>
+                    <MaterialCommunityIcons name="fish" size={20} color={colors.primary} />
+                  </View>
+                  <Text style={s.speciesName} numberOfLines={1}>{sp}</Text>
                 </View>
-                <Text style={s.speciesName} numberOfLines={1}>{sp}</Text>
-              </View>
-            ))}
-            {overflowCount > 0 && (
-              <View style={s.speciesItem}>
-                <View style={[s.speciesCircle, { backgroundColor: colors.surface2 }]}>
-                  <Text style={s.overflowText}>+{overflowCount}</Text>
+              ))}
+              {overflowCount > 0 && (
+                <View style={s.speciesItem}>
+                  <View style={[s.speciesCircle, { backgroundColor: colors.surface2 }]}>
+                    <Text style={s.overflowText}>+{overflowCount}</Text>
+                  </View>
                 </View>
-              </View>
+              )}
+            </View>
+            {isSalmonRiver && (
+              <Text style={s.seasonalNote}>Seasonal — check local regulations before targeting migratory species.</Text>
             )}
           </View> : <UnknownField text="Species have not been independently verified for this mapped fishing feature." />}
         </View>
@@ -167,6 +174,13 @@ export default function SpotDetailsScreen() {
               <Text style={s.condLabel}>{weather?.description ?? 'Weather'}</Text>
             </View>
           </View>
+          {weather && !weatherLoading && (
+            <View style={s.fishingScoreRow}>
+              <MaterialCommunityIcons name="fish" size={16} color={colors.primary} />
+              <Text style={s.fishingScoreLabel}>Fishing conditions: </Text>
+              <Text style={s.fishingScoreValue}>{weather.fishingScore}/10</Text>
+            </View>
+          )}
           {weatherError ? <Text style={s.sourceNote}>{weatherError}; coordinate-seeded offline estimates are shown.</Text> : <Text style={s.sourceNote}>Coordinate-specific forecast from Open-Meteo · cached for 30 minutes</Text>}
 
           {isMarineSpot ? <>
@@ -335,6 +349,11 @@ const s = StyleSheet.create({
   baitText: { color: colors.textPrimary, fontSize: 12, fontWeight: '600' },
   unknownField: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, borderRadius: radius.md, backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.22)' },
   unknownText: { flex: 1, color: colors.textSecondary, fontSize: 12, lineHeight: 17 },
+
+  seasonalNote: { fontSize: 11, color: colors.secondary, marginTop: 8, fontStyle: 'italic' },
+  fishingScoreRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+  fishingScoreLabel: { fontSize: 12, color: colors.textSecondary },
+  fishingScoreValue: { fontSize: 12, fontWeight: '700', color: colors.primary },
 
   notesText: { fontSize: 14, color: colors.textPrimary, lineHeight: 21 },
 
