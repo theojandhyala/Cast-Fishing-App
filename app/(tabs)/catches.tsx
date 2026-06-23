@@ -78,11 +78,9 @@ export default function CatchesScreen() {
       {/* ── Header ── */}
       <View style={s.header}>
         <View>
-          <Text style={s.headerTitle}>LOGBOOK</Text>
-          <Text style={s.headerSub}>
-            <Text style={s.headerSubCount}>{catches.length}</Text>
-            {' catches'}
-          </Text>
+          <Text style={s.headerSuperLabel}>LOGBOOK</Text>
+          <Text style={s.headerTitle}>{catches.length}</Text>
+          <Text style={s.headerSub}>catches</Text>
         </View>
         <TouchableOpacity
           style={s.addBtn}
@@ -284,10 +282,14 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm,
   },
-  headerTitle: {
-    fontSize: 22, fontWeight: '900', color: colors.textPrimary, letterSpacing: 2,
+  headerSuperLabel: {
+    fontSize: 11, fontWeight: '800', letterSpacing: 3, color: 'rgba(255,255,255,0.35)',
+    textTransform: 'uppercase',
   },
-  headerSub: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  headerTitle: {
+    fontSize: 28, fontWeight: '900', color: '#ffffff',
+  },
+  headerSub: { fontSize: 13, color: colors.textSecondary, marginTop: 0 },
   headerSubCount: { color: '#00D4AA', fontWeight: '700' },
   addBtn: {
     width: 40, height: 40, borderRadius: 20,
@@ -299,19 +301,19 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.full,
-    borderWidth: 1, borderColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 50,
     padding: 3, gap: 3,
   },
   tabPill: {
     flex: 1, paddingVertical: 9,
-    borderRadius: radius.full,
+    borderRadius: 50,
     alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
   tabPillActive: { backgroundColor: '#00D4AA' },
-  tabPillText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
-  tabPillTextActive: { color: '#031A12' },
+  tabPillText: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.5)' },
+  tabPillTextActive: { color: '#050A12', fontWeight: '900' },
 
   // ── Filter Row ──
   filterRow: {
@@ -320,8 +322,8 @@ const s = StyleSheet.create({
   },
   searchBox: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: radius.full,
-    borderWidth: 1, borderColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
     paddingHorizontal: 14, paddingVertical: 10,
   },
   searchInput: { flex: 1, color: colors.textPrimary, fontSize: 13, paddingVertical: 0 },
@@ -371,7 +373,7 @@ const s = StyleSheet.create({
   chipGrayText: { fontSize: 10, color: colors.textSecondary },
   catchLocation: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   catchLocationText: { fontSize: 10, color: colors.textSecondary, flex: 1 },
-  catchDate: { fontSize: 10, color: colors.textTertiary },
+  catchDate: { fontSize: 10, color: 'rgba(255,255,255,0.3)' },
 
   // ── Empty ──
   empty: {
@@ -397,8 +399,8 @@ const s = StyleSheet.create({
   bigStatItem: {
     flex: 1, alignItems: 'center', gap: 4,
   },
-  bigStatVal: { fontSize: 28, fontWeight: '900', color: '#00D4AA', letterSpacing: -1 },
-  bigStatLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
+  bigStatVal: { fontSize: 36, fontWeight: '900', color: '#00D4AA', letterSpacing: -1 },
+  bigStatLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: 'rgba(255,255,255,0.4)' },
 
   speciesSection: {
     paddingHorizontal: spacing.lg, marginBottom: spacing.lg,

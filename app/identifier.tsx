@@ -229,7 +229,7 @@ export default function IdentifierScreen() {
             <View style={[styles.corner, styles.cornerBL]} />
             <View style={[styles.corner, styles.cornerBR]} />
             <MaterialCommunityIcons name="camera-iris" size={44} color="rgba(0,212,170,0.4)" />
-            <Text style={styles.scanPlaceholderTitle}>Scan a fish</Text>
+            <Text style={styles.scanPlaceholderTitle}>POINT AT YOUR CATCH</Text>
             <Text style={styles.scanPlaceholderSub}>Best results: whole fish, side-on, good light</Text>
           </TouchableOpacity>
         ) : (
@@ -290,6 +290,7 @@ export default function IdentifierScreen() {
         {/* Success state */}
         {recorded && recordedData && (
           <View style={styles.successCard}>
+            <Text style={styles.successCardLabel}>CATCH RECORDED</Text>
             <View style={styles.successIconWrap}>
               <MaterialCommunityIcons name="check-circle" size={48} color="#00D4AA" />
             </View>
@@ -430,16 +431,16 @@ const styles = StyleSheet.create({
 
   scanFrame: {
     width: '100%', height: 320,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: '#020810',
     borderRadius: radius.lg,
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.15)',
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden', position: 'relative', marginBottom: spacing.md,
   },
-  scanPlaceholderTitle: { ...typography.h3, marginTop: spacing.md, color: colors.textPrimary },
+  scanPlaceholderTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 2, color: 'rgba(0,212,170,0.5)', marginTop: spacing.md },
   scanPlaceholderSub: { ...typography.bodySmall, marginTop: 4, color: colors.textSecondary, textAlign: 'center', paddingHorizontal: spacing.xl },
   scanImage: { width: '100%', height: '100%' },
-  corner: { position: 'absolute', width: 28, height: 28, borderColor: '#00D4AA' },
+  corner: { position: 'absolute', width: 28, height: 28, borderColor: '#00D4AA', shadowColor: '#00D4AA', shadowOpacity: 0.6, shadowRadius: 6, elevation: 4 },
   cornerTL: { top: 14, left: 14, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: radius.sm },
   cornerTR: { top: 14, right: 14, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: radius.sm },
   cornerBL: { bottom: 14, left: 14, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: radius.sm },
@@ -457,9 +458,9 @@ const styles = StyleSheet.create({
   pickRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   pickBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingVertical: 13, borderRadius: radius.md,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
+    paddingVertical: 14, borderRadius: radius.md,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
   },
   pickBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
 
@@ -476,13 +477,14 @@ const styles = StyleSheet.create({
 
   // Success state
   successCard: {
-    backgroundColor: 'rgba(0,60,40,0.25)',
+    backgroundColor: 'rgba(0,212,170,0.06)',
     borderRadius: radius.lg,
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)',
     padding: spacing.xl,
     alignItems: 'center', gap: 10,
     marginBottom: spacing.lg,
   },
+  successCardLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 2, color: '#00D4AA' },
   successIconWrap: {
     width: 80, height: 80, borderRadius: 40,
     backgroundColor: 'rgba(0,212,170,0.1)',
@@ -509,22 +511,22 @@ const styles = StyleSheet.create({
 
   // Result card
   resultCard: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(0,212,170,0.15)',
+    backgroundColor: '#060E18',
+    borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
     padding: spacing.lg, marginBottom: spacing.lg,
   },
   idTagRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 },
   idTag: { fontSize: 10, fontWeight: '800', color: colors.accentBlue, letterSpacing: 1.2, textTransform: 'uppercase' },
   resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
-  resultSpecies: { fontSize: 26, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.5 },
+  resultSpecies: { fontSize: 28, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.5 },
   resultLatin: { fontSize: 13, fontWeight: '500', color: '#00D4AA', marginBottom: spacing.md, fontStyle: 'italic' },
   matchBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(45,212,255,0.12)', borderRadius: radius.sm,
+    backgroundColor: 'rgba(45,212,255,0.1)', borderRadius: radius.sm,
     paddingHorizontal: 8, paddingVertical: 4,
     borderWidth: 1, borderColor: 'rgba(45,212,255,0.3)',
   },
-  matchBadgeText: { fontSize: 11, fontWeight: '800', color: colors.accentBlue },
+  matchBadgeText: { fontSize: 11, fontWeight: '800', color: '#2DD4FF' },
 
   statusChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -572,10 +574,10 @@ const styles = StyleSheet.create({
   scanAgainText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
   recordBtn: {
     flex: 1.6, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    paddingVertical: 14, borderRadius: radius.md,
+    paddingVertical: 18, borderRadius: radius.md,
     backgroundColor: '#00D4AA',
   },
-  recordBtnText: { fontSize: 13, fontWeight: '900', color: '#031A12', letterSpacing: 0.5 },
+  recordBtnText: { fontSize: 14, fontWeight: '900', color: '#031A12', letterSpacing: 2 },
 
   // History
   historySection: {

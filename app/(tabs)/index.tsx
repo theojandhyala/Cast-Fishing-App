@@ -163,7 +163,7 @@ export default function HomeScreen() {
                 <View style={s.condBody}>
                   <View style={s.scoreCol}>
                     <View style={s.scoreGlowCircle} />
-                    <Text style={[s.scoreNum, { color: scoreColor }]}>{w.fishingScore}</Text>
+                    <Text style={[s.scoreNum, { color: scoreColor, textShadowColor: 'rgba(0,212,170,0.4)', textShadowRadius: 12 }]}>{w.fishingScore}</Text>
                     <Text style={[s.scoreLabel, { color: scoreInfo.color }]}>{scoreInfo.label}</Text>
                   </View>
                   <View style={s.condStatsCol}>
@@ -243,7 +243,7 @@ export default function HomeScreen() {
               activeOpacity={0.8}
             >
               <View style={s.quickActionIconWrap}>
-                <MaterialCommunityIcons name={item.icon as any} size={26} color={colors.primary} />
+                <MaterialCommunityIcons name={item.icon as any} size={40} color={colors.primary} />
               </View>
               <Text style={s.quickActionLabel}>{item.label}</Text>
             </TouchableOpacity>
@@ -556,6 +556,8 @@ const s = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: 'rgba(0,212,170,0.15)',
+    borderTopWidth: 2,
+    borderTopColor: 'rgba(0,212,170,0.35)',
     paddingVertical: 18,
     paddingHorizontal: spacing.md,
     alignItems: 'center',
@@ -580,8 +582,8 @@ const s = StyleSheet.create({
   sectionBar: { width: 3, height: 16, borderRadius: 2, backgroundColor: colors.primary },
   sectionTitleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: {
-    fontSize: 11, fontWeight: '800', color: colors.textPrimary,
-    letterSpacing: 1.5, textTransform: 'uppercase',
+    fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.35)',
+    letterSpacing: 2, textTransform: 'uppercase',
   },
   nearBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
@@ -629,8 +631,9 @@ const s = StyleSheet.create({
   tipCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 12,
     marginHorizontal: spacing.lg, marginBottom: 28,
-    backgroundColor: colors.surface, borderRadius: radius.md,
+    backgroundColor: 'rgba(245,158,11,0.04)', borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.border,
+    borderLeftWidth: 3, borderLeftColor: '#F59E0B',
     padding: spacing.md, overflow: 'hidden',
   },
   tipAccent: {
@@ -645,10 +648,10 @@ const s = StyleSheet.create({
     marginLeft: 8,
   },
   tipLabel: {
-    fontSize: 9, fontWeight: '800', color: colors.secondary,
+    fontSize: 9, fontWeight: '800', color: '#F59E0B',
     letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 5,
   },
-  tipText: { fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
+  tipText: { fontSize: 13, color: '#ffffff', lineHeight: 19 },
 
   // ── Recent Catches ──
   emptyCatches: {
