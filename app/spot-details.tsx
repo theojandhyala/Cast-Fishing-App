@@ -13,6 +13,7 @@ import { useLocationStore } from '../store/locationStore';
 import { useWeather } from '../hooks/useWeather';
 import { useMarineConditions } from '../hooks/useMarineConditions';
 import { getRegion } from '../data/speciesEnrichment';
+import { useGFWVessels } from '../hooks/useGFW';
 import { SpotPhoto } from '../components/map/SpotPhoto';
 import { useSpotStore } from '../store/spotStore';
 
@@ -55,6 +56,7 @@ export default function SpotDetailsScreen() {
   const isSalmonRiver = !!spot && spot.type === 'river' && ['uk_ireland', 'scandinavia', 'north_america_north'].includes(getRegion(spot.latitude, spot.longitude));
   const { weather, loading: weatherLoading, error: weatherError } = useWeather(spot?.latitude, spot?.longitude);
   const { marine, loading: marineLoading, error: marineError } = useMarineConditions(spot?.latitude, spot?.longitude, isMarineSpot);
+  const { vesselCount, loading: gfwLoading } = useGFWVessels(spot?.latitude, spot?.longitude, isMarineSpot);
 
   if (!spot) {
     return (
@@ -206,6 +208,20 @@ export default function SpotDetailsScreen() {
               {marine.nextLow ? `Next modelled low ${new Date(marine.nextLow.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
             </Text> : null}
             <Text style={s.sourceNote}>{marineError ?? 'Marine model: Open-Meteo. Coastal tide values are approximate and not for navigation.'}</Text>
+            {!gfwLoading && vesselCount > 0 && (
+              <View style={s.gfwRow}>
+                <MaterialCommunityIcons name="ferry" size={14} color={colors.primary} />
+                <Text style={s.gfwText}>{vesselCount} fishing vessel{vesselCount !== 1 ? 's' : ''} active nearby in the past 7 days</Text>
+                <Text style={s.gfwBadge}>GFW</Text>
+              </View>
+            )}
+            {!gfwLoading && vesselCount === 0 && (
+              <View style={s.gfwRow}>
+                <MaterialCommunityIcons name="ferry" size={14} color={colors.textSecondary} />
+                <Text style={[s.gfwText, { color: colors.textSecondary }]}>No commercial vessel activity detected nearby</Text>
+                <Text style={s.gfwBadge}>GFW</Text>
+              </View>
+            )}
           </> : null}
         </View>
 
@@ -354,6 +370,9 @@ const s = StyleSheet.create({
   fishingScoreRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
   fishingScoreLabel: { fontSize: 12, color: colors.textSecondary },
   fishingScoreValue: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  gfwRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, backgroundColor: 'rgba(0,212,170,0.06)', borderRadius: radius.sm, padding: 8, borderWidth: 1, borderColor: 'rgba(0,212,170,0.15)' },
+  gfwText: { fontSize: 11, color: colors.textPrimary, flex: 1 },
+  gfwBadge: { fontSize: 9, fontWeight: '800', color: colors.primary, letterSpacing: 0.5, backgroundColor: 'rgba(0,212,170,0.15)', paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3 },
 
   notesText: { fontSize: 14, color: colors.textPrimary, lineHeight: 21 },
 

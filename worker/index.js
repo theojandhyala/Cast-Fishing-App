@@ -563,6 +563,47 @@ Rules:
         return json({ reply: text }, 200, origin);
       }
 
+      // GFW fishing activity — proxy to keep API key server-side
+      if (url.pathname === '/gfw/activity' && request.method === 'GET') {
+        if (!env.GFW_API_KEY) return json({ error: 'GFW not configured' }, 500, origin);
+        const minLat = url.searchParams.get('minLat');
+        const maxLat = url.searchParams.get('maxLat');
+        const minLng = url.searchParams.get('minLng');
+        const maxLng = url.searchParams.get('maxLng');
+        if (!minLat || !maxLat || !minLng || !maxLng) return json({ error: 'Missing bbox params' }, 400, origin);
+        // GFW 4wings tile API — fishing effort heatmap
+        const today = new Date().toISOString().split('T')[0];
+        const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
+        const gfwUrl = `https://gateway.api.globalfishingwatch.org/v3/4wings/report?datasets[0]=public-global-fishing-effort:latest&date-range=${monthAgo},${today}&region[0]=${minLng},${minLat}&region[1]=${maxLng},${minLat}&region[2]=${maxLng},${maxLat}&region[3]=${minLng},${maxLat}&region[4]=${minLng},${minLat}&region-source=user_json&spatial-resolution=LOW&temporal-resolution=MONTHLY&group-by=FLAG`;
+        const gfwRes = await fetch(gfwUrl, {
+          headers: { 'Authorization': `Bearer ${env.GFW_API_KEY}`, 'Content-Type': 'application/json' },
+        });
+        if (!gfwRes.ok) {
+          const errText = await gfwRes.text();
+          return json({ error: `GFW error ${gfwRes.status}`, detail: errText.slice(0, 300) }, 502, origin);
+        }
+        const data = await gfwRes.json();
+        return json(data, 200, origin);
+      }
+
+      // GFW vessel events near a coordinate
+      if (url.pathname === '/gfw/vessels' && request.method === 'GET') {
+        if (!env.GFW_API_KEY) return json({ error: 'GFW not configured' }, 500, origin);
+        const lat = url.searchParams.get('lat');
+        const lng = url.searchParams.get('lng');
+        const radius = url.searchParams.get('radius') || '50'; // km
+        if (!lat || !lng) return json({ error: 'Missing lat/lng' }, 400, origin);
+        const today = new Date().toISOString().split('T')[0];
+        const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+        const gfwUrl = `https://gateway.api.globalfishingwatch.org/v3/events?datasets[0]=public-global-fishing-events:latest&start-date=${weekAgo}&end-date=${today}&lat=${lat}&lon=${lng}&radius=${radius}&limit=20&offset=0`;
+        const gfwRes = await fetch(gfwUrl, {
+          headers: { 'Authorization': `Bearer ${env.GFW_API_KEY}` },
+        });
+        if (!gfwRes.ok) return json({ vessels: [] }, 200, origin);
+        const data = await gfwRes.json();
+        return json({ vessels: data.entries || [], total: data.total || 0 }, 200, origin);
+      }
+
       return json({ error: 'Unknown endpoint' }, 404, origin);
     } catch (e) {
       return json({ error: e.message || 'AI request failed' }, 502, origin);
