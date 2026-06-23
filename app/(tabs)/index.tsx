@@ -194,26 +194,20 @@ export default function HomeScreen() {
         {/* Score Card */}
         <View style={s.scoreCard}>
           <Text style={s.scoreCardLabel}>FISHING SCORE</Text>
-          <View style={s.scoreCardBody}>
-            <View style={s.scoreLeft}>
-              <View style={s.scoreNumRow}>
-                <Text style={s.scoreNum}>{score}</Text>
-                <Text style={s.scoreDenom}>/100</Text>
-              </View>
-              <Text style={s.scoreConditions}>{getConditionsLabel(score)}</Text>
-            </View>
-            <View style={s.scoreBarWrap}>
-              <View style={s.scoreBarTrack}>
-                <View style={[s.scoreBarFill, { width: `${score}%` as any }]} />
-              </View>
-              {nextWindowStr ? (
-                <View style={s.primeInline}>
-                  <MaterialCommunityIcons name="clock-outline" size={11} color={colors.textTertiary} />
-                  <Text style={s.primeInlineText}>Next prime {nextWindowStr}</Text>
-                </View>
-              ) : null}
-            </View>
+          <View style={s.scoreNumRow}>
+            <Text style={s.scoreNum}>{score}</Text>
+            <Text style={s.scoreDenom}>/100</Text>
           </View>
+          <Text style={s.scoreConditions}>{getConditionsLabel(score)}</Text>
+          <View style={s.scoreBarTrack}>
+            <View style={[s.scoreBarFill, { width: `${score}%` as any }]} />
+          </View>
+          {nextWindowStr ? (
+            <View style={s.primeInline}>
+              <MaterialCommunityIcons name="clock-outline" size={11} color={colors.textTertiary} />
+              <Text style={s.primeInlineText}>Next prime {nextWindowStr}</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Sunrise / Sunset arc */}
