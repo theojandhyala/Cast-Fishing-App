@@ -338,7 +338,7 @@ export default function SessionScreen() {
               { icon: 'camera-outline', label: 'Take Photo', onPress: () => {} },
             ].map(a => (
               <TouchableOpacity key={a.label} style={s.actionBtn} onPress={a.onPress} activeOpacity={0.85}>
-                <MaterialCommunityIcons name={a.icon as any} size={28} color={colors.primary} />
+                <MaterialCommunityIcons name={a.icon as any} size={32} color={colors.primary} />
                 <Text style={s.actionLabel}>{a.label}</Text>
               </TouchableOpacity>
             ))}
@@ -614,15 +614,16 @@ const s = StyleSheet.create({
   timerCol: { flex: 1 },
   sessionActivePill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(0,212,170,0.15)',
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)',
-    borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 5,
+    backgroundColor: 'rgba(0,212,170,0.18)',
+    borderWidth: 1.5, borderColor: 'rgba(0,212,170,0.5)',
+    borderRadius: radius.full, paddingHorizontal: 12, paddingVertical: 6,
     alignSelf: 'flex-start', marginBottom: 10,
+    shadowColor: '#00D4AA', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
   },
-  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
-  sessionActiveText: { fontSize: 11, fontWeight: '700', color: colors.primary, letterSpacing: 0.5 },
+  activeDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#00D4AA' },
+  sessionActiveText: { fontSize: 11, fontWeight: '800', color: '#00D4AA', letterSpacing: 0.8 },
 
-  timerText: { fontSize: 38, fontWeight: '700', color: '#fff', letterSpacing: -1, marginBottom: 4 },
+  timerText: { fontSize: 44, fontWeight: '700', color: '#fff', letterSpacing: -2, marginBottom: 4, fontVariant: ['tabular-nums'] },
   timerLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 12 },
 
   endBtn: {
@@ -705,11 +706,11 @@ const s = StyleSheet.create({
     flexDirection: 'row', gap: 8,
   },
   actionBtn: {
-    flex: 1, alignItems: 'center', gap: 8,
+    flex: 1, alignItems: 'center', gap: 10,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
-    paddingVertical: 16,
+    paddingVertical: 20,
     ...elevation.raised,
   },
   actionLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, textAlign: 'center' },

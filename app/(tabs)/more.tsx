@@ -6,8 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,70 +19,70 @@ const MENU_SECTIONS = [
   {
     section: 'MY FISHING',
     items: [
-      { icon: 'account-circle', label: 'My Profile', route: '/profile', color: colors.primary, desc: 'XP, level & badges' },
-      { icon: 'chart-bar', label: 'My Stats', route: '/my-stats', color: '#60A5FA', desc: 'Full fishing analytics' },
-      { icon: 'trophy', label: 'My Records', route: '/records', color: colors.secondary, desc: 'PBs vs UK records' },
-      { icon: 'toolbox', label: 'My Gear', route: '/gear-tracker', color: '#60A5FA', desc: 'Tackle & kit tracker' },
-      { icon: 'calendar-clock', label: 'Trip Planner', route: '/trip-planner', color: '#10B981', desc: 'Plan your sessions' },
-      { icon: 'share-variant', label: 'Share a Catch', route: '/catch-card-share', color: colors.primary, desc: 'Create shareable catch cards' },
-      { icon: 'magnify', label: 'Search', route: '/search', color: '#A78BFA', desc: 'Search spots, species, knots' },
-      { icon: 'book-open', label: 'Fishing Journal', route: '/fishing-journal', color: '#10B981', desc: 'Session notes & memories' },
+      { icon: 'account-circle', label: 'My Profile', route: '/profile', desc: 'XP, level & badges', comingSoon: false, isPro: false },
+      { icon: 'chart-bar', label: 'My Stats', route: '/my-stats', desc: 'Full fishing analytics', comingSoon: false, isPro: false },
+      { icon: 'trophy', label: 'My Records', route: '/records', desc: 'PBs vs UK records', comingSoon: false, isPro: false },
+      { icon: 'toolbox', label: 'My Gear', route: '/gear-tracker', desc: 'Tackle & kit tracker', comingSoon: false, isPro: false },
+      { icon: 'calendar-clock', label: 'Trip Planner', route: '/trip-planner', desc: 'Plan your sessions', comingSoon: false, isPro: false },
+      { icon: 'share-variant', label: 'Share a Catch', route: '/catch-card-share', desc: 'Create shareable catch cards', comingSoon: false, isPro: false },
+      { icon: 'magnify', label: 'Search', route: '/search', desc: 'Search spots, species, knots', comingSoon: false, isPro: false },
+      { icon: 'book-open', label: 'Fishing Journal', route: '/fishing-journal', desc: 'Session notes & memories', comingSoon: false, isPro: false },
     ],
   },
   {
     section: 'TOOLS',
     items: [
-      { icon: 'book-open-page-variant', label: 'Fish Encyclopedia', route: '/fish-encyclopedia', color: '#EC4899', desc: '25+ species with rarity system' },
-      { icon: 'database', label: 'Fish Database (300+ Species)', route: '/fish-database', color: '#3B82F6', desc: 'Global fish database with rarities' },
-      { icon: 'radar', label: 'Fish Radar', route: '/fish-radar', color: '#22C55E', desc: 'What\'s active near you' },
-      { icon: 'format-list-bulleted', label: 'Quest Log', route: '/quests', color: '#F59E0B', desc: 'Daily, weekly & story quests' },
-      { icon: 'compare', label: 'Species Compare', route: '/species-compare', color: '#8B5CF6', desc: 'Compare any two fish' },
-      { icon: 'robot', label: 'AI Advisor', route: '/ai-advisor', color: colors.primary, desc: 'Ask anything about fishing' },
-      { icon: 'lightbulb', label: 'Fish Tips', route: '/fish-tips', color: colors.secondary, desc: 'Species tips & bite times' },
-      { icon: 'calendar-month', label: 'Fishing Calendar', route: '/fishing-calendar', color: '#A78BFA', desc: 'Moon, tides & scores' },
-      { icon: 'food-drumstick', label: 'Bait Guide', route: '/bait-guide', color: '#10B981', desc: '30+ baits & bait match' },
-      { icon: 'link-variant', label: 'Knot Library', route: '/knots', color: colors.primary, desc: '20 essential knots' },
-      { icon: 'weather-partly-cloudy', label: 'Weather & Tides', route: '/weather-detail', color: '#60A5FA', desc: 'Full conditions dashboard' },
-      { icon: 'camera', label: 'Fish Identifier', route: '/identifier', color: colors.secondary, desc: 'Photo ID tool' },
-      { icon: 'hook', label: 'Rig Builder', route: '/rig-builder', color: '#10B981', desc: '15 rig tutorials' },
-      { icon: 'water', label: 'Water Conditions', route: '/water-conditions', color: '#3B82F6', desc: 'Temp, clarity & levels' },
-      { icon: 'store', label: 'Tackle Shops', route: '/tackle-shops', color: '#F59E0B', desc: 'Find local tackle shops' },
-      { icon: 'shopping', label: 'Marketplace', route: '/marketplace', color: '#00D4AA', desc: 'Gear deals & fishing kit' },
-      { icon: 'account-tie', label: 'Fishing Guides', route: '/fishing-guides', color: '#F59E0B', desc: 'Hire a professional guide' },
-      { icon: 'target', label: 'Casting Calculator', route: '/casting-calculator', color: '#60A5FA', desc: 'Estimate casting distance' },
-      { icon: 'moon-waxing-crescent', label: 'Moon Calendar', route: '/moon-calendar', color: '#A78BFA', desc: 'Lunar fishing guide' },
+      { icon: 'book-open-page-variant', label: 'Fish Encyclopedia', route: '/fish-encyclopedia', desc: '25+ species with rarity system', comingSoon: false, isPro: false },
+      { icon: 'database', label: 'Fish Database', route: '/fish-database', desc: 'Global fish database with rarities', comingSoon: false, isPro: true },
+      { icon: 'radar', label: 'Fish Radar', route: '/fish-radar', desc: "What's active near you", comingSoon: false, isPro: false },
+      { icon: 'format-list-bulleted', label: 'Quest Log', route: '/quests', desc: 'Daily, weekly & story quests', comingSoon: false, isPro: false },
+      { icon: 'compare', label: 'Species Compare', route: '/species-compare', desc: 'Compare any two fish', comingSoon: false, isPro: false },
+      { icon: 'robot', label: 'AI Advisor', route: '/ai-advisor', desc: 'Ask anything about fishing', comingSoon: false, isPro: true },
+      { icon: 'lightbulb', label: 'Fish Tips', route: '/fish-tips', desc: 'Species tips & bite times', comingSoon: false, isPro: false },
+      { icon: 'calendar-month', label: 'Fishing Calendar', route: '/fishing-calendar', desc: 'Moon, tides & scores', comingSoon: false, isPro: false },
+      { icon: 'food-drumstick', label: 'Bait Guide', route: '/bait-guide', desc: '30+ baits & bait match', comingSoon: false, isPro: false },
+      { icon: 'link-variant', label: 'Knot Library', route: '/knots', desc: '20 essential knots', comingSoon: false, isPro: false },
+      { icon: 'weather-partly-cloudy', label: 'Weather & Tides', route: '/weather-detail', desc: 'Full conditions dashboard', comingSoon: false, isPro: false },
+      { icon: 'camera', label: 'Fish Identifier', route: '/identifier', desc: 'Photo ID tool', comingSoon: false, isPro: false },
+      { icon: 'hook', label: 'Rig Builder', route: '/rig-builder', desc: '15 rig tutorials', comingSoon: false, isPro: false },
+      { icon: 'water', label: 'Water Conditions', route: '/water-conditions', desc: 'Temp, clarity & levels', comingSoon: false, isPro: false },
+      { icon: 'store', label: 'Tackle Shops', route: '/tackle-shops', desc: 'Find local tackle shops', comingSoon: false, isPro: false },
+      { icon: 'shopping', label: 'Marketplace', route: '/marketplace', desc: 'Gear deals & fishing kit', comingSoon: false, isPro: false },
+      { icon: 'account-tie', label: 'Fishing Guides', route: '/fishing-guides', desc: 'Hire a professional guide', comingSoon: false, isPro: false },
+      { icon: 'target', label: 'Casting Calculator', route: '/casting-calculator', desc: 'Estimate casting distance', comingSoon: false, isPro: false },
+      { icon: 'moon-waxing-crescent', label: 'Moon Calendar', route: '/moon-calendar', desc: 'Lunar fishing guide', comingSoon: false, isPro: true },
     ],
   },
   {
     section: 'RULES',
     items: [
-      { icon: 'file-document', label: 'Licence & Regulations', route: '/licence-checker', color: colors.danger, desc: 'Licence, seasons & sizes' },
-      { icon: 'ruler', label: 'Size Limits', route: '/licence-checker', color: colors.warning, desc: 'Legal size checker' },
-      { icon: 'calendar-remove', label: 'Closed Seasons', route: '/licence-checker', color: '#EF4444', desc: 'When you can fish' },
-      { icon: 'shield-check', label: 'Safety & Emergency', route: '/safety', color: '#EF4444', desc: 'First aid, contacts & water safety' },
+      { icon: 'file-document', label: 'Licence & Regulations', route: '/licence-checker', desc: 'Licence, seasons & sizes', comingSoon: false, isPro: false },
+      { icon: 'ruler', label: 'Size Limits', route: '/licence-checker', desc: 'Legal size checker', comingSoon: false, isPro: false },
+      { icon: 'calendar-remove', label: 'Closed Seasons', route: '/licence-checker', desc: 'When you can fish', comingSoon: false, isPro: false },
+      { icon: 'shield-check', label: 'Safety & Emergency', route: '/safety', desc: 'First aid, contacts & water safety', comingSoon: false, isPro: false },
     ],
   },
   {
     section: 'COMMUNITY',
     items: [
-      { icon: 'account-group', label: 'Friends', route: '/friends', color: '#22C55E', desc: 'Find and connect with other anglers' },
-      { icon: 'account-group', label: 'Community Feed', route: '/community', color: '#60A5FA', desc: 'See what others are catching' },
-      { icon: 'podium', label: 'Leaderboards', route: '/leaderboards', color: colors.secondary, desc: 'Top anglers this week' },
-      { icon: 'account-multiple', label: 'Fishing Clubs', route: '/clubs', color: '#8B5CF6', desc: 'Join and create clubs' },
-      { icon: 'medal', label: 'Challenges', route: '/challenges', color: '#F97316', desc: 'Weekly & monthly goals' },
-      { icon: 'trophy-outline', label: 'Competitions', route: '/competitions', color: '#EC4899', desc: 'Local & virtual competitions' },
-      { icon: 'shopping', label: 'Gear Marketplace', route: '/marketplace', color: '#00D4AA', desc: 'Shop deals with the community' },
-      { icon: 'account-tie', label: 'Find a Guide', route: '/fishing-guides', color: '#F59E0B', desc: 'Connect with professional guides' },
+      { icon: 'account-group', label: 'Friends', route: '/friends', desc: 'Find and connect with other anglers', comingSoon: false, isPro: false },
+      { icon: 'account-group', label: 'Community Feed', route: '/community', desc: 'See what others are catching', comingSoon: false, isPro: false },
+      { icon: 'podium', label: 'Leaderboards', route: '/leaderboards', desc: 'Top anglers this week', comingSoon: false, isPro: false },
+      { icon: 'account-multiple', label: 'Fishing Clubs', route: '/clubs', desc: 'Join and create clubs', comingSoon: true, isPro: false },
+      { icon: 'medal', label: 'Challenges', route: '/challenges', desc: 'Weekly & monthly goals', comingSoon: false, isPro: false },
+      { icon: 'trophy-outline', label: 'Competitions', route: '/competitions', desc: 'Local & virtual competitions', comingSoon: true, isPro: false },
+      { icon: 'shopping', label: 'Gear Marketplace', route: '/marketplace', desc: 'Shop deals with the community', comingSoon: false, isPro: false },
+      { icon: 'account-tie', label: 'Find a Guide', route: '/fishing-guides', desc: 'Connect with professional guides', comingSoon: false, isPro: false },
     ],
   },
   {
     section: 'ACCOUNT',
     items: [
-      { icon: 'crown', label: 'Upgrade to Pro', route: '/pro', color: colors.secondary, desc: 'Unlock all features' },
-      { icon: 'cog', label: 'Settings', route: '/settings', color: colors.textSecondary, desc: 'Preferences & account' },
-      { icon: 'bell', label: 'Notifications', route: '/notifications', color: '#8B5CF6', desc: 'Alert preferences' },
-      { icon: 'help-circle', label: 'Help & Feedback', route: null, color: colors.textSecondary, desc: '' },
-      { icon: 'star', label: 'Rate the App', route: null, color: colors.secondary, desc: '' },
+      { icon: 'crown', label: 'Upgrade to Pro', route: '/pro', desc: 'Unlock all features', comingSoon: false, isPro: false },
+      { icon: 'cog', label: 'Settings', route: '/settings', desc: 'Preferences & account', comingSoon: false, isPro: false },
+      { icon: 'bell', label: 'Notifications', route: '/notifications', desc: 'Alert preferences', comingSoon: false, isPro: false },
+      { icon: 'help-circle', label: 'Help & Feedback', route: null as string | null, desc: '', comingSoon: false, isPro: false },
+      { icon: 'star', label: 'Rate the App', route: null as string | null, desc: '', comingSoon: false, isPro: false },
     ],
   },
 ];
@@ -108,78 +108,59 @@ export default function MoreScreen() {
   };
 
   const xpProgress = user ? (user.xp % 1000) / 1000 : 0;
+  const initials = user?.name
+    ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'AN';
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile header */}
-        <LinearGradient
-          colors={['rgba(0,212,170,0.1)', 'transparent']}
-          style={styles.profileGradient}
-        >
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <MaterialCommunityIcons name="fish" size={36} color={colors.primary} />
+
+        {/* ── Profile Header ── */}
+        <LinearGradient colors={['#0A1E1A', '#050A12']} style={styles.profileGradient}>
+          {/* Avatar */}
+          <LinearGradient
+            colors={['#00D4AA', '#00A882']}
+            style={styles.avatarRing}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.avatarInner}>
+              <Text style={styles.avatarInitials}>{initials}</Text>
             </View>
-            {user?.isPro && (
-              <View style={styles.proBadge}>
-                <Text style={styles.proBadgeText}>PRO</Text>
-              </View>
-            )}
-          </View>
+          </LinearGradient>
+
           <Text style={styles.userName}>{user?.name || 'Angler'}</Text>
-          {user?.isPro ? (
-            <LinearGradient colors={['#F59E0B', '#00D4AA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.proMemberPill}>
-              <Text style={styles.proMemberText}>PRO MEMBER</Text>
-            </LinearGradient>
-          ) : (
-            <TouchableOpacity onPress={() => router.push('/pro' as any)} style={styles.goProBtn}>
-              <Text style={styles.goProText}>GO PRO →</Text>
-            </TouchableOpacity>
-          )}
-          <Text style={styles.userEmail}>{user?.email || ''}</Text>
-          <View style={styles.levelRow}>
-            <View style={styles.levelBadge}>
-              <MaterialCommunityIcons name="fish" size={12} color={colors.primary} />
-              <Text style={styles.levelText}>Level {user?.level || 1}</Text>
-            </View>
-            <Text style={styles.xpLabel}>{user?.xp || 0} XP</Text>
-          </View>
+          <Text style={styles.userHandle}>@{(user?.email?.split('@')[0] || 'angler').toLowerCase()}</Text>
+
+          {/* XP bar */}
           <View style={styles.xpBarContainer}>
             <View style={styles.xpBar}>
-              <View style={[styles.xpFill, { width: `${xpProgress * 100}%` }]} />
+              <View style={[styles.xpFill, { width: `${xpProgress * 100}%` as any }]} />
             </View>
-            <Text style={styles.xpBarLabel}>{Math.round(xpProgress * 100)}% to Level {(user?.level || 1) + 1}</Text>
+            <Text style={styles.xpBarPct}>{Math.round(xpProgress * 100)}%</Text>
+          </View>
+          <Text style={styles.xpToNext}>to Level {(user?.level || 1) + 1}</Text>
+
+          {/* Stats row */}
+          <View style={styles.statsRow}>
+            {[
+              { val: stats.total.toString(), label: 'Catches' },
+              { val: Object.keys(stats.speciesCounts).length.toString(), label: 'Species' },
+              { val: `${user?.streak || 0}d`, label: 'Streak' },
+              { val: `${user?.level || 1}`, label: 'Level' },
+            ].map((item, i) => (
+              <React.Fragment key={item.label}>
+                {i > 0 && <View style={styles.statsDivider} />}
+                <View style={styles.statItem}>
+                  <Text style={styles.statValue}>{item.val}</Text>
+                  <Text style={styles.statLabel}>{item.label}</Text>
+                </View>
+              </React.Fragment>
+            ))}
           </View>
         </LinearGradient>
 
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          <StatItem label="Catches" value={stats.total.toString()} icon="fish" />
-          <StatItem label="Species" value={Object.keys(stats.speciesCounts).length.toString()} icon="book" />
-          <StatItem label="Best (kg)" value={stats.heaviest ? stats.heaviest.weight.toString() : '-'} icon="trophy" />
-          <StatItem label="Streak" value={`${user?.streak || 0}d`} icon="fire" />
-        </View>
-
-        {/* Achievements */}
-        <View style={styles.achievementsCard}>
-          <View style={styles.achievementsRow}>
-            {[
-              { icon: 'hook', title: 'First Cast', unlocked: stats.total >= 1 },
-              { icon: 'fish', title: '10 Catches', unlocked: stats.total >= 10 },
-              { icon: 'trophy', title: '5kg Fish', unlocked: (stats.heaviest?.weight || 0) >= 5 },
-              { icon: 'fire', title: '7 Day Streak', unlocked: (user?.streak || 0) >= 7 },
-              { icon: 'star', title: '5 Species', unlocked: Object.keys(stats.speciesCounts).length >= 5 },
-            ].map((a) => (
-              <View key={a.title} style={[styles.achievement, !a.unlocked && styles.achievementLocked]}>
-                <MaterialCommunityIcons name={a.icon as any} size={28} color={a.unlocked ? colors.primary : colors.textSecondary} />
-                <Text style={styles.achievementTitle}>{a.title}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Menu sections */}
+        {/* ── Menu Sections ── */}
         {MENU_SECTIONS.map((section) => (
           <View key={section.section} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.section}</Text>
@@ -190,237 +171,128 @@ export default function MoreScreen() {
                   style={[
                     styles.menuItem,
                     index < section.items.length - 1 && styles.menuItemBorder,
+                    item.comingSoon && styles.menuItemDimmed,
                   ]}
                   onPress={() => {
+                    if (item.comingSoon) {
+                      Alert.alert('Coming Soon', 'This feature is coming in a future update!');
+                      return;
+                    }
                     if (item.route) {
                       router.push(item.route as any);
                     } else if (item.label === 'Rate the App') {
                       Alert.alert('Rate CAST', 'Thank you for using CAST! A rating on the App Store means the world to us.');
-                    } else if (item.label === 'Settings' || item.label === 'Help & Feedback' || item.label === 'Fishing Clubs') {
+                    } else if (item.label === 'Help & Feedback') {
                       Alert.alert('Coming Soon', 'This feature is coming in a future update!');
-                    } else if (item.label === 'My Profile') {
-                      Alert.alert('Your Profile', `Level ${user?.level || 1} Angler\n${user?.xp || 0} XP\n${stats.total} catches logged\n${Object.keys(stats.speciesCounts).length} species caught`);
                     }
                   }}
                 >
-                  <View style={[styles.menuIcon, { backgroundColor: item.color + '22' }]}>
-                    <MaterialCommunityIcons name={item.icon as any} size={20} color={item.color} />
+                  <View style={styles.menuIconWrap}>
+                    <MaterialCommunityIcons name={item.icon as any} size={20} color={colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.menuLabel}>{item.label}</Text>
+                    <Text style={[styles.menuLabel, item.comingSoon && styles.menuLabelDimmed]}>{item.label}</Text>
                     {item.desc ? <Text style={styles.menuDesc}>{item.desc}</Text> : null}
                   </View>
-                  <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textSecondary} />
+                  {item.isPro && (
+                    <View style={styles.proBadge}>
+                      <Text style={styles.proBadgeText}>PRO</Text>
+                    </View>
+                  )}
+                  {item.comingSoon ? (
+                    <MaterialCommunityIcons name="lock-outline" size={16} color={colors.textTertiary} />
+                  ) : (
+                    <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
+                  )}
                 </TouchableOpacity>
               ))}
             </View>
           </View>
         ))}
 
-        {/* Sign out */}
+        {/* ── Sign Out ── */}
         <TouchableOpacity style={styles.signOut} onPress={handleLogout}>
-          <MaterialCommunityIcons name="logout" size={18} color={colors.danger} />
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
 
         <Text style={styles.version}>CAST v1.0.0 • Made for UK Anglers</Text>
-
         <View style={{ height: 80 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-function StatItem({ label, value, icon }: { label: string; value: string; icon: string }) {
-  return (
-    <View style={styles.statItem}>
-      <MaterialCommunityIcons name={icon as any} size={16} color={colors.primary} />
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+
+  // ── Profile Header ──
   profileGradient: {
     alignItems: 'center',
-    paddingVertical: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
     paddingHorizontal: spacing.lg,
   },
-  avatarContainer: {
-    position: 'relative',
+  avatarRing: {
+    width: 70, height: 70, borderRadius: 35,
+    alignItems: 'center', justifyContent: 'center',
     marginBottom: spacing.md,
   },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  avatarInner: {
+    width: 64, height: 64, borderRadius: 32,
     backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.primary + '44',
+    alignItems: 'center', justifyContent: 'center',
   },
-  proBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: colors.secondary,
-    borderRadius: radius.full,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  proBadgeText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#0A0E1A',
+  avatarInitials: {
+    fontSize: 22, fontWeight: '900', color: '#00D4AA',
   },
   userName: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 4,
+    fontSize: 20, fontWeight: '800', color: colors.textPrimary, marginBottom: 3,
   },
-  proMemberPill: {
-    borderRadius: radius.full,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    marginBottom: 6,
+  userHandle: {
+    fontSize: 13, color: colors.textSecondary, marginBottom: spacing.md,
   },
-  proMemberText: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: '#050A12',
-    letterSpacing: 1.2,
-  },
-  goProBtn: {
-    backgroundColor: '#00D4AA',
-    borderRadius: radius.full,
-    paddingHorizontal: 16,
-    paddingVertical: 5,
-    marginBottom: 6,
-  },
-  goProText: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#050A12',
-    letterSpacing: 0.8,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  levelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
-  },
-  levelBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,212,170,0.15)',
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
-    gap: 4,
-  },
-  levelText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  xpLabel: {
-    fontSize: 12,
-    color: colors.textSecondary,
-  },
+
+  // XP bar
   xpBarContainer: {
-    width: '80%',
-    alignItems: 'center',
-    gap: 4,
+    width: '78%', flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4,
   },
   xpBar: {
-    width: '100%',
-    height: 6,
-    backgroundColor: colors.surface2,
-    borderRadius: 3,
-    overflow: 'hidden',
+    flex: 1, height: 6, backgroundColor: colors.surface2,
+    borderRadius: 3, overflow: 'hidden',
   },
   xpFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 3,
+    height: '100%', backgroundColor: '#00D4AA', borderRadius: 3,
   },
-  xpBarLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
+  xpBarPct: {
+    fontSize: 11, fontWeight: '700', color: '#00D4AA',
   },
+  xpToNext: {
+    fontSize: 10, color: colors.textTertiary, marginBottom: spacing.lg,
+  },
+
+  // Stats row
   statsRow: {
     flexDirection: 'row',
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    overflow: 'hidden',
+    paddingVertical: 16,
   },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    gap: 3,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-  statLabel: {
-    fontSize: 10,
-    color: colors.textSecondary,
-  },
-  achievementsCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  achievementsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  achievement: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  achievementLocked: {
-    opacity: 0.3,
-  },
-  achievementTitle: {
-    fontSize: 9,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
+  statItem: { flex: 1, alignItems: 'center', gap: 3 },
+  statValue: { fontSize: 18, fontWeight: '900', color: '#00D4AA' },
+  statLabel: { fontSize: 10, color: colors.textSecondary },
+  statsDivider: { width: 1, height: 28, backgroundColor: colors.border, alignSelf: 'center' },
+
+  // ── Section ──
   section: {
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginBottom: spacing.xs,
+    fontSize: 10, fontWeight: '800', color: colors.textTertiary,
+    textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: spacing.xs,
   },
   menuCard: {
     backgroundColor: colors.surface,
@@ -432,52 +304,42 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
     gap: spacing.md,
+    minHeight: 52,
   },
   menuItemBorder: {
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  menuIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+  menuItemDimmed: { opacity: 0.55 },
+  menuIconWrap: {
+    width: 36, height: 36, borderRadius: radius.md,
+    backgroundColor: 'rgba(0,212,170,0.1)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
   },
-  menuLabel: {
-    fontSize: 15,
-    color: colors.textPrimary,
-    fontWeight: '600',
+  menuLabel: { fontSize: 15, color: colors.textPrimary, fontWeight: '600' },
+  menuLabelDimmed: { color: colors.textSecondary },
+  menuDesc: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
+  proBadge: {
+    backgroundColor: 'rgba(245,158,11,0.18)',
+    borderRadius: radius.sm,
+    borderWidth: 1, borderColor: 'rgba(245,158,11,0.35)',
+    paddingHorizontal: 6, paddingVertical: 2,
   },
-  menuDesc: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 1,
-  },
+  proBadgeText: { fontSize: 9, fontWeight: '900', color: '#F59E0B', letterSpacing: 0.5 },
+
+  // ── Sign Out ──
   signOut: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
     paddingVertical: spacing.md,
-    backgroundColor: 'rgba(239,68,68,0.08)',
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.2)',
+    alignItems: 'center',
   },
-  signOutText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.danger,
-  },
+  signOutText: { fontSize: 15, fontWeight: '600', color: colors.danger },
   version: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.md,
+    fontSize: 12, color: colors.textTertiary, textAlign: 'center', marginBottom: spacing.md,
   },
 });

@@ -26,7 +26,7 @@ import { colors, radius, spacing } from '../constants/theme';
 type MainTab = 'global' | 'spot' | 'friends';
 type Period = 'weekly' | 'monthly' | 'alltime';
 
-// ─── Mock data helpers ───────────────────────────────────────────────────────
+// ─── Mock data ───────────────────────────────────────────────────────────────
 
 const GRAFHAM_ANGLERS = [
   { id: 'g1', name: 'CarpKing', avatar: 'CK', biggestFish: 14.2, catches: 31, change: 'up' as const, changeAmount: 2 },
@@ -50,7 +50,11 @@ const FRIENDS_DATA = [
   { id: 'f5', name: 'Ben W.', avatar: 'BW', biggestFish: 4.8, catches: 12, change: 'down' as const, changeAmount: 3 },
 ];
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const GOLD = '#F59E0B';
+const SILVER = '#94A3B8';
+const BRONZE = '#CD7F32';
 
 type RankEntry = {
   id: string;
@@ -62,10 +66,6 @@ type RankEntry = {
   changeAmount: number;
 };
 
-const GOLD = '#FFD700';
-const SILVER = '#C0C0C0';
-const BRONZE = '#CD7F32';
-
 function rankColor(rank: number): string {
   if (rank === 1) return GOLD;
   if (rank === 2) return SILVER;
@@ -73,32 +73,29 @@ function rankColor(rank: number): string {
   return colors.textTertiary;
 }
 
-function avatarBg(rank: number, isUser: boolean): string {
-  if (isUser) return 'rgba(0,212,170,0.18)';
-  if (rank === 1) return 'rgba(255,215,0,0.15)';
-  if (rank === 2) return 'rgba(192,192,192,0.15)';
-  if (rank === 3) return 'rgba(205,127,50,0.15)';
-  return 'rgba(255,255,255,0.06)';
+function podiumGrad(rank: number): [string, string] {
+  if (rank === 1) return ['rgba(245,158,11,0.22)', 'rgba(245,158,11,0.05)'];
+  if (rank === 2) return ['rgba(148,163,184,0.22)', 'rgba(148,163,184,0.05)'];
+  return ['rgba(205,127,50,0.22)', 'rgba(205,127,50,0.05)'];
 }
 
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
 function PodiumCard({ entry, rank }: { entry: RankEntry; rank: number }) {
-  const gradColors: [string, string] =
-    rank === 1
-      ? ['rgba(255,215,0,0.18)', 'rgba(255,215,0,0.04)']
-      : rank === 2
-      ? ['rgba(192,192,192,0.18)', 'rgba(192,192,192,0.04)']
-      : ['rgba(205,127,50,0.18)', 'rgba(205,127,50,0.04)'];
   const accent = rankColor(rank);
   return (
-    <LinearGradient colors={gradColors} style={[s.podiumCard, { borderColor: accent + '55' }]}>
-      <View style={[s.podiumAvatar, { backgroundColor: avatarBg(rank, false), borderColor: accent + '88' }]}>
+    <LinearGradient
+      colors={podiumGrad(rank)}
+      style={[s.podiumCard, { borderColor: accent + '66' }, rank === 1 && s.podiumCardFirst]}
+    >
+      <View style={[s.podiumAvatar, { borderColor: accent + '88', backgroundColor: accent + '15' }]}>
         <Text style={[s.podiumAvatarText, { color: accent }]}>{entry.avatar}</Text>
       </View>
       <View style={s.podiumMedal}>
         {rank === 1 ? (
           <MaterialCommunityIcons name="crown" size={14} color={GOLD} />
         ) : (
-          <MaterialCommunityIcons name="medal" size={14} color={accent} />
+          <MaterialCommunityIcons name="medal" size={13} color={accent} />
         )}
         <Text style={[s.podiumRankNum, { color: accent }]}>{rank}</Text>
       </View>
@@ -109,77 +106,51 @@ function PodiumCard({ entry, rank }: { entry: RankEntry; rank: number }) {
   );
 }
 
-function LeaderRow({
-  entry,
-  rank,
-  isUser,
-}: {
-  entry: RankEntry;
-  rank: number;
-  isUser: boolean;
-}) {
+function LeaderRow({ entry, rank, isUser }: { entry: RankEntry; rank: number; isUser: boolean }) {
   return (
-    <View
-      style={[
-        s.row,
-        isUser && s.rowUser,
-      ]}
-    >
+    <View style={[s.row, isUser && s.rowUser]}>
       {isUser && <View style={s.userAccent} />}
-      <View style={[s.rankBadge, { backgroundColor: rankColor(rank) + '22' }]}>
-        {rank === 1 ? (
-          <MaterialCommunityIcons name="crown" size={16} color={GOLD} />
-        ) : rank <= 3 ? (
-          <MaterialCommunityIcons name="medal" size={16} color={rankColor(rank)} />
+      <View style={[s.rankBadge, { backgroundColor: rankColor(rank) + '18' }]}>
+        {rank <= 3 ? (
+          <MaterialCommunityIcons name={rank === 1 ? 'crown' : 'medal'} size={16} color={rankColor(rank)} />
         ) : (
           <Text style={[s.rankNum, { color: rankColor(rank) }]}>{rank}</Text>
         )}
       </View>
-      <View
-        style={[
-          s.avatar,
-          {
-            backgroundColor: avatarBg(rank, isUser),
-            borderColor: isUser ? colors.primary : rank <= 3 ? rankColor(rank) + '66' : colors.border,
-          },
-        ]}
-      >
+      <View style={[
+        s.avatar,
+        {
+          backgroundColor: isUser ? 'rgba(0,212,170,0.15)' : 'rgba(255,255,255,0.05)',
+          borderColor: isUser ? colors.primary : rank <= 3 ? rankColor(rank) + '55' : colors.border,
+        },
+      ]}>
         <Text style={[s.avatarText, { color: isUser ? colors.primary : rank <= 3 ? rankColor(rank) : colors.textSecondary }]}>
           {entry.avatar}
         </Text>
       </View>
       <View style={s.rowInfo}>
-        <Text style={[s.rowName, isUser && { color: colors.primary }]} numberOfLines={1}>
-          {entry.name}
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Text style={[s.rowName, isUser && { color: colors.primary }]} numberOfLines={1}>
+            {entry.name}
+          </Text>
+          {isUser && (
+            <View style={s.youChip}>
+              <Text style={s.youChipText}>YOU</Text>
+            </View>
+          )}
+        </View>
         <Text style={s.rowSub}>{entry.catches} catches</Text>
       </View>
       <View style={s.rowRight}>
         <Text style={[s.rowFish, isUser && { color: colors.primary }]}>{entry.biggestFish}kg</Text>
         <View style={s.changeRow}>
-          {entry.change === 'up' && (
-            <MaterialCommunityIcons name="arrow-up" size={11} color={colors.primary} />
-          )}
-          {entry.change === 'down' && (
-            <MaterialCommunityIcons name="arrow-down" size={11} color="#EF4444" />
-          )}
-          {entry.change === 'same' && (
-            <MaterialCommunityIcons name="minus" size={11} color={colors.textTertiary} />
-          )}
+          {entry.change === 'up' && <MaterialCommunityIcons name="arrow-up" size={11} color={colors.primary} />}
+          {entry.change === 'down' && <MaterialCommunityIcons name="arrow-down" size={11} color="#EF4444" />}
+          {entry.change === 'same' && <MaterialCommunityIcons name="minus" size={11} color={colors.textTertiary} />}
           {entry.changeAmount > 0 && (
-            <Text
-              style={[
-                s.changeAmt,
-                {
-                  color:
-                    entry.change === 'up'
-                      ? colors.primary
-                      : entry.change === 'down'
-                      ? '#EF4444'
-                      : colors.textTertiary,
-                },
-              ]}
-            >
+            <Text style={[s.changeAmt, {
+              color: entry.change === 'up' ? colors.primary : entry.change === 'down' ? '#EF4444' : colors.textTertiary,
+            }]}>
               {entry.changeAmount}
             </Text>
           )}
@@ -189,32 +160,26 @@ function LeaderRow({
   );
 }
 
-// ─── Global tab content ──────────────────────────────────────────────────────
+// ─── Tab content ─────────────────────────────────────────────────────────────
 
 function GlobalTab() {
   const [period, setPeriod] = useState<Period>('weekly');
 
   const rawData =
-    period === 'weekly'
-      ? LEADERBOARD_WEEKLY
-      : period === 'monthly'
-      ? LEADERBOARD_MONTHLY
-      : LEADERBOARD_ALL_TIME;
+    period === 'weekly' ? LEADERBOARD_WEEKLY
+    : period === 'monthly' ? LEADERBOARD_MONTHLY
+    : LEADERBOARD_ALL_TIME;
 
   const sorted = [...rawData].sort((a, b) => b.biggestFish - a.biggestFish);
   const top10 = sorted.slice(0, 10);
   const userEntry = sorted.find((u) => u.id === 'user');
   const userRank = userEntry ? sorted.indexOf(userEntry) + 1 : null;
-  const userInTop10 = userEntry ? userRank !== null && userRank <= 10 : false;
+  const userInTop10 = userRank !== null && userRank <= 10;
 
   const toEntry = (u: LeaderboardUser): RankEntry => ({
-    id: u.id,
-    name: u.name,
-    avatar: u.avatar,
-    biggestFish: u.biggestFish,
-    catches: u.catches,
-    change: u.change,
-    changeAmount: u.changeAmount,
+    id: u.id, name: u.name, avatar: u.avatar,
+    biggestFish: u.biggestFish, catches: u.catches,
+    change: u.change, changeAmount: u.changeAmount,
   });
 
   const top3 = top10.slice(0, 3);
@@ -222,13 +187,13 @@ function GlobalTab() {
 
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scrollContent}>
-      {/* Period picker */}
+      {/* Period pills */}
       <View style={s.periodRow}>
         {(['weekly', 'monthly', 'alltime'] as Period[]).map((p) => (
           <TouchableOpacity
             key={p}
             onPress={() => setPeriod(p)}
-            style={[s.periodChip, period === p && s.periodChipActive]}
+            style={[s.periodPill, period === p && s.periodPillActive]}
           >
             <Text style={[s.periodText, period === p && s.periodTextActive]}>
               {p === 'weekly' ? 'Weekly' : p === 'monthly' ? 'Monthly' : 'All Time'}
@@ -237,19 +202,17 @@ function GlobalTab() {
         ))}
       </View>
 
-      {/* Podium top 3 */}
+      {/* Podium */}
       <View style={s.podiumRow}>
         <PodiumCard entry={toEntry(top3[1])} rank={2} />
         <PodiumCard entry={toEntry(top3[0])} rank={1} />
         <PodiumCard entry={toEntry(top3[2])} rank={3} />
       </View>
 
-      {/* Ranks 4-10 */}
       {rest.map((u, i) => (
         <LeaderRow key={u.id} entry={toEntry(u)} rank={i + 4} isUser={u.id === 'user'} />
       ))}
 
-      {/* Pinned user row if outside top 10 */}
       {!userInTop10 && userEntry && userRank !== null && (
         <>
           <View style={s.dividerRow}>
@@ -266,8 +229,6 @@ function GlobalTab() {
   );
 }
 
-// ─── Spot tab content ────────────────────────────────────────────────────────
-
 function SpotTab() {
   const { catches } = useCatchStore();
   const SPOT_NAME = 'Grafham Water';
@@ -277,19 +238,13 @@ function SpotTab() {
     .reduce((best, c) => Math.max(best, c.weight ?? 0), 0);
 
   const userEntry: RankEntry = {
-    id: 'user',
-    name: 'You',
-    avatar: 'ME',
+    id: 'user', name: 'You', avatar: 'ME',
     biggestFish: userBest > 0 ? userBest : 3.1,
     catches: catches.filter((c) => c.location?.toLowerCase().includes('grafham')).length,
-    change: 'up',
-    changeAmount: 2,
+    change: 'up', changeAmount: 2,
   };
 
-  const allEntries = [...GRAFHAM_ANGLERS, userEntry].sort(
-    (a, b) => b.biggestFish - a.biggestFish
-  );
-
+  const allEntries = [...GRAFHAM_ANGLERS, userEntry].sort((a, b) => b.biggestFish - a.biggestFish);
   const top3 = allEntries.slice(0, 3);
   const rest = allEntries.slice(3);
 
@@ -315,8 +270,6 @@ function SpotTab() {
     </ScrollView>
   );
 }
-
-// ─── Friends tab content ─────────────────────────────────────────────────────
 
 function FriendsTab() {
   const sorted = [...FRIENDS_DATA].sort((a, b) => b.biggestFish - a.biggestFish);
@@ -370,8 +323,8 @@ export default function LeaderboardScreen() {
 
   return (
     <View style={s.screen}>
-      {/* Header */}
       <SafeAreaView edges={['top']} style={s.headerSafe}>
+        {/* Header */}
         <View style={s.header}>
           <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <MaterialCommunityIcons name="arrow-left" size={22} color={colors.textPrimary} />
@@ -383,15 +336,15 @@ export default function LeaderboardScreen() {
           <View style={{ width: 38 }} />
         </View>
 
-        {/* Main tabs */}
-        <View style={s.mainTabs}>
+        {/* Tab Pills */}
+        <View style={s.tabPillRow}>
           {(Object.keys(TAB_LABELS) as MainTab[]).map((t) => (
             <TouchableOpacity
               key={t}
               onPress={() => setTab(t)}
-              style={[s.mainTab, tab === t && s.mainTabActive]}
+              style={[s.tabPill, tab === t && s.tabPillActive]}
             >
-              <Text style={[s.mainTabText, tab === t && s.mainTabTextActive]}>
+              <Text style={[s.tabPillText, tab === t && s.tabPillTextActive]}>
                 {TAB_LABELS[t]}
               </Text>
             </TouchableOpacity>
@@ -399,7 +352,6 @@ export default function LeaderboardScreen() {
         </View>
       </SafeAreaView>
 
-      {/* Content */}
       <View style={s.content}>
         {tab === 'global' && <GlobalTab />}
         {tab === 'spot' && <SpotTab />}
@@ -414,70 +366,52 @@ export default function LeaderboardScreen() {
 const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#050A12' },
   headerSafe: { backgroundColor: '#050A12' },
+
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
+    paddingTop: spacing.sm, paddingBottom: spacing.sm,
   },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 38, height: 38, borderRadius: 19,
+    alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
   headerCenter: { flex: 1, alignItems: 'center' },
   headerTitle: {
-    color: colors.textPrimary,
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 2.5,
+    color: colors.textPrimary, fontSize: 13, fontWeight: '900', letterSpacing: 2.5,
   },
-  headerSub: {
-    color: colors.textSecondary,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  mainTabs: {
+  headerSub: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
+
+  // Tab pills
+  tabPillRow: {
     flexDirection: 'row',
     marginHorizontal: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,212,170,0.12)',
-    marginBottom: 2,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
+    borderRadius: radius.full,
+    borderWidth: 1, borderColor: colors.border,
+    padding: 3, gap: 3,
   },
-  mainTab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+  tabPill: {
+    flex: 1, paddingVertical: 9, borderRadius: radius.full, alignItems: 'center',
   },
-  mainTabActive: { borderBottomColor: colors.primary },
-  mainTabText: { color: colors.textTertiary, fontSize: 12, fontWeight: '700' },
-  mainTabTextActive: { color: colors.primary },
+  tabPillActive: { backgroundColor: colors.primary },
+  tabPillText: { color: colors.textTertiary, fontSize: 12, fontWeight: '700' },
+  tabPillTextActive: { color: '#031A12' },
 
   content: { flex: 1 },
   scrollContent: { paddingHorizontal: spacing.lg, paddingTop: spacing.md },
 
-  // Period picker
-  periodRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  periodChip: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: radius.md,
-    borderWidth: 1,
+  // Period pills
+  periodRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
+  periodPill: {
+    flex: 1, paddingVertical: 8, alignItems: 'center',
+    borderRadius: radius.md, borderWidth: 1,
     borderColor: 'rgba(0,212,170,0.12)',
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
-  periodChipActive: {
+  periodPillActive: {
     backgroundColor: 'rgba(0,212,170,0.12)',
     borderColor: 'rgba(0,212,170,0.4)',
   },
@@ -486,82 +420,61 @@ const s = StyleSheet.create({
 
   // Podium
   podiumRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
+    flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm, marginBottom: spacing.md,
   },
   podiumCard: {
-    flex: 1,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: 4,
+    flex: 1, borderRadius: radius.lg, borderWidth: 1,
+    alignItems: 'center', paddingVertical: spacing.md, paddingHorizontal: 4,
+  },
+  podiumCardFirst: {
+    paddingTop: spacing.lg, paddingBottom: spacing.lg,
   },
   podiumAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
+    width: 44, height: 44, borderRadius: 22, borderWidth: 2,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 6,
   },
-  podiumAvatarText: { fontSize: 11, fontWeight: '800' },
+  podiumAvatarText: { fontSize: 12, fontWeight: '800' },
   podiumMedal: { flexDirection: 'row', alignItems: 'center', gap: 2, marginBottom: 2 },
-  podiumRankNum: { fontSize: 11, fontWeight: '900' },
+  podiumRankNum: { fontSize: 32, fontWeight: '900', letterSpacing: -1 },
   podiumName: { color: colors.textPrimary, fontSize: 11, fontWeight: '700', textAlign: 'center' },
   podiumFish: { fontSize: 16, fontWeight: '900', marginTop: 2 },
   podiumCatches: { color: colors.textTertiary, fontSize: 9, marginTop: 1 },
 
   // Rows
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,170,0.12)',
-    padding: spacing.sm,
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
-    overflow: 'hidden',
+    borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)',
+    padding: spacing.sm, marginBottom: spacing.sm, gap: spacing.sm, overflow: 'hidden',
   },
   rowUser: {
     backgroundColor: 'rgba(0,212,170,0.07)',
     borderColor: 'rgba(0,212,170,0.35)',
   },
   userAccent: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 3,
+    position: 'absolute', left: 0, top: 0, bottom: 0, width: 3,
     backgroundColor: colors.primary,
-    borderTopLeftRadius: radius.lg,
-    borderBottomLeftRadius: radius.lg,
+    borderTopLeftRadius: radius.lg, borderBottomLeftRadius: radius.lg,
   },
   rankBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 36, height: 36, borderRadius: radius.md,
+    alignItems: 'center', justifyContent: 'center',
   },
-  rankNum: { fontSize: 14, fontWeight: '900', fontVariant: ['tabular-nums'] },
+  rankNum: { fontSize: 14, fontWeight: '900' },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 40, height: 40, borderRadius: 20, borderWidth: 1.5,
+    alignItems: 'center', justifyContent: 'center',
   },
   avatarText: { fontSize: 11, fontWeight: '800' },
   rowInfo: { flex: 1 },
   rowName: { color: colors.textPrimary, fontSize: 14, fontWeight: '700' },
   rowSub: { color: colors.textTertiary, fontSize: 11, marginTop: 1 },
+  youChip: {
+    backgroundColor: 'rgba(0,212,170,0.15)',
+    borderRadius: radius.sm, borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)',
+    paddingHorizontal: 6, paddingVertical: 1,
+  },
+  youChipText: { fontSize: 8, fontWeight: '900', color: colors.primary, letterSpacing: 0.5 },
   rowRight: { alignItems: 'flex-end', gap: 2 },
   rowFish: { color: colors.textPrimary, fontSize: 15, fontWeight: '900' },
   changeRow: { flexDirection: 'row', alignItems: 'center', gap: 1 },
@@ -569,36 +482,21 @@ const s = StyleSheet.create({
 
   // Divider
   dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginVertical: spacing.sm,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginVertical: spacing.sm,
   },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.06)' },
   dividerText: { color: colors.textTertiary, fontSize: 10, fontWeight: '700' },
 
-  // Spot header
-  spotHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
+  // Spot
+  spotHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   spotName: { color: colors.textPrimary, fontSize: 15, fontWeight: '800' },
   spotSubtitle: { color: colors.textTertiary, fontSize: 11, marginBottom: spacing.md },
 
-  // Invite button
+  // Invite
   inviteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-    marginHorizontal: spacing.md,
-    paddingVertical: 14,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,170,0.35)',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm,
+    marginTop: spacing.lg, marginHorizontal: spacing.md, paddingVertical: 14,
+    borderRadius: radius.lg, borderWidth: 1, borderColor: 'rgba(0,212,170,0.35)',
     backgroundColor: 'rgba(0,212,170,0.07)',
   },
   inviteText: { color: colors.primary, fontSize: 14, fontWeight: '700' },

@@ -12,14 +12,10 @@ import { colors, radius, spacing, elevation } from '../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// Simple sparkline chart — no external library needed
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function SparklineChart({ catches }: { catches: any[] }) {
-  const chartWidth = SCREEN_WIDTH - spacing.lg * 2 - 32;
   const chartHeight = 60;
-
-  // Count catches per month for current year
   const year = new Date().getFullYear();
   const monthlyCounts = Array(12).fill(0);
   catches.forEach(c => {
@@ -28,40 +24,23 @@ function SparklineChart({ catches }: { catches: any[] }) {
       monthlyCounts[d.getMonth()]++;
     }
   });
-
   const maxCount = Math.max(...monthlyCounts, 1);
-  const points = monthlyCounts.map((count, i) => ({
-    x: (i / 11) * chartWidth,
-    y: chartHeight - (count / maxCount) * chartHeight,
-    count,
-  }));
-
-  // Build SVG path
-  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-  const fillD = `${pathD} L ${chartWidth} ${chartHeight} L 0 ${chartHeight} Z`;
-
   return (
     <View style={{ height: chartHeight + 24 }}>
-      {/* Simple bar chart using Views */}
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: chartHeight, gap: 2 }}>
         {monthlyCounts.map((count, i) => {
           const barH = maxCount > 0 ? (count / maxCount) * chartHeight : 0;
           const isCurrentMonth = i === new Date().getMonth();
           return (
             <View key={i} style={{ flex: 1, height: chartHeight, justifyContent: 'flex-end', alignItems: 'center' }}>
-              <View
-                style={{
-                  width: '75%',
-                  height: Math.max(2, barH),
-                  borderRadius: 2,
-                  backgroundColor: isCurrentMonth ? colors.primary : 'rgba(0,212,170,0.35)',
-                }}
-              />
+              <View style={{
+                width: '75%', height: Math.max(2, barH), borderRadius: 2,
+                backgroundColor: isCurrentMonth ? colors.primary : 'rgba(0,212,170,0.35)',
+              }} />
             </View>
           );
         })}
       </View>
-      {/* Month labels */}
       <View style={{ flexDirection: 'row', marginTop: 4 }}>
         {MONTHS.map((m, i) => (
           <Text key={m} style={{ flex: 1, fontSize: 7, color: colors.textTertiary, textAlign: 'center' }}>
@@ -94,43 +73,51 @@ export default function ProfileScreen() {
   const displayName = user?.name || 'Angler Pro';
   const handle = '@' + (user?.email?.split('@')[0] || 'angler').toLowerCase().replace(/\s/g, '');
   const speciesCount = Object.keys(stats.speciesCounts || {}).length;
-
-  // Estimate unique spots
   const uniqueSpots = new Set(catches.map(c => c.location).filter(Boolean)).size;
+  const uniqueDays = new Set(catches.map(c => new Date(c.date).toDateString())).size;
 
-  // Days active (unique days with catches)
-  const uniqueDays = new Set(
-    catches.map(c => new Date(c.date).toDateString())
-  ).size;
+  const initials = displayName
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
-        {/* Avatar + name block */}
+        {/* ── Header ── */}
+        <View style={s.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={s.headerTitle}>PROFILE</Text>
+          <View style={{ width: 38 }} />
+        </View>
+
+        {/* ── Avatar + identity ── */}
         <View style={s.profileHeader}>
-          {/* Avatar */}
-          <LinearGradient colors={['rgba(0,212,170,0.3)', 'rgba(0,212,170,0.08)']} style={s.avatarRing}>
+          <LinearGradient
+            colors={['#00D4AA', '#00A882']}
+            style={s.avatarRing}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          >
             <View style={s.avatarInner}>
-              <MaterialCommunityIcons name="account" size={44} color={colors.primary} />
+              <Text style={s.avatarInitials}>{initials}</Text>
             </View>
           </LinearGradient>
 
           <View style={s.identity}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={s.displayName}>{displayName}</Text>
-              {user?.isPro && (
-                <View style={{ backgroundColor: '#00D4AA', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 8 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '900', color: '#050A12', letterSpacing: 1 }}>PRO</Text>
-                </View>
-              )}
-            </View>
+            <Text style={s.displayName}>{displayName}</Text>
             <Text style={s.handle}>{handle}</Text>
-            <TouchableOpacity onPress={() => router.push('/settings' as any)}><Text style={s.editProfileLink}>Edit Profile</Text></TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/settings' as any)}>
+              <Text style={s.editProfileLink}>Edit Profile</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* 4-stat row */}
+        {/* ── 4-stat row ── */}
         <View style={s.statsRow}>
           {[
             { val: catches.length, label: 'Catches' },
@@ -148,7 +135,7 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        {/* Menu items */}
+        {/* ── Menu items ── */}
         <View style={s.menuCard}>
           {MENU_ITEMS.map((item, i) => (
             <TouchableOpacity
@@ -157,39 +144,13 @@ export default function ProfileScreen() {
               onPress={() => router.push(item.route as any)}
               activeOpacity={0.75}
             >
-              <MaterialCommunityIcons name={item.icon as any} size={20} color={colors.textSecondary} />
+              <View style={s.menuIconWrap}>
+                <MaterialCommunityIcons name={item.icon as any} size={20} color={colors.primary} />
+              </View>
               <Text style={s.menuLabel}>{item.label}</Text>
               <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textTertiary} />
             </TouchableOpacity>
           ))}
-
-          {/* Pro upgrade / manage row */}
-          {user?.isPro ? (
-            <TouchableOpacity
-              style={[s.menuRow, s.menuRowBorder]}
-              onPress={() => router.push('/pro' as any)}
-              activeOpacity={0.75}
-            >
-              <MaterialCommunityIcons name="crown" size={20} color="#00D4AA" />
-              <Text style={[s.menuLabel, { color: '#00D4AA' }]}>Manage Subscription</Text>
-              <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textTertiary} />
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[s.menuRow, s.menuRowBorder]}
-              onPress={() => router.push('/pro' as any)}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={['rgba(0,212,170,0.15)', 'rgba(0,212,170,0.05)']}
-                style={s.upgradeRowGradient}
-              >
-                <MaterialCommunityIcons name="crown" size={20} color="#00D4AA" />
-                <Text style={[s.menuLabel, { color: '#00D4AA', fontWeight: '800' }]}>Upgrade to Pro</Text>
-                <MaterialCommunityIcons name="chevron-right" size={18} color="#00D4AA" />
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
         </View>
 
       </ScrollView>
@@ -200,159 +161,76 @@ export default function ProfileScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
+  headerRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm,
+  },
+  backBtn: {
+    width: 38, height: 38, borderRadius: 19,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  headerTitle: {
+    fontSize: 13, fontWeight: '900', color: colors.textPrimary, letterSpacing: 2.5,
+  },
+
   profileHeader: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.lg,
+    paddingTop: spacing.md, paddingBottom: spacing.lg,
     gap: spacing.md,
   },
-
   avatarRing: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 84, height: 84, borderRadius: 42,
+    alignItems: 'center', justifyContent: 'center',
   },
   avatarInner: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: 'rgba(0,212,170,0.12)',
-    borderWidth: 2,
-    borderColor: 'rgba(0,212,170,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 78, height: 78, borderRadius: 39,
+    backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
   },
-
+  avatarInitials: {
+    fontSize: 28, fontWeight: '900', color: '#00D4AA',
+  },
   identity: { flex: 1, alignItems: 'flex-start' },
   displayName: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: colors.textPrimary,
-    letterSpacing: -0.5,
+    fontSize: 20, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.5,
   },
   handle: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    fontWeight: '500',
+    fontSize: 12, color: colors.textSecondary, fontWeight: '500', marginTop: 2,
   },
-  editProfileLink: { color: colors.primary, fontSize: 12, fontWeight: '600', marginTop: 7 },
-  proBadge: {
-    marginTop: 4,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(0,212,170,0.12)',
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(0,212,170,0.3)',
-    paddingHorizontal: 14,
-    paddingVertical: 5,
+  editProfileLink: {
+    color: colors.primary, fontSize: 12, fontWeight: '600', marginTop: 7,
   },
-  proBadgeText: { fontSize: 12, fontWeight: '700', color: colors.primary },
 
-  // Stats row
   statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: 18,
-    ...elevation.raised,
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: spacing.lg, marginBottom: spacing.lg,
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.border,
+    paddingVertical: 18, ...elevation.raised,
   },
   statItem: { flex: 1, alignItems: 'center', gap: 4 },
-  statVal: { fontSize: 26, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.8 },
+  statVal: { fontSize: 26, fontWeight: '900', color: '#00D4AA', letterSpacing: -0.8 },
   statLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
   statDivider: { width: 1, height: 32, backgroundColor: colors.border },
 
-  // Chart card
-  chartCard: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    ...elevation.raised,
-  },
-  chartHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: colors.textTertiary,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  chartYear: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
-
-  // Menu
   menuCard: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-    ...elevation.raised,
+    marginHorizontal: spacing.lg, marginBottom: spacing.lg,
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.border,
+    overflow: 'hidden', ...elevation.raised,
   },
   menuRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingHorizontal: spacing.md, paddingVertical: 16,
   },
   menuRowBorder: { borderTopWidth: 1, borderTopColor: colors.border },
-  menuIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.sm,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  menuIconWrap: {
+    width: 36, height: 36, borderRadius: radius.sm,
+    backgroundColor: 'rgba(0,212,170,0.1)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
   },
   menuLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.textPrimary },
-  upgradeRowGradient: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: spacing.md, paddingVertical: 16, marginHorizontal: -spacing.md, marginVertical: -16, borderRadius: 0 },
-
-  // CTAs
-  ctaRow: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.lg,
-    gap: 10,
-  },
-  editBtn: {
-    flex: 1,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  editBtnText: { fontSize: 14, fontWeight: '700', color: colors.textSecondary },
-  proBtn: {
-    flex: 1,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-  },
-  proBtnGrad: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-  },
-  proBtnText: { fontSize: 14, fontWeight: '800', color: '#031A12' },
 });
