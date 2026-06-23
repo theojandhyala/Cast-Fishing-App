@@ -19,6 +19,14 @@ function formatElapsed(ms: number) {
   return `${pad(h)}:${pad(m)}:${pad(sec)}`;
 }
 
+function getActivityLabel(score: number) {
+  if (score >= 80) return 'Very High';
+  if (score >= 60) return 'High';
+  if (score >= 40) return 'Moderate';
+  if (score >= 20) return 'Low';
+  return 'Very Low';
+}
+
 function formatRelTime(dateStr: string, startMs: number) {
   const diff = new Date(dateStr).getTime() - startMs;
   const m = Math.floor(Math.abs(diff) / 60000);
@@ -97,40 +105,72 @@ export default function SessionTab() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
-        {/* Hero Timer */}
-        <View style={s.heroBlock}>
-          <Text style={s.timerText}>{formatElapsed(elapsedMs)}</Text>
-          <View style={s.activeRow}>
-            <View style={s.activeDot} />
-            <Text style={s.activeLabel}>On the water · {spotName}</Text>
+        {/* Timer + Weather row */}
+        <View style={s.timerWeatherRow}>
+          <View style={s.timerBlock}>
+            <View style={s.liveChip}>
+              <View style={s.liveDot} />
+              <Text style={s.liveLabel}>Live Session</Text>
+            </View>
+            <Text style={s.timerText}>{formatElapsed(elapsedMs)}</Text>
+            <Text style={s.timerSub}>Session Time</Text>
+          </View>
+          {weather ? (
+            <View style={s.weatherBox}>
+              <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color={colors.textSecondary} />
+              <Text style={s.weatherTemp}>{weather.temp}°C</Text>
+              <Text style={s.weatherDesc} numberOfLines={2}>{weather.description}</Text>
+              <Text style={s.weatherWind}>{weather.wind} km/h</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Circular Fish Activity Gauge */}
+        <View style={s.gaugeWrap}>
+          <Text style={s.gaugeLabel}>FISH ACTIVITY</Text>
+          <View style={s.gaugeRing}>
+            {/* Arc track — simulated with a border arc via border radius + overflow */}
+            <View style={s.gaugeTrack}>
+              <View style={[s.gaugeFill, {
+                // Rotate the fill arc based on score — 180deg = half circle = 100%
+                transform: [{ rotate: `${Math.min((weather?.fishingScore ?? 0) / 100 * 180, 180)}deg` }],
+              }]} />
+            </View>
+            <View style={s.gaugeCenter}>
+              <Text style={s.gaugeScore}>{weather ? weather.fishingScore : '—'}</Text>
+              <Text style={s.gaugePct}>{weather ? '%' : ''}</Text>
+            </View>
+          </View>
+          <Text style={s.gaugeVerb}>{getActivityLabel(weather?.fishingScore ?? 0)}</Text>
+        </View>
+
+        {/* Catches + Keepers */}
+        <View style={s.statsRow}>
+          <View style={s.statCard}>
+            <Text style={s.statHeaderLabel}>CATCHES</Text>
+            <Text style={s.statValue}>{sessionCatches.length}</Text>
+          </View>
+          <View style={s.statCard}>
+            <Text style={s.statHeaderLabel}>KEEPERS</Text>
+            <Text style={s.statValue}>
+              {sessionCatches.filter((c) => (c.weight ?? 0) > 0).length}
+            </Text>
           </View>
         </View>
 
-        {/* Stats Row */}
-        <View style={s.statsRow}>
-          {[
-            { label: 'Landed', value: String(sessionCatches.length) },
-            { label: 'Bite Activity', value: weather ? `${weather.fishingScore}%` : '—' },
-            { label: 'Weather', value: weather ? `${weather.temp}°C` : '—' },
-          ].map((stat) => (
-            <View key={stat.label} style={s.statCard}>
-              <Text style={s.statValue}>{stat.value}</Text>
-              <Text style={s.statLabel}>{stat.label}</Text>
-            </View>
-          ))}
+        {/* Conditions Row */}
+        <View style={s.condRow}>
+          <Text style={s.condRowTitle}>Conditions</Text>
+          <TouchableOpacity onPress={() => router.push('/conditions' as any)} activeOpacity={0.7}>
+            <Text style={s.condViewAll}>View all &rsaquo;</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* Conditions Strip */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.condStrip}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.condStrip}>
           {[
-            { icon: 'weather-windy', value: weather ? `${weather.wind} km/h` : '—', label: 'Wind' },
             { icon: 'thermometer', value: weather ? `${weather.temp}°C` : '—', label: 'Temp' },
+            { icon: 'weather-windy', value: weather ? `${weather.wind} km/h` : '—', label: 'Wind' },
             { icon: 'gauge', value: weather ? `${weather.pressure}` : '—', label: 'Pressure' },
-            { icon: 'moon-waxing-crescent', value: '—', label: 'Solunar' },
+            { icon: 'waves', value: '—', label: 'Tide' },
           ].map((chip) => (
             <View key={chip.label} style={s.condChip}>
               <MaterialCommunityIcons name={chip.icon as any} size={16} color={colors.textSecondary} />
@@ -141,11 +181,9 @@ export default function SessionTab() {
         </ScrollView>
 
         {/* Catch List */}
-        <View style={s.catchSection}>
-          <Text style={s.sectionHeader}>CATCHES THIS SESSION</Text>
-          {sessionCatches.length === 0 ? (
-            <Text style={s.noCatches}>No catches yet</Text>
-          ) : (
+        {sessionCatches.length > 0 && (
+          <View style={s.catchSection}>
+            <Text style={s.sectionHeader}>CATCHES THIS SESSION</Text>
             <FlatList
               data={sessionCatches}
               keyExtractor={(item) => item.id}
@@ -165,8 +203,8 @@ export default function SessionTab() {
               )}
               ItemSeparatorComponent={() => <View style={s.catchSeparator} />}
             />
-          )}
-        </View>
+          </View>
+        )}
 
       </ScrollView>
 
@@ -258,36 +296,103 @@ const s = StyleSheet.create({
     color: colors.danger,
   },
 
-  // Hero timer
-  heroBlock: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-    gap: 10,
+  // Timer + weather row
+  timerWeatherRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: 4,
   },
+  timerBlock: { gap: 4 },
+  liveChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0,212,170,0.12)',
+    borderRadius: radius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
+  liveLabel: { fontSize: 11, fontWeight: '700', color: colors.primary, letterSpacing: 0.5 },
   timerText: {
-    fontSize: 56,
+    fontSize: 48,
     fontWeight: '700',
     color: colors.textPrimary,
     fontVariant: ['tabular-nums'],
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
-  activeRow: {
-    flexDirection: 'row',
+  timerSub: { fontSize: 12, color: colors.textTertiary, fontWeight: '500' },
+  weatherBox: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 12,
+    alignItems: 'flex-end',
+    gap: 2,
+    minWidth: 110,
+  },
+  weatherTemp: { fontSize: 22, fontWeight: '700', color: colors.textPrimary },
+  weatherDesc: { fontSize: 11, color: colors.textSecondary, textAlign: 'right' },
+  weatherWind: { fontSize: 11, color: colors.textTertiary },
+
+  // Circular gauge
+  gaugeWrap: {
     alignItems: 'center',
+    paddingVertical: spacing.lg,
     gap: 8,
   },
-  activeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
+  gaugeLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textTertiary,
+    letterSpacing: 1.5,
   },
-  activeLabel: {
-    fontSize: 14,
-    color: colors.textSecondary,
+  gaugeRing: {
+    width: 180,
+    height: 90,
+    overflow: 'hidden',
+    alignItems: 'center',
   },
+  gaugeTrack: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 14,
+    borderColor: colors.surface2,
+    position: 'absolute',
+    top: 0,
+    overflow: 'hidden',
+  },
+  gaugeFill: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 14,
+    borderColor: colors.primary,
+    borderBottomColor: 'transparent',
+    borderLeftColor: 'transparent',
+    transformOrigin: 'center',
+  },
+  gaugeCenter: {
+    position: 'absolute',
+    bottom: 0,
+    alignItems: 'center',
+    flexDirection: 'row',
+    alignSelf: 'center',
+    gap: 2,
+  },
+  gaugeScore: { fontSize: 52, fontWeight: '800', color: colors.textPrimary, lineHeight: 56 },
+  gaugePct: { fontSize: 20, fontWeight: '600', color: colors.textSecondary, alignSelf: 'flex-end', marginBottom: 6 },
+  gaugeVerb: { fontSize: 16, fontWeight: '600', color: colors.primary },
 
-  // Stats row
+  // Catches + keepers
   statsRow: {
     flexDirection: 'row',
     gap: 10,
@@ -304,19 +409,29 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
+  statHeaderLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textTertiary,
+    letterSpacing: 1,
+  },
   statValue: {
-    fontSize: 28,
+    fontSize: 40,
     fontWeight: '800',
     color: colors.textPrimary,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.textTertiary,
-    letterSpacing: 0.5,
+    lineHeight: 44,
   },
 
   // Conditions strip
+  condRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: spacing.lg,
+    marginBottom: 10,
+  },
+  condRowTitle: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+  condViewAll: { fontSize: 13, color: colors.textSecondary },
   condStrip: {
     paddingHorizontal: spacing.lg,
     gap: 8,

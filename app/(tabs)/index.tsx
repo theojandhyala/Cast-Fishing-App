@@ -10,6 +10,7 @@ import { useCatchStore } from '../../store/catchStore';
 import { useWeather } from '../../hooks/useWeather';
 import { useLocation } from '../../hooks/useLocation';
 import { useSessionStore } from '../../store/sessionStore';
+import { useSolunar } from '../../hooks/useSolunar';
 import { colors, spacing, radius } from '../../constants/theme';
 
 function getGreeting() {
@@ -29,6 +30,13 @@ function getScoreLabel(score: number) {
   if (score >= 60) return 'ACTIVE';
   if (score >= 40) return 'PATCHY';
   return 'SLOW BITE';
+}
+
+function getConditionsLabel(score: number) {
+  if (score >= 80) return 'Excellent Conditions';
+  if (score >= 60) return 'Good Conditions';
+  if (score >= 40) return 'Fair Conditions';
+  return 'Tough Conditions';
 }
 
 function SectionHeader({ title }: { title: string }) {
@@ -84,6 +92,7 @@ export default function HomeScreen() {
   }, [catches]);
 
   const moonPhase = weather?.moonPhase ?? 'Waxing Crescent';
+  const solunar = useSolunar(gpsLocation?.latitude, gpsLocation?.longitude);
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -106,16 +115,44 @@ export default function HomeScreen() {
 
         {/* Fishing Score Hero */}
         <View style={s.scoreCard}>
-          <Text style={s.scoreNum}>{score}</Text>
-          <Text style={s.scoreSub}>/ 100  ·  {scoreLabel}</Text>
-          <View style={s.progressTrack}>
-            <View style={[s.progressFill, { width: `${score}%` as any }]} />
+          <Text style={s.scoreCardLabel}>FISHING SCORE</Text>
+          <View style={s.scoreRow}>
+            <View style={s.scoreLeft}>
+              <View style={s.scoreNumRow}>
+                <Text style={s.scoreNum}>{score}</Text>
+                <Text style={s.scoreDenom}>/100</Text>
+              </View>
+              <Text style={s.scoreConditions}>{getConditionsLabel(score)}</Text>
+              {solunar?.nextWindow ? (
+                <View style={s.primeRow}>
+                  <Text style={s.primeLabel}>Next Prime Window</Text>
+                  <Text style={s.primeTime}>
+                    {solunar.nextWindow.minutesUntil > 0
+                      ? `in ${solunar.nextWindow.minutesUntil < 60
+                          ? `${solunar.nextWindow.minutesUntil}m`
+                          : `${Math.floor(solunar.nextWindow.minutesUntil / 60)}h ${solunar.nextWindow.minutesUntil % 60}m`}`
+                      : solunar.nextWindow.time}
+                  </Text>
+                </View>
+              ) : null}
+              <Text style={s.scoreUpdated}>
+                {updatedMinAgo !== null
+                  ? updatedMinAgo < 2 ? 'Reading the water now' : `Read ${updatedMinAgo}m ago`
+                  : 'Reading the water…'}
+              </Text>
+            </View>
+            {/* Circular ring gauge */}
+            <View style={s.scoreRingWrap}>
+              <View style={s.scoreRingTrack}>
+                <View style={[s.scoreRingFill, {
+                  transform: [{ rotate: `${Math.min(score / 100 * 270 - 135, 135)}deg` }],
+                }]} />
+              </View>
+              <View style={s.scoreRingCenter}>
+                <MaterialCommunityIcons name="fish" size={28} color={colors.primary} />
+              </View>
+            </View>
           </View>
-          <Text style={s.scoreUpdated}>
-            {updatedMinAgo !== null
-              ? updatedMinAgo < 2 ? 'Reading the water now' : `Read ${updatedMinAgo}m ago`
-              : 'Reading the water…'}
-          </Text>
         </View>
 
         {/* Weather Strip */}
@@ -289,40 +326,89 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
-    alignItems: 'flex-start',
   },
+  scoreCardLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textTertiary,
+    letterSpacing: 1.5,
+    marginBottom: 8,
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  scoreLeft: { gap: 4 },
+  scoreNumRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
   scoreNum: {
     fontSize: 64,
     fontWeight: '800',
     color: colors.primary,
-    lineHeight: 72,
+    lineHeight: 68,
     letterSpacing: -2,
   },
-  scoreSub: {
-    fontSize: 12,
+  scoreDenom: {
+    fontSize: 18,
     fontWeight: '600',
     color: colors.textSecondary,
-    marginTop: 2,
-    marginBottom: 12,
   },
-  progressTrack: {
-    width: '100%',
-    height: 6,
-    backgroundColor: colors.surface3,
-    borderRadius: radius.full,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: radius.full,
+  scoreConditions: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary,
   },
   scoreUpdated: {
     fontSize: 10,
     fontWeight: '600',
     color: colors.textTertiary,
     letterSpacing: 0.3,
+    marginTop: 4,
+  },
+  primeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: 16,
+  },
+  primeLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '500' },
+  primeTime: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  // Circular ring
+  scoreRingWrap: {
+    width: 110,
+    height: 110,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scoreRingTrack: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 10,
+    borderColor: colors.surface2,
+  },
+  scoreRingFill: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 10,
+    borderColor: colors.primary,
+    borderRightColor: 'transparent',
+    borderBottomColor: 'transparent',
+  },
+  scoreRingCenter: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Weather strip
