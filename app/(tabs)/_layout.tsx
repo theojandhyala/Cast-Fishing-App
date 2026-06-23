@@ -15,7 +15,6 @@ function TabIcon({ name, focused }: { name: string; focused: boolean }) {
         size={24}
         color={focused ? colors.primary : colors.textTertiary}
       />
-      {focused && <View style={styles.indicator} />}
     </View>
   );
 }
@@ -104,12 +103,14 @@ export default function TabsLayout() {
           },
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textTertiary,
-          tabBarShowLabel: false,
+          tabBarShowLabel: true,
+          tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 2 },
         }}
       >
         <Tabs.Screen
           name="index"
           options={{
+            title: 'Home',
             tabBarIcon: ({ focused }) => (
               <TabIcon name={focused ? 'home' : 'home-outline'} focused={focused} />
             ),
@@ -118,6 +119,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="session"
           options={{
+            title: 'Session',
             tabBarIcon: ({ focused }) => (
               <TabIcon name={focused ? 'timer' : 'timer-outline'} focused={focused} />
             ),
@@ -136,30 +138,25 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="catches"
           options={{
+            title: 'Log',
             tabBarIcon: ({ focused }) => (
-              <TabIcon name={focused ? 'fish' : 'fish-outline'} focused={focused} />
+              <TabIcon name={focused ? 'format-list-text' : 'format-list-text'} focused={focused} />
             ),
           }}
         />
         <Tabs.Screen
-          name="conditions"
+          name="map"
           options={{
+            title: 'Spots',
             tabBarIcon: ({ focused }) => (
-              <TabIcon name="chart-line" focused={focused} />
-            ),
-          }}
-        />
-        <Tabs.Screen
-          name="more"
-          options={{
-            tabBarIcon: ({ focused }) => (
-              <TabIcon name={focused ? 'account' : 'account-outline'} focused={focused} />
+              <TabIcon name={focused ? 'map-marker' : 'map-marker-outline'} focused={focused} />
             ),
           }}
         />
 
         {/* Hidden tabs */}
-        <Tabs.Screen name="map" options={{ href: null }} />
+        <Tabs.Screen name="conditions" options={{ href: null }} />
+        <Tabs.Screen name="more" options={{ href: null }} />
         <Tabs.Screen name="friends" options={{ href: null }} />
         <Tabs.Screen name="profile" options={{ href: null }} />
         <Tabs.Screen name="tips" options={{ href: null }} />
@@ -181,15 +178,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: 44,
-    height: 36,
-  },
-  indicator: {
-    position: 'absolute',
-    bottom: -6,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
+    height: 28,
   },
 
   // Center FAB button

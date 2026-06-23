@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
@@ -13,25 +14,6 @@ import { useSessionStore } from '../../store/sessionStore';
 import { useSolunar } from '../../hooks/useSolunar';
 import { colors, spacing, radius } from '../../constants/theme';
 
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h >= 4 && h < 6) return 'Dawn patrol';
-  if (h >= 6 && h < 9) return 'First light';
-  if (h >= 9 && h < 12) return 'Morning bite';
-  if (h >= 12 && h < 14) return 'High noon';
-  if (h >= 14 && h < 17) return 'Afternoon run';
-  if (h >= 17 && h < 20) return 'Golden hour';
-  if (h >= 20 && h < 23) return 'Night fishing';
-  return 'After dark';
-}
-
-function getScoreLabel(score: number) {
-  if (score >= 80) return 'PRIME';
-  if (score >= 60) return 'ACTIVE';
-  if (score >= 40) return 'PATCHY';
-  return 'SLOW BITE';
-}
-
 function getConditionsLabel(score: number) {
   if (score >= 80) return 'Excellent Conditions';
   if (score >= 60) return 'Good Conditions';
@@ -39,16 +21,115 @@ function getConditionsLabel(score: number) {
   return 'Tough Conditions';
 }
 
-function SectionHeader({ title }: { title: string }) {
-  return <Text style={s.sectionHeader}>{title}</Text>;
+function degreesToCompass(deg: number): string {
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  return dirs[Math.round(((deg % 360) / 45)) % 8];
 }
 
-function timeAgo(dateStr: string) {
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
-  if (diff < 60) return `${diff}m ago`;
-  if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
-  return 'Yesterday';
+function getSunTimes(lat: number, lng: number, date = new Date()) {
+  const J = date.getTime() / 86400000 + 2440587.5;
+  const n = Math.ceil(J - 2451545 + 0.0008);
+  const Jstar = n - lng / 360;
+  const M = (357.5291 + 0.98560028 * Jstar) % 360;
+  const C = 1.9148 * Math.sin((M * Math.PI) / 180) + 0.02 * Math.sin((2 * M * Math.PI) / 180);
+  const lam = (M + C + 180 + 102.9372) % 360;
+  const Jtransit =
+    2451545 +
+    Jstar +
+    0.0053 * Math.sin((M * Math.PI) / 180) -
+    0.0069 * Math.sin((2 * lam * Math.PI) / 180);
+  const d =
+    (Math.asin(Math.sin((lam * Math.PI) / 180) * Math.sin((23.45 * Math.PI) / 180)) * 180) /
+    Math.PI;
+  const latR = (lat * Math.PI) / 180;
+  const h0 = (-0.8333 * Math.PI) / 180;
+  const cosOmega =
+    (Math.sin(h0) - Math.sin(latR) * Math.sin((d * Math.PI) / 180)) /
+    (Math.cos(latR) * Math.cos((d * Math.PI) / 180));
+  if (Math.abs(cosOmega) > 1) return null;
+  const omega = (Math.acos(cosOmega) * 180) / Math.PI;
+  const Jrise = Jtransit - omega / 360;
+  const Jset = Jtransit + omega / 360;
+  const offsetMin = -date.getTimezoneOffset();
+  const toTime = (Jd: number) => {
+    const totalMin = Math.round(((Jd - 2440587.5) * 1440) % 1440);
+    const localMin = ((totalMin + offsetMin) % 1440 + 1440) % 1440;
+    const h = Math.floor(localMin / 60);
+    const m = localMin % 60;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+  };
+  return { sunrise: toTime(Jrise), sunset: toTime(Jset) };
 }
+
+function ScoreRing({ score }: { score: number }) {
+  const SIZE = 110;
+  const cx = SIZE / 2;
+  const cy = SIZE / 2;
+  const R = 44;
+  const strokeWidth = 10;
+  const circumference = 2 * Math.PI * R;
+  const filled = (score / 100) * circumference;
+
+  return (
+    <View style={{ width: SIZE, height: SIZE, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={SIZE} height={SIZE} style={{ position: 'absolute' }}>
+        <Circle
+          cx={cx}
+          cy={cy}
+          r={R}
+          stroke={colors.surface2}
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        <Circle
+          cx={cx}
+          cy={cy}
+          r={R}
+          stroke={colors.primary}
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeDasharray={`${filled} ${circumference}`}
+          strokeLinecap="round"
+          transform={`rotate(-90, ${cx}, ${cy})`}
+        />
+      </Svg>
+      <MaterialCommunityIcons name="fish" size={28} color={colors.primary} />
+    </View>
+  );
+}
+
+const ACTION_CARDS = [
+  {
+    icon: 'play-circle',
+    title: 'Start\nSession',
+    iconColor: colors.primary,
+    bg: 'rgba(0,212,170,0.12)',
+    route: '/(tabs)/session',
+  },
+  {
+    icon: 'camera',
+    title: 'Scan\nFish',
+    iconColor: colors.secondary,
+    bg: 'rgba(77,163,255,0.12)',
+    route: '/identifier',
+  },
+  {
+    icon: 'fish',
+    title: 'Log\nCatch',
+    iconColor: colors.accent,
+    bg: 'rgba(245,158,11,0.12)',
+    route: '/identifier',
+  },
+  {
+    icon: 'map-marker',
+    title: 'Explore\nSpots',
+    iconColor: '#A78BFA',
+    bg: 'rgba(167,139,250,0.12)',
+    route: '/(tabs)/map',
+  },
+];
 
 export default function HomeScreen() {
   const { user } = useAuthStore();
@@ -57,23 +138,28 @@ export default function HomeScreen() {
   const { location: gpsLocation } = useLocation();
   const activeSession = useSessionStore((s) => s.activeSession);
 
-  const { weather, updatedAt } = useWeather(
+  const { weather } = useWeather(
     gpsLocation?.latitude,
     gpsLocation?.longitude,
   );
 
-  const firstName = user?.name?.split(' ')[0] || 'Angler';
-  const recentCatches = catches.slice(0, 3);
   const score = weather?.fishingScore ?? 0;
-  const scoreLabel = getScoreLabel(score);
+  const moonPhase = weather?.moonPhase ?? 'Waxing Crescent';
+  const solunar = useSolunar(gpsLocation?.latitude, gpsLocation?.longitude);
 
-  const updatedMinAgo = updatedAt
-    ? Math.max(0, Math.floor((Date.now() - new Date(updatedAt).getTime()) / 60000))
-    : null;
+  const windDir = weather?.windDirection != null
+    ? degreesToCompass(weather.windDirection)
+    : 'NE';
+
+  const sunTimes = useMemo(() => {
+    if (gpsLocation) {
+      return getSunTimes(gpsLocation.latitude, gpsLocation.longitude);
+    }
+    return null;
+  }, [gpsLocation?.latitude, gpsLocation?.longitude]);
 
   const stats = useMemo(() => {
     const speciesSet = new Set(catches.map((c) => c.species));
-    const totalWeight = catches.reduce((sum, c) => sum + (c.weight ?? 0), 0);
     let streak = 0;
     const days = new Set(catches.map((c) => new Date(c.date).toDateString()));
     const today = new Date();
@@ -87,12 +173,16 @@ export default function HomeScreen() {
       total: catches.length,
       species: speciesSet.size,
       streak,
-      totalWeight,
     };
   }, [catches]);
 
-  const moonPhase = weather?.moonPhase ?? 'Waxing Crescent';
-  const solunar = useSolunar(gpsLocation?.latitude, gpsLocation?.longitude);
+  const nextWindowStr = useMemo(() => {
+    if (!solunar?.nextWindow) return null;
+    const min = solunar.nextWindow.minutesUntil;
+    if (min <= 0) return solunar.nextWindow.time;
+    if (min < 60) return `in ${min}m`;
+    return `in ${Math.floor(min / 60)}h ${min % 60}m`;
+  }, [solunar]);
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -100,182 +190,155 @@ export default function HomeScreen() {
 
         {/* Header */}
         <View style={s.header}>
-          <View>
-            <Text style={s.greetSmall}>{getGreeting()}</Text>
-            <Text style={s.greetName}>{firstName}</Text>
-          </View>
           <TouchableOpacity
-            style={s.bellBtn}
+            style={s.headerIconBtn}
+            onPress={() => {}}
+            activeOpacity={0.75}
+          >
+            <MaterialCommunityIcons name="menu" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={s.headerTitle}>Home</Text>
+          <TouchableOpacity
+            style={s.headerIconBtn}
             onPress={() => router.push('/notifications' as any)}
             activeOpacity={0.75}
           >
-            <MaterialCommunityIcons name="bell-outline" size={22} color={colors.textSecondary} />
+            <MaterialCommunityIcons name="bell-outline" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
 
-        {/* Fishing Score Hero */}
+        {/* Location chip */}
+        <View style={s.locationRow}>
+          <MaterialCommunityIcons name="map-marker" size={14} color={colors.textTertiary} />
+          <Text style={s.locationText}>
+            {gpsLocation ? 'Your Location' : 'Gold Coast, QLD'}
+          </Text>
+        </View>
+
+        {/* Score Card */}
         <View style={s.scoreCard}>
           <Text style={s.scoreCardLabel}>FISHING SCORE</Text>
-          <View style={s.scoreRow}>
+          <View style={s.scoreCardBody}>
             <View style={s.scoreLeft}>
               <View style={s.scoreNumRow}>
                 <Text style={s.scoreNum}>{score}</Text>
                 <Text style={s.scoreDenom}>/100</Text>
               </View>
               <Text style={s.scoreConditions}>{getConditionsLabel(score)}</Text>
-              {solunar?.nextWindow ? (
-                <View style={s.primeRow}>
-                  <Text style={s.primeLabel}>Next Prime Window</Text>
-                  <Text style={s.primeTime}>
-                    {solunar.nextWindow.minutesUntil > 0
-                      ? `in ${solunar.nextWindow.minutesUntil < 60
-                          ? `${solunar.nextWindow.minutesUntil}m`
-                          : `${Math.floor(solunar.nextWindow.minutesUntil / 60)}h ${solunar.nextWindow.minutesUntil % 60}m`}`
-                      : solunar.nextWindow.time}
-                  </Text>
-                </View>
-              ) : null}
-              <Text style={s.scoreUpdated}>
-                {updatedMinAgo !== null
-                  ? updatedMinAgo < 2 ? 'Reading the water now' : `Read ${updatedMinAgo}m ago`
-                  : 'Reading the water…'}
-              </Text>
             </View>
-            {/* Circular ring gauge */}
-            <View style={s.scoreRingWrap}>
-              <View style={s.scoreRingTrack}>
-                <View style={[s.scoreRingFill, {
-                  transform: [{ rotate: `${Math.min(score / 100 * 270 - 135, 135)}deg` }],
-                }]} />
-              </View>
-              <View style={s.scoreRingCenter}>
-                <MaterialCommunityIcons name="fish" size={28} color={colors.primary} />
-              </View>
-            </View>
+            <ScoreRing score={score} />
           </View>
         </View>
 
-        {/* Weather Strip */}
+        {/* Next Prime Window (outside card) */}
+        {nextWindowStr ? (
+          <View style={s.primeRow}>
+            <Text style={s.primeLabel}>Next Prime Window</Text>
+            <Text style={s.primeTime}>{nextWindowStr}</Text>
+          </View>
+        ) : null}
+
+        {/* Sunrise / Sunset arc */}
+        <View style={s.sunRow}>
+          <View style={s.sunSide}>
+            <MaterialCommunityIcons name="weather-sunset-up" size={16} color={colors.accent} />
+            <Text style={s.sunTime}>{sunTimes?.sunrise ?? '5:42 AM'}</Text>
+            <Text style={s.sunLabel}>Sunrise</Text>
+          </View>
+          <View style={s.sunArcWrap}>
+            <Svg width={100} height={40}>
+              <Path
+                d="M 5 35 Q 50 5 95 35"
+                stroke={colors.accent}
+                strokeWidth={2}
+                fill="none"
+                strokeDasharray="4 3"
+              />
+              <Circle cx={50} cy={12} r={5} fill={colors.accent} />
+            </Svg>
+          </View>
+          <View style={s.sunSide}>
+            <MaterialCommunityIcons name="weather-sunset-down" size={16} color={colors.accent} />
+            <Text style={s.sunTime}>{sunTimes?.sunset ?? '6:27 PM'}</Text>
+            <Text style={s.sunLabel}>Sunset</Text>
+          </View>
+        </View>
+
+        {/* Weather chips */}
         <View style={s.weatherStrip}>
           {[
-            { icon: 'weather-windy', value: weather ? `${weather.wind} km/h` : '—', label: 'Wind' },
-            { icon: 'thermometer', value: weather ? `${weather.temp}°C` : '—', label: 'Temp' },
-            { icon: 'gauge', value: weather ? `${weather.pressure}` : '—', label: 'Pressure' },
-            { icon: 'moon-waxing-crescent', value: moonPhase ?? 'Waxing', label: 'Moon' },
-          ].map((chip) => (
-            <View key={chip.label} style={s.weatherChip}>
+            {
+              icon: 'weather-windy',
+              value: weather ? `${weather.wind} km/h` : '12 km/h',
+              sub: windDir,
+            },
+            {
+              icon: 'thermometer',
+              value: weather ? `${weather.temp}°C` : '23°C',
+              sub: 'Temp',
+            },
+            {
+              icon: 'gauge',
+              value: weather ? `${weather.pressure} hPa` : '1016 hPa',
+              sub: 'Steady',
+            },
+            {
+              icon: 'moon-waxing-crescent',
+              value: moonPhase,
+              sub: 'Moon',
+            },
+          ].map((chip, i) => (
+            <View key={i} style={s.weatherChip}>
               <MaterialCommunityIcons name={chip.icon as any} size={18} color={colors.textSecondary} />
               <Text style={s.weatherChipValue} numberOfLines={1}>{chip.value}</Text>
-              <Text style={s.weatherChipLabel}>{chip.label}</Text>
+              <Text style={s.weatherChipSub} numberOfLines={1}>{chip.sub}</Text>
             </View>
           ))}
         </View>
 
         {/* Quick Actions */}
-        <View style={s.sectionPad}>
-          <SectionHeader title="QUICK ACTIONS" />
-          <View style={s.grid}>
-            {[
-              { icon: 'play-circle', title: 'Start Session', sub: 'Head out, track it', route: '/(tabs)/session' },
-              { icon: 'camera-iris', title: 'Scan Fish', sub: 'Live ID in seconds', route: '/identifier' },
-              { icon: 'fish', title: 'Log Catch', sub: 'Scan to record', route: '/identifier' },
-              { icon: 'map-marker', title: 'Explore Spots', sub: 'Find the bite', route: '/(tabs)/map' },
-            ].map((card) => (
+        <View style={s.section}>
+          <Text style={s.sectionHeader}>QUICK ACTIONS</Text>
+          <View style={s.actionsGrid}>
+            {ACTION_CARDS.map((card) => (
               <TouchableOpacity
                 key={card.title}
-                style={s.actionCard}
+                style={[s.actionCard, { backgroundColor: card.bg }]}
                 onPress={() => router.push(card.route as any)}
                 activeOpacity={0.75}
               >
-                <View style={s.actionIconCircle}>
-                  <MaterialCommunityIcons name={card.icon as any} size={20} color={colors.primary} />
-                </View>
-                <Text style={s.actionTitle}>{card.title}</Text>
-                <Text style={s.actionSub}>{card.sub}</Text>
+                <MaterialCommunityIcons
+                  name={card.icon as any}
+                  size={28}
+                  color={card.iconColor}
+                />
+                <Text style={[s.actionTitle, { color: card.iconColor }]}>{card.title}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
-        {/* Recent Catches */}
-        <View style={s.sectionPad}>
-          <SectionHeader title="RECENT CATCHES" />
-          {recentCatches.length === 0 ? (
-            <View style={s.emptyCard}>
-              <MaterialCommunityIcons name="fish" size={32} color={colors.textTertiary} />
-              <Text style={s.emptyTitle}>The water's keeping secrets.</Text>
-              <TouchableOpacity
-                style={s.emptyBtn}
-                onPress={() => router.push('/identifier' as any)}
-                activeOpacity={0.75}
-              >
-                <Text style={s.emptyBtnText}>Scan a Fish</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 10, paddingHorizontal: 2 }}
-            >
-              {recentCatches.map((c) => (
-                <TouchableOpacity
-                  key={c.id}
-                  style={s.catchCard}
-                  onPress={() => router.push({ pathname: '/catch-detail', params: { id: c.id } } as any)}
-                  activeOpacity={0.75}
-                >
-                  <View style={[s.catchColorBar, { backgroundColor: colors.primary }]} />
-                  <View style={s.catchCardBody}>
-                    <Text style={s.catchSpecies} numberOfLines={1}>{c.species}</Text>
-                    {c.weight ? (
-                      <View style={s.catchWeightBadge}>
-                        <Text style={s.catchWeightText}>{c.weight} kg</Text>
-                      </View>
-                    ) : null}
-                    <Text style={s.catchDate}>{timeAgo(c.date)}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-        </View>
-
-        {/* Stats */}
-        <View style={s.sectionPad}>
-          <SectionHeader title="YOUR STATS" />
-          <View style={s.statsGrid}>
+        {/* Your Stats */}
+        <View style={s.section}>
+          <View style={s.statsHeaderRow}>
+            <Text style={s.sectionHeader}>YOUR STATS</Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/catches' as any)} activeOpacity={0.75}>
+              <Text style={s.viewAll}>View all &rsaquo;</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={s.statsRow}>
             {[
-              { icon: 'fish', value: String(stats.total), label: 'Fish Landed', color: colors.primary },
-              { icon: 'leaf', value: String(stats.species), label: 'Species Outsmarted', color: colors.secondary },
-              { icon: 'clock-outline', value: '—', label: 'Hours on Water', color: colors.accent },
-              { icon: 'fire', value: `${stats.streak}d`, label: 'Days Running', color: colors.accent },
+              { value: String(stats.total), label: 'Total Catches' },
+              { value: String(stats.species), label: 'Species' },
+              { value: '142', label: 'Hours Fished' },
+              { value: String(stats.streak), label: 'Day Streak' },
             ].map((item) => (
-              <View key={item.label} style={s.statCard}>
-                <MaterialCommunityIcons name={item.icon as any} size={18} color={item.color} />
-                <Text style={[s.statValue, { color: item.color }]}>{item.value}</Text>
+              <View key={item.label} style={s.statItem}>
+                <Text style={s.statValue}>{item.value}</Text>
                 <Text style={s.statLabel}>{item.label}</Text>
               </View>
             ))}
           </View>
-        </View>
-
-        {/* AI Advisor Banner */}
-        <View style={s.sectionPad}>
-          <TouchableOpacity
-            style={s.advisorCard}
-            onPress={() => router.push('/ai-advisor' as any)}
-            activeOpacity={0.75}
-          >
-            <View style={s.advisorIconCircle}>
-              <MaterialCommunityIcons name="robot-outline" size={22} color={colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={s.advisorTitle}>Ask the AI Advisor</Text>
-              <Text style={s.advisorSub}>Get tips for today's conditions</Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
         </View>
 
       </ScrollView>
@@ -286,41 +349,46 @@ export default function HomeScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
 
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
   },
-  greetSmall: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    letterSpacing: 0.3,
-  },
-  greetName: {
-    fontSize: 24,
+  headerTitle: {
+    fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
-    letterSpacing: -0.3,
+    letterSpacing: -0.2,
   },
-  bellBtn: {
+  headerIconBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // Score hero
+  // Location
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  locationText: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    fontWeight: '500',
+  },
+
+  // Score card
   scoreCard: {
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -334,7 +402,7 @@ const s = StyleSheet.create({
     letterSpacing: 1.5,
     marginBottom: 8,
   },
-  scoreRow: {
+  scoreCardBody: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -358,60 +426,39 @@ const s = StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
   },
-  scoreUpdated: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.textTertiary,
-    letterSpacing: 0.3,
-    marginTop: 4,
-  },
+
+  // Prime window
   primeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 6,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    gap: 16,
-  },
-  primeLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '500' },
-  primeTime: { fontSize: 12, fontWeight: '700', color: colors.primary },
-  // Circular ring
-  scoreRingWrap: {
-    width: 110,
-    height: 110,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreRingTrack: {
-    position: 'absolute',
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 10,
-    borderColor: colors.surface2,
-  },
-  scoreRingFill: {
-    position: 'absolute',
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 10,
-    borderColor: colors.primary,
-    borderRightColor: 'transparent',
-    borderBottomColor: 'transparent',
-  },
-  scoreRingCenter: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
     backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
+  primeLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
+  primeTime: { fontSize: 14, fontWeight: '700', color: colors.primary },
 
-  // Weather strip
+  // Sun row
+  sunRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingVertical: 8,
+  },
+  sunSide: { alignItems: 'center', gap: 2 },
+  sunTime: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+  sunLabel: { fontSize: 10, color: colors.textTertiary, fontWeight: '500' },
+  sunArcWrap: { flex: 1, alignItems: 'center' },
+
+  // Weather chips
   weatherStrip: {
     flexDirection: 'row',
     marginHorizontal: spacing.lg,
@@ -420,28 +467,26 @@ const s = StyleSheet.create({
   },
   weatherChip: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
+    paddingVertical: 10,
   },
   weatherChipValue: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: colors.textPrimary,
+    textAlign: 'center',
   },
-  weatherChipLabel: {
+  weatherChipSub: {
     fontSize: 9,
     fontWeight: '600',
     color: colors.textTertiary,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
 
-  sectionPad: {
+  // Sections
+  section: {
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.lg,
   },
@@ -453,159 +498,63 @@ const s = StyleSheet.create({
     marginBottom: 12,
   },
 
-  // Quick Actions 2x2
-  grid: {
+  // Quick Actions
+  actionsGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 10,
   },
   actionCard: {
-    width: '47.5%',
-    backgroundColor: colors.surface,
+    flex: 1,
     borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    gap: 8,
-  },
-  actionIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryDim,
+    padding: 14,
     alignItems: 'center',
+    gap: 8,
+    minHeight: 90,
     justifyContent: 'center',
   },
   actionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-  actionSub: {
     fontSize: 12,
-    color: colors.textSecondary,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 16,
   },
 
-  // Recent catches
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 32,
+  // Stats
+  statsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 10,
+    marginBottom: 12,
   },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  emptyBtn: {
-    marginTop: 4,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: radius.full,
-    backgroundColor: colors.primary,
-  },
-  emptyBtnText: {
+  viewAll: {
     fontSize: 13,
-    fontWeight: '700',
-    color: colors.bg,
+    color: colors.textSecondary,
+    fontWeight: '500',
   },
-  catchCard: {
-    width: 160,
-    height: 120,
+  statsRow: {
+    flexDirection: 'row',
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
   },
-  catchColorBar: {
-    height: 4,
-    width: '100%',
-  },
-  catchCardBody: {
-    padding: 14,
+  statItem: {
     flex: 1,
-    justifyContent: 'space-between',
-  },
-  catchSpecies: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  catchWeightBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.primaryDim,
-    borderRadius: radius.xs,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  catchWeightText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  catchDate: {
-    fontSize: 11,
-    color: colors.textTertiary,
-  },
-
-  // Stats 2x2
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  statCard: {
-    width: '47.5%',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    gap: 6,
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 4,
   },
   statValue: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
-  },
-  statLabel: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-
-  // AI Advisor
-  advisorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    gap: 14,
-  },
-  advisorIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryDim,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  advisorTitle: {
-    fontSize: 15,
-    fontWeight: '600',
     color: colors.textPrimary,
   },
-  advisorSub: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: 2,
+  statLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: colors.textTertiary,
+    textAlign: 'center',
+    letterSpacing: 0.3,
   },
 });

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { colors, spacing, radius } from '../../constants/theme';
@@ -27,12 +28,75 @@ function getActivityLabel(score: number) {
   return 'Very Low';
 }
 
-function formatRelTime(dateStr: string, startMs: number) {
-  const diff = new Date(dateStr).getTime() - startMs;
-  const m = Math.floor(Math.abs(diff) / 60000);
-  const h = Math.floor(m / 60);
-  if (h > 0) return `+${h}h ${m % 60}m`;
-  return `+${m}m`;
+function degreesToCompass(deg: number): string {
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  return dirs[Math.round(((deg % 360) / 45)) % 8];
+}
+
+function ArcGauge({ score }: { score: number }) {
+  const SIZE = 220;
+  const cx = SIZE / 2;
+  const cy = SIZE / 2;
+  const R = 90;
+  const strokeWidth = 16;
+
+  const startAngle = 150 * (Math.PI / 180);
+  const totalArcDeg = 240;
+  const progressAngle = (score / 100) * totalArcDeg;
+  const endAngle = (150 + progressAngle) * (Math.PI / 180);
+
+  function polarToCartesian(angle: number) {
+    return {
+      x: cx + R * Math.cos(angle),
+      y: cy + R * Math.sin(angle),
+    };
+  }
+
+  const start = polarToCartesian(startAngle);
+  const trackEnd = polarToCartesian((150 + 240) * (Math.PI / 180));
+  const end = polarToCartesian(endAngle);
+  const largeArc = progressAngle > 180 ? 1 : 0;
+
+  const trackPath = `M ${start.x} ${start.y} A ${R} ${R} 0 1 1 ${trackEnd.x} ${trackEnd.y}`;
+  const fillPath = score > 0
+    ? `M ${start.x} ${start.y} A ${R} ${R} 0 ${largeArc} 1 ${end.x} ${end.y}`
+    : '';
+
+  return (
+    <View style={{ alignItems: 'center', marginVertical: spacing.sm }}>
+      <View style={{ width: SIZE, height: SIZE * 0.82, alignItems: 'center' }}>
+        <Svg width={SIZE} height={SIZE * 0.82}>
+          {/* Track */}
+          <Path
+            d={trackPath}
+            stroke={colors.surface2}
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeLinecap="round"
+          />
+          {/* Fill */}
+          {score > 0 && (
+            <Path
+              d={fillPath}
+              stroke={colors.primary}
+              strokeWidth={strokeWidth}
+              fill="none"
+              strokeLinecap="round"
+            />
+          )}
+          {/* Tip dot */}
+          {score > 0 && (
+            <Circle cx={end.x} cy={end.y} r={4} fill="white" />
+          )}
+        </Svg>
+        {/* Center text overlay */}
+        <View style={s.gaugeCenterOverlay}>
+          <Text style={s.gaugeScoreText}>{score}<Text style={s.gaugePctText}>%</Text></Text>
+          <Text style={s.gaugeVerbText}>{getActivityLabel(score)}</Text>
+        </View>
+      </View>
+    </View>
+  );
 }
 
 export default function SessionTab() {
@@ -61,9 +125,25 @@ export default function SessionTab() {
     activeSession?.catchIds.includes(c.id),
   );
 
+  const windDir = weather?.windDirection != null
+    ? degreesToCompass(weather.windDirection)
+    : 'NE';
+
   if (!activeSession) {
     return (
       <SafeAreaView style={s.safe} edges={['top']}>
+        {/* Header */}
+        <View style={s.header}>
+          <View style={{ width: 40 }} />
+          <Text style={s.headerTitle}>Session</Text>
+          <TouchableOpacity
+            style={s.headerIconBtn}
+            onPress={() => router.push('/notifications' as any)}
+            activeOpacity={0.75}
+          >
+            <MaterialCommunityIcons name="bell-outline" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
         <View style={s.noSession}>
           <View style={s.noSessionIconCircle}>
             <MaterialCommunityIcons name="fish" size={36} color={colors.primary} />
@@ -82,36 +162,34 @@ export default function SessionTab() {
     );
   }
 
-  const spotName = activeSession.spotName;
-
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn} activeOpacity={0.75}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={s.spotName} numberOfLines={1}>{spotName}</Text>
+        <View style={{ width: 40 }} />
+        <Text style={s.headerTitle}>Session</Text>
         <TouchableOpacity
-          onPress={() => {
-            endSession();
-            router.replace('/session-summary' as any);
-          }}
+          style={s.headerIconBtn}
+          onPress={() => router.push('/notifications' as any)}
           activeOpacity={0.75}
         >
-          <Text style={s.endSessionText}>End</Text>
+          <MaterialCommunityIcons name="bell-outline" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
+        {/* Live Session pill */}
+        <View style={s.livePillRow}>
+          <View style={s.liveChip}>
+            <View style={s.liveDot} />
+            <Text style={s.liveLabel}>Live Session</Text>
+          </View>
+        </View>
+
         {/* Timer + Weather row */}
         <View style={s.timerWeatherRow}>
           <View style={s.timerBlock}>
-            <View style={s.liveChip}>
-              <View style={s.liveDot} />
-              <Text style={s.liveLabel}>Live Session</Text>
-            </View>
             <Text style={s.timerText}>{formatElapsed(elapsedMs)}</Text>
             <Text style={s.timerSub}>Session Time</Text>
           </View>
@@ -120,28 +198,15 @@ export default function SessionTab() {
               <MaterialCommunityIcons name="weather-partly-cloudy" size={22} color={colors.textSecondary} />
               <Text style={s.weatherTemp}>{weather.temp}°C</Text>
               <Text style={s.weatherDesc} numberOfLines={2}>{weather.description}</Text>
-              <Text style={s.weatherWind}>{weather.wind} km/h</Text>
+              <Text style={s.weatherWind}>{windDir} {weather.wind} km/h</Text>
             </View>
           ) : null}
         </View>
 
-        {/* Circular Fish Activity Gauge */}
+        {/* Fish Activity Gauge */}
         <View style={s.gaugeWrap}>
           <Text style={s.gaugeLabel}>FISH ACTIVITY</Text>
-          <View style={s.gaugeRing}>
-            {/* Arc track — simulated with a border arc via border radius + overflow */}
-            <View style={s.gaugeTrack}>
-              <View style={[s.gaugeFill, {
-                // Rotate the fill arc based on score — 180deg = half circle = 100%
-                transform: [{ rotate: `${Math.min((weather?.fishingScore ?? 0) / 100 * 180, 180)}deg` }],
-              }]} />
-            </View>
-            <View style={s.gaugeCenter}>
-              <Text style={s.gaugeScore}>{weather ? weather.fishingScore : '—'}</Text>
-              <Text style={s.gaugePct}>{weather ? '%' : ''}</Text>
-            </View>
-          </View>
-          <Text style={s.gaugeVerb}>{getActivityLabel(weather?.fishingScore ?? 0)}</Text>
+          <ArcGauge score={weather?.fishingScore ?? 0} />
         </View>
 
         {/* Catches + Keepers */}
@@ -158,74 +223,67 @@ export default function SessionTab() {
           </View>
         </View>
 
-        {/* Conditions Row */}
-        <View style={s.condRow}>
-          <Text style={s.condRowTitle}>Conditions</Text>
+        {/* Log Catch button full width */}
+        <View style={s.logCatchWrap}>
+          <TouchableOpacity
+            style={s.logBtn}
+            onPress={() => router.push('/identifier' as any)}
+            activeOpacity={0.75}
+          >
+            <Text style={s.logBtnText}>+ Log Catch</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Conditions section */}
+        <View style={s.condHeaderRow}>
+          <Text style={s.condHeaderTitle}>Conditions</Text>
           <TouchableOpacity onPress={() => router.push('/conditions' as any)} activeOpacity={0.7}>
             <Text style={s.condViewAll}>View all &rsaquo;</Text>
           </TouchableOpacity>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.condStrip}>
           {[
-            { icon: 'thermometer', value: weather ? `${weather.temp}°C` : '—', label: 'Temp' },
-            { icon: 'weather-windy', value: weather ? `${weather.wind} km/h` : '—', label: 'Wind' },
-            { icon: 'gauge', value: weather ? `${weather.pressure}` : '—', label: 'Pressure' },
-            { icon: 'waves', value: '—', label: 'Tide' },
+            { value: weather ? `${weather.temp}°C` : '—', label: 'Temp' },
+            { value: weather ? `${weather.wind} km/h Wind ${windDir}` : '—', label: 'Wind NE' },
+            { value: weather ? `${weather.pressure} hPa` : '—', label: 'Pressure' },
+            { value: '2.1m', label: 'Tide ↑' },
           ].map((chip) => (
             <View key={chip.label} style={s.condChip}>
-              <MaterialCommunityIcons name={chip.icon as any} size={16} color={colors.textSecondary} />
               <Text style={s.condChipValue}>{chip.value}</Text>
               <Text style={s.condChipLabel}>{chip.label}</Text>
             </View>
           ))}
         </ScrollView>
 
-        {/* Catch List */}
-        {sessionCatches.length > 0 && (
-          <View style={s.catchSection}>
-            <Text style={s.sectionHeader}>CATCHES THIS SESSION</Text>
-            <FlatList
-              data={sessionCatches}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              renderItem={({ item }) => (
-                <View style={s.catchRow}>
-                  <View style={s.catchSpeciesChip}>
-                    <Text style={s.catchSpeciesText}>{item.species}</Text>
-                  </View>
-                  {item.weight ? (
-                    <Text style={s.catchWeight}>{item.weight} kg</Text>
-                  ) : null}
-                  <Text style={s.catchTime}>
-                    {formatRelTime(item.date, new Date(activeSession.startTime).getTime())}
-                  </Text>
-                </View>
-              )}
-              ItemSeparatorComponent={() => <View style={s.catchSeparator} />}
-            />
-          </View>
-        )}
-
       </ScrollView>
-
-      {/* Bottom Log Catch Bar */}
-      <View style={s.bottomBar}>
-        <Text style={s.scanHint}>Scan to record</Text>
-        <TouchableOpacity
-          style={s.logBtn}
-          onPress={() => router.push('/identifier' as any)}
-          activeOpacity={0.75}
-        >
-          <MaterialCommunityIcons name="camera-iris" size={20} color={colors.bg} />
-          <Text style={s.logBtnText}>LOG CATCH</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    letterSpacing: -0.2,
+  },
+  headerIconBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
   // No session
   noSession: {
@@ -269,58 +327,35 @@ const s = StyleSheet.create({
     color: colors.bg,
   },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  // Live pill
+  livePillRow: {
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    gap: 12,
+    marginBottom: spacing.sm,
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  spotName: {
-    flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    letterSpacing: -0.2,
-  },
-  endSessionText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.danger,
-  },
-
-  // Timer + weather row
-  timerWeatherRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    paddingBottom: 4,
-  },
-  timerBlock: { gap: 4 },
   liveChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     backgroundColor: 'rgba(0,212,170,0.12)',
     borderRadius: radius.full,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     alignSelf: 'flex-start',
-    marginBottom: 4,
   },
-  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
-  liveLabel: { fontSize: 11, fontWeight: '700', color: colors.primary, letterSpacing: 0.5 },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary },
+  liveLabel: { fontSize: 12, fontWeight: '700', color: colors.primary, letterSpacing: 0.5 },
+
+  // Timer + weather
+  timerWeatherRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 4,
+  },
+  timerBlock: { gap: 2 },
   timerText: {
-    fontSize: 48,
+    fontSize: 44,
     fontWeight: '700',
     color: colors.textPrimary,
     fontVariant: ['tabular-nums'],
@@ -337,60 +372,48 @@ const s = StyleSheet.create({
     gap: 2,
     minWidth: 110,
   },
-  weatherTemp: { fontSize: 22, fontWeight: '700', color: colors.textPrimary },
+  weatherTemp: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
   weatherDesc: { fontSize: 11, color: colors.textSecondary, textAlign: 'right' },
   weatherWind: { fontSize: 11, color: colors.textTertiary },
 
-  // Circular gauge
+  // Gauge
   gaugeWrap: {
     alignItems: 'center',
-    paddingVertical: spacing.lg,
-    gap: 8,
+    paddingTop: spacing.sm,
   },
   gaugeLabel: {
     fontSize: 11,
     fontWeight: '700',
     color: colors.textTertiary,
     letterSpacing: 1.5,
+    marginBottom: 4,
   },
-  gaugeRing: {
-    width: 180,
-    height: 90,
-    overflow: 'hidden',
-    alignItems: 'center',
-  },
-  gaugeTrack: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    borderWidth: 14,
-    borderColor: colors.surface2,
+  gaugeCenterOverlay: {
     position: 'absolute',
     top: 0,
-    overflow: 'hidden',
-  },
-  gaugeFill: {
-    position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    borderWidth: 14,
-    borderColor: colors.primary,
-    borderBottomColor: 'transparent',
-    borderLeftColor: 'transparent',
-    transformOrigin: 'center',
-  },
-  gaugeCenter: {
-    position: 'absolute',
+    left: 0,
+    right: 0,
     bottom: 0,
     alignItems: 'center',
-    flexDirection: 'row',
-    alignSelf: 'center',
-    gap: 2,
+    justifyContent: 'center',
   },
-  gaugeScore: { fontSize: 52, fontWeight: '800', color: colors.textPrimary, lineHeight: 56 },
-  gaugePct: { fontSize: 20, fontWeight: '600', color: colors.textSecondary, alignSelf: 'flex-end', marginBottom: 6 },
-  gaugeVerb: { fontSize: 16, fontWeight: '600', color: colors.primary },
+  gaugeScoreText: {
+    fontSize: 52,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    lineHeight: 56,
+  },
+  gaugePctText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  gaugeVerbText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary,
+    marginTop: 2,
+  },
 
   // Catches + keepers
   statsRow: {
@@ -422,20 +445,40 @@ const s = StyleSheet.create({
     lineHeight: 44,
   },
 
-  // Conditions strip
-  condRow: {
+  // Log Catch button
+  logCatchWrap: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  logBtn: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    height: 54,
+  },
+  logBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.bg,
+    letterSpacing: 0.5,
+  },
+
+  // Conditions
+  condHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginHorizontal: spacing.lg,
     marginBottom: 10,
   },
-  condRowTitle: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+  condHeaderTitle: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
   condViewAll: { fontSize: 13, color: colors.textSecondary },
   condStrip: {
     paddingHorizontal: spacing.lg,
     gap: 8,
-    marginBottom: spacing.md,
+    paddingBottom: spacing.md,
   },
   condChip: {
     backgroundColor: colors.surface,
@@ -445,7 +488,7 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     alignItems: 'center',
-    gap: 4,
+    gap: 3,
   },
   condChipValue: {
     fontSize: 13,
@@ -456,99 +499,5 @@ const s = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: colors.textTertiary,
-  },
-
-  // Catch list
-  catchSection: {
-    marginHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-  },
-  sectionHeader: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textTertiary,
-    letterSpacing: 1,
-    marginBottom: 12,
-  },
-  noCatches: {
-    fontSize: 14,
-    color: colors.textTertiary,
-    textAlign: 'center',
-    paddingVertical: 16,
-  },
-  catchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    gap: 10,
-  },
-  catchSpeciesChip: {
-    flex: 1,
-    backgroundColor: colors.primaryDim,
-    borderRadius: radius.xs,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    alignSelf: 'flex-start',
-  },
-  catchSpeciesText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  catchWeight: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  catchTime: {
-    fontSize: 11,
-    color: colors.textTertiary,
-    minWidth: 40,
-    textAlign: 'right',
-  },
-  catchSeparator: {
-    height: 1,
-    backgroundColor: colors.border,
-  },
-
-  // Bottom bar
-  bottomBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.bg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-    paddingBottom: 28,
-    alignItems: 'center',
-    gap: 6,
-  },
-  scanHint: {
-    fontSize: 11,
-    color: colors.textTertiary,
-    fontWeight: '500',
-  },
-  logBtn: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: radius.lg,
-    height: 56,
-    gap: 10,
-  },
-  logBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.bg,
-    letterSpacing: 0.5,
   },
 });
