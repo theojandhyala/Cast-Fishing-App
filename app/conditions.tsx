@@ -132,9 +132,13 @@ export default function ConditionsScreen() {
           <Text style={styles.solunarValue}>{Math.round(w.fishingScore)}<Text style={styles.tideUnit}>%</Text></Text>
           <Text style={styles.solunarSub}>{w.fishingScore >= 75 ? 'High' : w.fishingScore >= 50 ? 'Moderate' : 'Low'} Activity · changes through the day</Text>
           <View style={styles.barsWrap}>
-            {activityBars.map((h, i) => (
-              <View key={i} style={[styles.bar, { height: `${h}%` }]} />
-            ))}
+            {activityBars.map((h, i) => {
+              const currentHourIndex = Math.floor(new Date().getHours() / 3);
+              const isCurrentHour = i === currentHourIndex;
+              const isActive = h >= 60;
+              const barColor = isCurrentHour ? '#F59E0B' : isActive ? '#00D4AA' : '#1A2535';
+              return <View key={i} style={[styles.bar, { height: `${h}%`, backgroundColor: barColor }]} />;
+            })}
           </View>
           <View style={styles.curveLabels}>
             <Text style={styles.curveLabel}>00:00</Text>
@@ -245,7 +249,7 @@ const styles = StyleSheet.create({
   heroTemp: { ...typography.monoLarge, fontSize: 40 },
   heroTempUnit: { fontSize: 18, color: colors.textSecondary, fontFamily: fonts.mono },
   heroDesc: { ...typography.bodySmall, marginTop: 2 },
-  heroStatsRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.md },
+  heroStatsRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', paddingTop: spacing.md },
   heroStat: { flex: 1, gap: 3 },
   heroStatLabel: { ...typography.caption, fontSize: 10 },
   heroStatValue: { ...typography.label, fontSize: 14 },
@@ -266,14 +270,15 @@ const styles = StyleSheet.create({
   tideTrend: { ...typography.label, color: colors.primary, textAlign: 'right' },
   tideSub: { ...typography.caption, fontSize: 10, textTransform: 'none', textAlign: 'right', marginTop: 2 },
   curveWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 56, gap: 4 },
-  curveBar: { flex: 1, backgroundColor: 'rgba(0,212,170,0.35)', borderRadius: radius.xs, minHeight: 4 },
+  curveBar: { flex: 1, backgroundColor: '#00D4AA', borderRadius: 2, minHeight: 4 },
   curveLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   curveLabel: { fontSize: 9, color: colors.textTertiary, fontFamily: fonts.mono },
 
-  solunarValue: { ...typography.monoLarge, fontSize: 32 },
+  solunarValue: { fontSize: 56, fontWeight: '900', textShadowColor: 'rgba(0,212,170,0.5)', textShadowRadius: 14 },
+  solunarLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 2 },
   solunarSub: { ...typography.bodySmall, marginBottom: spacing.md },
   barsWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 48, gap: 5 },
-  bar: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.xs, minHeight: 4 },
+  bar: { flex: 1, backgroundColor: '#1A2535', borderRadius: 2, minHeight: 4 },
 
   section: { marginBottom: spacing.md },
   sectionTitle: { ...typography.caption, marginBottom: spacing.sm },
@@ -304,6 +309,7 @@ const styles = StyleSheet.create({
   forecastScore: { borderRadius: radius.full, paddingHorizontal: 6, paddingVertical: 2, marginTop: 2 },
   forecastScoreText: { fontSize: 11, fontWeight: '800' },
   liveNote: { color: colors.textTertiary, fontSize: 10, lineHeight: 15, textAlign: 'center', marginTop: spacing.sm },
+  sourceLabel: { fontSize: 9, color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' },
   forecastProBanner: { marginBottom: spacing.sm },
   forecastProBannerGradient: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)' },
   forecastProTitle: { fontSize: 13, fontWeight: '800', color: '#fff', marginBottom: 2 },

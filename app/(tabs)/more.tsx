@@ -135,7 +135,11 @@ export default function MoreScreen() {
           {/* XP bar */}
           <View style={styles.xpBarContainer}>
             <View style={styles.xpBar}>
-              <View style={[styles.xpFill, { width: `${xpProgress * 100}%` as any }]} />
+              <LinearGradient
+                colors={['#00D4AA', '#2DD4FF']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={[styles.xpFill, { width: `${xpProgress * 100}%` as any }]}
+              />
             </View>
             <Text style={styles.xpBarPct}>{Math.round(xpProgress * 100)}%</Text>
           </View>
@@ -161,7 +165,15 @@ export default function MoreScreen() {
         </LinearGradient>
 
         {/* ── Menu Sections ── */}
-        {MENU_SECTIONS.map((section) => (
+        {MENU_SECTIONS.map((section, sectionIndex) => {
+          const sectionIconBg = [
+            'rgba(0,212,170,0.1)',
+            'rgba(45,212,255,0.08)',
+            'rgba(245,158,11,0.08)',
+            'rgba(139,92,246,0.1)',
+            'rgba(255,255,255,0.06)',
+          ][sectionIndex] ?? 'rgba(0,212,170,0.1)';
+          return (
           <View key={section.section} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.section}</Text>
             <View style={styles.menuCard}>
@@ -187,7 +199,7 @@ export default function MoreScreen() {
                     }
                   }}
                 >
-                  <View style={styles.menuIconWrap}>
+                  <View style={[styles.menuIconWrap, { backgroundColor: sectionIconBg }]}>
                     <MaterialCommunityIcons name={item.icon as any} size={20} color={colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -208,14 +220,15 @@ export default function MoreScreen() {
               ))}
             </View>
           </View>
-        ))}
+          );
+        })}
 
         {/* ── Sign Out ── */}
         <TouchableOpacity style={styles.signOut} onPress={handleLogout}>
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
 
-        <Text style={styles.version}>CAST v1.0.0 • Made for UK Anglers</Text>
+        <Text style={styles.version}>CAST v1.0.0 • Made for Anglers Worldwide</Text>
         <View style={{ height: 80 }} />
       </ScrollView>
     </SafeAreaView>
@@ -291,8 +304,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: 10, fontWeight: '800', color: colors.textTertiary,
-    textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: spacing.xs,
+    fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.25)',
+    textTransform: 'uppercase', letterSpacing: 2, marginBottom: spacing.xs,
   },
   menuCard: {
     backgroundColor: colors.surface,
@@ -340,6 +353,6 @@ const styles = StyleSheet.create({
   },
   signOutText: { fontSize: 15, fontWeight: '600', color: colors.danger },
   version: {
-    fontSize: 12, color: colors.textTertiary, textAlign: 'center', marginBottom: spacing.md,
+    fontSize: 10, color: 'rgba(255,255,255,0.15)', textAlign: 'center', marginBottom: spacing.md,
   },
 });
