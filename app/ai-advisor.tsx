@@ -9,7 +9,10 @@ import { useRouter } from 'expo-router';
 import { useCatchStore } from '../store/catchStore';
 import { useLocationStore } from '../store/locationStore';
 import { CONFIG } from '../constants/config';
+import { useAuthStore } from '../store/authStore';
 import { colors, spacing, radius } from '../constants/theme';
+
+const FREE_MESSAGE_LIMIT = 5;
 
 interface Message {
   id: string;
@@ -76,6 +79,7 @@ export default function AIAdvisorScreen() {
   const router = useRouter();
   const { catches } = useCatchStore();
   const { location } = useLocationStore();
+  const { user } = useAuthStore();
   const scrollRef = useRef<ScrollView>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -88,6 +92,8 @@ export default function AIAdvisorScreen() {
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  // Track how many user messages have been sent this session (free limit)
+  const [messageCount, setMessageCount] = useState(0);
 
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
@@ -95,36 +101,49 @@ export default function AIAdvisorScreen() {
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading) return;
+
+    // Free limit check
+    if (!user?.isPro && messageCount >= FREE_MESSAGE_LIMIT) {
+      return; // The UI will show the limit banner instead
+    }
+
     const userMsg: Message = { id: generateId(), role: 'user', content: text, timestamp: new Date() };
     const history = [...messages, userMsg];
     setMessages(history);
     setInput('');
     setLoading(true);
+    setMessageCount(prev => prev + 1);
+
+    // Keep last 12 messages for context (excluding welcome)
+    const apiMessages = history
+      .filter(m => m.id !== 'welcome')
+      .slice(-12)
+      .map(m => ({ role: m.role, content: m.content }));
 
     // Try the real AI via the secure Worker proxy; fall back to canned advice.
     let content: string | null = null;
+    let networkError = false;
     if (CONFIG.AI_WORKER_URL) {
       try {
         const res = await fetch(`${CONFIG.AI_WORKER_URL}/advisor`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            system: `You are CAST's expert fishing advisor. ${location ? `The angler is currently fishing at: ${location.name}.` : ''} Give concise, practical advice. Use markdown bold (**text**) for emphasis. Keep responses focused and actionable.`,
-            messages: history
-              .filter(m => m.id !== 'welcome')
-              .map(m => ({ role: m.role, content: m.content })),
-          }),
+          body: JSON.stringify({ messages: apiMessages }),
         });
         if (res.ok) {
           const data = await res.json();
           if (data?.reply) content = data.reply;
+        } else {
+          networkError = true;
         }
       } catch {
-        // network error — fall through to canned response
+        networkError = true;
       }
     }
 
-    if (!content) {
+    if (networkError && !content) {
+      content = 'Network error — check your connection';
+    } else if (!content) {
       await new Promise(r => setTimeout(r, 600));
       content = getCannedResponse(text).content;
     }
