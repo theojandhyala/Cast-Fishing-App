@@ -14,14 +14,21 @@ import { colors, spacing, radius } from '../../constants/theme';
 
 function getGreeting() {
   const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  if (h >= 4 && h < 6) return 'Dawn patrol';
+  if (h >= 6 && h < 9) return 'First light';
+  if (h >= 9 && h < 12) return 'Morning bite';
+  if (h >= 12 && h < 14) return 'High noon';
+  if (h >= 14 && h < 17) return 'Afternoon run';
+  if (h >= 17 && h < 20) return 'Golden hour';
+  if (h >= 20 && h < 23) return 'Night fishing';
+  return 'After dark';
 }
 
 function getScoreLabel(score: number) {
-  if (score >= 80) return 'EXCELLENT';
-  if (score >= 60) return 'GOOD';
-  if (score >= 40) return 'FAIR';
-  return 'POOR';
+  if (score >= 80) return 'PRIME';
+  if (score >= 60) return 'ACTIVE';
+  if (score >= 40) return 'PATCHY';
+  return 'SLOW BITE';
 }
 
 function SectionHeader({ title }: { title: string }) {
@@ -106,8 +113,8 @@ export default function HomeScreen() {
           </View>
           <Text style={s.scoreUpdated}>
             {updatedMinAgo !== null
-              ? updatedMinAgo < 2 ? 'Updated just now' : `Updated ${updatedMinAgo} min ago`
-              : 'Fetching conditions…'}
+              ? updatedMinAgo < 2 ? 'Reading the water now' : `Read ${updatedMinAgo}m ago`
+              : 'Reading the water…'}
           </Text>
         </View>
 
@@ -132,10 +139,10 @@ export default function HomeScreen() {
           <SectionHeader title="QUICK ACTIONS" />
           <View style={s.grid}>
             {[
-              { icon: 'play-circle', title: 'Start Session', sub: 'Begin fishing', route: '/(tabs)/session' },
-              { icon: 'camera-iris', title: 'Scan Fish', sub: 'AI identification', route: '/identifier' },
-              { icon: 'fish', title: 'Log Catch', sub: 'Record a catch', route: '/identifier' },
-              { icon: 'map-marker', title: 'Explore Spots', sub: 'Find locations', route: '/(tabs)/map' },
+              { icon: 'play-circle', title: 'Start Session', sub: 'Head out, track it', route: '/(tabs)/session' },
+              { icon: 'camera-iris', title: 'Scan Fish', sub: 'Live ID in seconds', route: '/identifier' },
+              { icon: 'fish', title: 'Log Catch', sub: 'Scan to record', route: '/identifier' },
+              { icon: 'map-marker', title: 'Explore Spots', sub: 'Find the bite', route: '/(tabs)/map' },
             ].map((card) => (
               <TouchableOpacity
                 key={card.title}
@@ -159,7 +166,7 @@ export default function HomeScreen() {
           {recentCatches.length === 0 ? (
             <View style={s.emptyCard}>
               <MaterialCommunityIcons name="fish" size={32} color={colors.textTertiary} />
-              <Text style={s.emptyTitle}>No catches yet — start scanning</Text>
+              <Text style={s.emptyTitle}>The water's keeping secrets.</Text>
               <TouchableOpacity
                 style={s.emptyBtn}
                 onPress={() => router.push('/identifier' as any)}
@@ -202,10 +209,10 @@ export default function HomeScreen() {
           <SectionHeader title="YOUR STATS" />
           <View style={s.statsGrid}>
             {[
-              { icon: 'fish', value: String(stats.total), label: 'Total Catches', color: colors.primary },
-              { icon: 'leaf', value: String(stats.species), label: 'Species Caught', color: colors.secondary },
-              { icon: 'clock-outline', value: '—', label: 'Hours Fished', color: colors.accent },
-              { icon: 'fire', value: `${stats.streak}d`, label: 'Day Streak', color: colors.accent },
+              { icon: 'fish', value: String(stats.total), label: 'Fish Landed', color: colors.primary },
+              { icon: 'leaf', value: String(stats.species), label: 'Species Outsmarted', color: colors.secondary },
+              { icon: 'clock-outline', value: '—', label: 'Hours on Water', color: colors.accent },
+              { icon: 'fire', value: `${stats.streak}d`, label: 'Days Running', color: colors.accent },
             ].map((item) => (
               <View key={item.label} style={s.statCard}>
                 <MaterialCommunityIcons name={item.icon as any} size={18} color={item.color} />

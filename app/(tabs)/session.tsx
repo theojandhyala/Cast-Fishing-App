@@ -60,8 +60,8 @@ export default function SessionTab() {
           <View style={s.noSessionIconCircle}>
             <MaterialCommunityIcons name="fish" size={36} color={colors.primary} />
           </View>
-          <Text style={s.noSessionTitle}>No Active Session</Text>
-          <Text style={s.noSessionSub}>Head to a spot and start fishing</Text>
+          <Text style={s.noSessionTitle}>Not on the water yet.</Text>
+          <Text style={s.noSessionSub}>The fish aren't catching themselves.</Text>
           <TouchableOpacity
             style={s.startBtn}
             onPress={() => router.push('/(tabs)/map' as any)}
@@ -102,15 +102,15 @@ export default function SessionTab() {
           <Text style={s.timerText}>{formatElapsed(elapsedMs)}</Text>
           <View style={s.activeRow}>
             <View style={s.activeDot} />
-            <Text style={s.activeLabel}>Active at {spotName}</Text>
+            <Text style={s.activeLabel}>On the water · {spotName}</Text>
           </View>
         </View>
 
         {/* Stats Row */}
         <View style={s.statsRow}>
           {[
-            { label: 'Catches', value: String(sessionCatches.length) },
-            { label: 'Activity', value: weather ? `${weather.fishingScore}%` : '—' },
+            { label: 'Landed', value: String(sessionCatches.length) },
+            { label: 'Bite Activity', value: weather ? `${weather.fishingScore}%` : '—' },
             { label: 'Weather', value: weather ? `${weather.temp}°C` : '—' },
           ].map((stat) => (
             <View key={stat.label} style={s.statCard}>

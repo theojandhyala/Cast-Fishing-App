@@ -10,11 +10,11 @@ import { useCatchStore } from '../../store/catchStore';
 import { colors, spacing, radius } from '../../constants/theme';
 
 const ACHIEVEMENTS = [
-  { icon: 'fish', name: 'First Cast', progress: 1, total: 1 },
-  { icon: 'trophy', name: '10 Catches', progress: 10, total: 10 },
-  { icon: 'star', name: 'Species Hunter', progress: 3, total: 10 },
-  { icon: 'fire', name: '7-Day Streak', progress: 3, total: 7 },
-  { icon: 'medal', name: 'Big Haul', progress: 0, total: 1 },
+  { icon: 'fish', name: 'First Blood', progress: 1, total: 1 },
+  { icon: 'trophy', name: 'Bag Limit', progress: 10, total: 10 },
+  { icon: 'star', name: 'Specimen Hunter', progress: 3, total: 10 },
+  { icon: 'fire', name: 'On the Water', progress: 3, total: 7 },
+  { icon: 'medal', name: 'Trophy Haul', progress: 0, total: 1 },
 ];
 
 const MENU_SECTIONS = [

@@ -106,7 +106,7 @@ export default function CatchesScreen() {
       <View style={s.statsBar}>
         <View style={s.statItem}>
           <Text style={s.statValue}>{totalWeight.toFixed(1)} kg</Text>
-          <Text style={s.statLabel}>Total Weight</Text>
+          <Text style={s.statLabel}>Weight Hauled</Text>
         </View>
         <View style={s.statDivider} />
         <View style={s.statItem}>
@@ -119,14 +119,15 @@ export default function CatchesScreen() {
         <View style={s.statItem}>
           <Text style={s.statValue}>{speciesCount}</Text>
           <Text style={s.statLabel}>Species</Text>
+
         </View>
       </View>
 
       {filteredCatches.length === 0 ? (
         <View style={s.empty}>
           <MaterialCommunityIcons name="fish" size={48} color={colors.textTertiary} />
-          <Text style={s.emptyTitle}>No catches yet</Text>
-          <Text style={s.emptySub}>Scan your first fish to get started.</Text>
+          <Text style={s.emptyTitle}>Logbook's empty.</Text>
+          <Text style={s.emptySub}>Every angler starts somewhere. Scan your first catch.</Text>
           <TouchableOpacity
             style={s.emptyBtn}
             onPress={() => router.push('/identifier' as any)}
