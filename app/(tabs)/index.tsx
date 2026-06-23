@@ -42,10 +42,10 @@ function getScoreColor(score: number): string {
 }
 
 function getScoreLabel(score: number) {
-  if (score >= 80) return { label: 'Excellent', color: '#00D4AA' };
-  if (score >= 60) return { label: 'Good', color: '#10B981' };
-  if (score >= 40) return { label: 'Fair', color: '#F59E0B' };
-  return { label: 'Tough', color: '#EF4444' };
+  if (score >= 80) return { label: 'EXCELLENT', color: '#00D4AA' };
+  if (score >= 60) return { label: 'GOOD', color: '#10B981' };
+  if (score >= 40) return { label: 'FAIR', color: '#F59E0B' };
+  return { label: 'POOR', color: '#EF4444' };
 }
 
 const FISHING_TIPS = [
@@ -126,7 +126,7 @@ export default function HomeScreen() {
   const w = weather;
   const primaryWindow = w ? selectPrimaryFishingWindow(w.solunarTimes) : null;
   const scoreColor = w ? getScoreColor(w.fishingScore) : '#F59E0B';
-  const scoreInfo = w ? getScoreLabel(w.fishingScore) : { label: 'Unknown', color: '#F59E0B' };
+  const scoreInfo = w ? getScoreLabel(w.fishingScore) : { label: 'UNKNOWN', color: '#F59E0B' };
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -134,120 +134,127 @@ export default function HomeScreen() {
 
         {/* ── Header ── */}
         <View style={s.header}>
-          <TouchableOpacity style={s.menuButton} onPress={() => router.push('/community' as any)} accessibilityRole="button" accessibilityLabel="Open community and friends">
-            <MaterialCommunityIcons name="menu" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <View style={s.brandBlock}>
-            <CastLogo size="sm" />
-          </View>
+          <CastLogo size="sm" />
+          <View style={{ flex: 1 }} />
           <TouchableOpacity
             style={s.bellWrap}
             onPress={() => router.push('/notifications' as any)}
-            accessibilityRole="button" accessibilityLabel="Notifications"
+            accessibilityRole="button"
+            accessibilityLabel="Notifications"
           >
-            <MaterialCommunityIcons name="bell-outline" size={20} color={colors.textSecondary} />
+            <MaterialCommunityIcons name="bell-outline" size={22} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
         {/* ── Greeting ── */}
         <View style={s.greet}>
-          <Text style={s.greetLine}>{getGreeting()}, <Text style={s.greetLineName}>{firstName}</Text></Text>
-          <Text style={s.greetSub}>Here's what the water looks like today.</Text>
+          <Text style={s.greetLine}>
+            {getGreeting()}, <Text style={s.greetLineName}>{firstName}</Text>
+          </Text>
+          <Text style={s.greetSub}>Here's your fishing brief</Text>
         </View>
 
-        {/* ── Conditions Card (only when spot selected) ── */}
+        {/* ── Conditions Hero Card ── */}
         {selectedSpot && (
-          <View style={s.condCard}>
-            {/* Card header with spot name, change button, score badge */}
-            <View style={s.condHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.condLabel}>CONDITIONS AT</Text>
-                <Text style={s.condSpotName} numberOfLines={1}>{selectedSpot.name.split(',')[0]}</Text>
-              </View>
-              <View style={s.condHeaderRight}>
-                {w && (
-                  <View style={[s.scoreBadge, { borderColor: scoreColor }]}>
-                    <Text style={[s.scoreBadgeNum, { color: scoreColor }]}>{w.fishingScore}</Text>
-                    <Text style={[s.scoreBadgeLabel, { color: scoreColor }]}>/ 100</Text>
+          <View style={s.condHeroWrap}>
+            <LinearGradient colors={['#0D1F2D', '#071318']} style={s.condHero}>
+              {/* Score left + stats right */}
+              {w ? (
+                <View style={s.condBody}>
+                  <View style={s.scoreCol}>
+                    <View style={s.scoreGlowCircle} />
+                    <Text style={[s.scoreNum, { color: scoreColor }]}>{w.fishingScore}</Text>
+                    <Text style={[s.scoreLabel, { color: scoreInfo.color }]}>{scoreInfo.label}</Text>
                   </View>
-                )}
-                <TouchableOpacity
-                  style={s.changeBtn}
-                  onPress={() => setSpotPickerOpen(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Choose another fishing spot"
-                >
-                  <MaterialCommunityIcons name="map-marker-outline" size={13} color={colors.primary} />
-                  <Text style={s.changeBtnText}>Change spot</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={refresh} disabled={weatherLoading} accessibilityLabel="Refresh live conditions" style={s.refreshButton}>
-                  <MaterialCommunityIcons name="refresh" size={16} color={colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {w ? (
-              <>
-                {/* Score label row */}
-                <View style={s.scoreRow}>
-                  <View style={s.scoreLeft}>
-                    <View style={s.scoreGlow} />
-                    <Text style={s.scoreNum}>{w.fishingScore}</Text>
-                    <Text style={[s.scoreLabelText, { color: scoreInfo.color }]}>{scoreInfo.label} conditions</Text>
-                    <Text style={s.scoreDesc}>Fishing score out of 100</Text>
-                  </View>
-                  <View style={s.scoreRight}>
+                  <View style={s.condStatsCol}>
                     {[
-                      { icon: 'thermometer', label: 'Air Temp', value: `${w.temp}°C` },
+                      { icon: 'thermometer', label: 'Temp', value: `${w.temp}°C` },
                       { icon: 'weather-windy', label: 'Wind', value: `${w.wind} km/h` },
-                      { icon: 'gauge', label: 'Pressure', value: `${w.pressure} hPa` },
+                      { icon: 'gauge', label: 'Pressure', value: `${w.pressure}` },
                     ].map(item => (
-                      <View key={item.label} style={s.condItem}>
-                        <MaterialCommunityIcons name={item.icon as any} size={13} color={colors.textTertiary} />
+                      <View key={item.label} style={s.condStatItem}>
+                        <MaterialCommunityIcons name={item.icon as any} size={14} color={colors.textTertiary} />
                         <View>
-                          <Text style={s.condItemVal}>{item.value}</Text>
-                          <Text style={s.condItemLabel}>{item.label}</Text>
+                          <Text style={s.condStatVal}>{item.value}</Text>
+                          <Text style={s.condStatLabel}>{item.label}</Text>
                         </View>
                       </View>
                     ))}
                   </View>
                 </View>
+              ) : (
+                <View style={s.condLoadRow}>
+                  <Text style={s.condLoadText}>Loading conditions…</Text>
+                </View>
+              )}
 
-                {/* Description row */}
-                <View style={s.condDescRow}>
-                  <MaterialCommunityIcons name={w.icon as any} size={16} color={colors.primary} />
-                  <Text style={s.condDescText}>{w.description}</Text>
-                  <Text style={s.condWindDir}>Wind {w.windDirection}°</Text>
-                </View>
-
-                {/* Best window */}
-                <View style={s.bestWindow}>
-                  <MaterialCommunityIcons name="chart-timeline-variant" size={16} color={colors.secondary} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.bestWindowTitle}>{primaryWindow ? `Primary activity window: ${fishingWindowLabel(primaryWindow)}` : 'Calculating activity window…'}</Text>
-                    <Text style={s.bestWindowSub}>{primaryWindow ? `${fishingWindowQuality(primaryWindow)} · ${primaryWindow.type} solunar period` : 'Uses the same data as Fish Activity'}</Text>
-                  </View>
-                </View>
-                <View style={s.updateRow}>
-                  <MaterialCommunityIcons name={weatherError ? 'wifi-off' : 'update'} size={13} color={colors.textTertiary} />
-                  <Text style={s.updateText}>
-                    {weatherError ? 'Live service unavailable · location-based estimate' : `Live data · updated ${updatedAt?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? 'now'}`}
-                  </Text>
-                </View>
-              </>
-            ) : (
-              <View style={s.loadingRow}>
-                <Text style={s.loadingText}>Loading conditions…</Text>
+              {/* Amber window strip */}
+              <View style={s.condWindowStrip}>
+                <MaterialCommunityIcons name="chart-timeline-variant" size={13} color={colors.secondary} />
+                <Text style={s.condWindowText} numberOfLines={1}>
+                  {primaryWindow
+                    ? `Major bite window: ${primaryWindow.start}–${primaryWindow.end}`
+                    : 'Calculating solunar windows…'}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => router.push('/conditions' as any)}
+                  style={s.condFullLink}
+                >
+                  <Text style={s.condFullLinkText}>Full Conditions</Text>
+                  <MaterialCommunityIcons name="arrow-right" size={12} color={colors.primary} />
+                </TouchableOpacity>
               </View>
-            )}
+            </LinearGradient>
           </View>
         )}
 
-        {/* ── Spots Near Me / Recommended ── */}
+        {/* ── Spot Selector Row ── */}
+        <View style={s.spotSelectorRow}>
+          <Text style={s.spotSelectorLabel}>FISHING AT:</Text>
+          <TouchableOpacity
+            style={s.spotSelectorName}
+            onPress={() => setSpotPickerOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Change fishing spot"
+          >
+            <Text style={s.spotSelectorNameText} numberOfLines={1}>
+              {selectedSpot ? selectedSpot.name.split(',')[0] : 'Choose a spot'}
+            </Text>
+            <MaterialCommunityIcons name="chevron-down" size={16} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={refresh} disabled={weatherLoading} style={s.refreshBtn}>
+            <MaterialCommunityIcons name="refresh" size={15} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
+        <View style={s.spotSelectorDivider} />
+
+        {/* ── Quick Actions 2×2 ── */}
+        <View style={s.quickActionsGrid}>
+          {[
+            { icon: 'camera-iris', label: 'Scan Fish', route: '/identifier' },
+            { icon: 'weather-partly-cloudy', label: 'Conditions', route: '/conditions' },
+            { icon: 'chart-line', label: 'My Stats', route: '/my-stats' },
+            { icon: 'calendar-month', label: 'Trip Planner', route: '/trip-planner' },
+          ].map(item => (
+            <TouchableOpacity
+              key={item.label}
+              style={s.quickActionCard}
+              onPress={() => router.push(item.route as any)}
+              activeOpacity={0.8}
+            >
+              <View style={s.quickActionIconWrap}>
+                <MaterialCommunityIcons name={item.icon as any} size={26} color={colors.primary} />
+              </View>
+              <Text style={s.quickActionLabel}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── Nearby Spots ── */}
         <View style={s.sectionHead}>
           <View style={s.sectionBar} />
           <View style={s.sectionTitleRow}>
-            <Text style={s.sectionTitle}>{nearMe ? 'Spots Near You' : 'Recommended Spots'}</Text>
+            <Text style={s.sectionTitle}>{nearMe ? 'SPOTS NEAR YOU' : 'RECOMMENDED SPOTS'}</Text>
             {nearMe && (
               <View style={s.nearBadge}>
                 <MaterialCommunityIcons name="map-marker" size={10} color={colors.primary} />
@@ -256,7 +263,7 @@ export default function HomeScreen() {
             )}
           </View>
           <TouchableOpacity onPress={() => router.push('/(tabs)/map' as any)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={s.seeAll}>See all →</Text>
+            <Text style={s.seeAll}>See All</Text>
           </TouchableOpacity>
         </View>
 
@@ -275,50 +282,36 @@ export default function HomeScreen() {
                 colors={['transparent', 'rgba(3,8,18,0.92)']}
                 style={StyleSheet.absoluteFillObject}
               />
-              {/* distance badge top right */}
-              <View style={s.spotBadge}>
-                <MaterialCommunityIcons name="map-marker" size={10} color={colors.primary} />
-                {spot._distKm !== undefined && (
-                  <Text style={s.spotBadgeText}>{formatDistance(spot._distKm)}</Text>
-                )}
-              </View>
-              {/* selected indicator */}
+              {spot._distKm !== undefined && (
+                <View style={s.distBadge}>
+                  <MaterialCommunityIcons name="map-marker" size={9} color={colors.secondary} />
+                  <Text style={s.distBadgeText}>{formatDistance(spot._distKm)}</Text>
+                </View>
+              )}
               {selectedSpot?.id === spot.id && (
                 <View style={s.spotSelectedBadge}>
                   <MaterialCommunityIcons name="check-circle" size={14} color={colors.primary} />
                 </View>
               )}
-              {/* species chips */}
               <View style={s.spotInfo}>
                 <Text style={s.spotName} numberOfLines={1}>{spot.name.split(',')[0]}</Text>
-                <View style={s.spotMetaRow}>
-                  <Text style={s.spotType}>{spot.type.charAt(0).toUpperCase() + spot.type.slice(1)}</Text>
-                  <View style={s.spotRatingRow}>
-                    <MaterialCommunityIcons name="star" size={10} color={colors.secondary} />
-                    <Text style={s.spotRating}>{spot.rating}</Text>
-                  </View>
-                </View>
-                {/* top species row */}
-                <View style={s.spotSpeciesRow}>
-                  {spot.species.slice(0, 3).map((sp, i) => (
-                    <View key={i} style={s.spotSpeciesChip}>
-                      <Text style={s.spotSpeciesText}>{sp}</Text>
-                    </View>
-                  ))}
+                <View style={s.spotTypeRow}>
+                  <Text style={s.spotTypeChip}>{spot.type.charAt(0).toUpperCase() + spot.type.slice(1)}</Text>
                 </View>
               </View>
             </TouchableOpacity>
           ))}
         </ScrollView>
-        <Text style={s.spotSelectorHint}>Tap a spot to preview its conditions. This does not start a fishing session.</Text>
+        <Text style={s.spotHint}>Tap a spot to preview conditions. Does not start a session.</Text>
 
         {/* ── Tip of the Day ── */}
         <View style={s.tipCard}>
+          <View style={s.tipAccent} />
           <View style={s.tipIconWrap}>
             <MaterialCommunityIcons name="lightbulb-on" size={20} color={colors.secondary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={s.tipLabel}>TIP OF THE DAY</Text>
+            <Text style={s.tipLabel}>DAILY TIP</Text>
             <Text style={s.tipText}>{tip}</Text>
           </View>
         </View>
@@ -326,9 +319,9 @@ export default function HomeScreen() {
         {/* ── Recent Catches ── */}
         <View style={s.sectionHead}>
           <View style={s.sectionBar} />
-          <Text style={s.sectionTitle}>Recent Catches</Text>
+          <Text style={s.sectionTitle}>RECENT CATCHES</Text>
           <TouchableOpacity onPress={() => router.push('/(tabs)/catches' as any)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={s.seeAll}>See all →</Text>
+            <Text style={s.seeAll}>View All</Text>
           </TouchableOpacity>
         </View>
 
@@ -337,7 +330,7 @@ export default function HomeScreen() {
             <LinearGradient colors={['rgba(0,212,170,0.06)', 'transparent']} style={s.emptyCatchesGrad}>
               <MaterialCommunityIcons name="fish" size={40} color="rgba(0,212,170,0.25)" />
               <Text style={s.emptyTitle}>No catches logged yet</Text>
-              <Text style={s.emptySub}>Every great fishing story starts with the first cast. Get out there and log your first catch.</Text>
+              <Text style={s.emptySub}>Every great fishing story starts with the first cast.</Text>
               <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/add-catch' as any)}>
                 <Text style={s.emptyBtnText}>Log a Catch</Text>
               </TouchableOpacity>
@@ -364,28 +357,6 @@ export default function HomeScreen() {
             ))}
           </View>
         )}
-
-        {/* ── Quick Links ── */}
-        <View style={s.quickLinksRow}>
-          {[
-            { icon: 'fish', label: 'Species Guide', route: '/(tabs)/tips' },
-            { icon: 'link-variant', label: 'Knots', route: '/knots' },
-            { icon: 'food-drumstick', label: 'Bait Guide', route: '/bait-guide' },
-            { icon: 'weather-partly-cloudy', label: 'Weather', route: '/weather-detail' },
-          ].map(item => (
-            <TouchableOpacity
-              key={item.label}
-              style={s.quickLink}
-              onPress={() => router.push(item.route as any)}
-              activeOpacity={0.85}
-            >
-              <View style={s.quickLinkIcon}>
-                <MaterialCommunityIcons name={item.icon as any} size={20} color={colors.primary} />
-              </View>
-              <Text style={s.quickLinkLabel}>{item.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
 
       </ScrollView>
 
@@ -442,125 +413,176 @@ export default function HomeScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#050A12' },
 
+  // ── Header ──
   header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: 6,
   },
-  menuButton: { width: 34, height: 34, alignItems: 'flex-start', justifyContent: 'center' },
-  brandBlock: { flex: 1 },
-  logo: { fontSize: 20, fontWeight: '900', color: colors.primary, letterSpacing: 1 },
   bellWrap: {
-    width: 34, height: 34, borderRadius: radius.sm,
+    width: 38, height: 38, borderRadius: radius.md,
     alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
 
-  greet: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.lg },
-  greetLine: { fontSize: 18, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.3 },
+  // ── Greeting ──
+  greet: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+  },
+  greetLine: {
+    fontSize: 26, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.5,
+  },
   greetLineName: { color: '#00D4AA' },
-  greetSub: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
+  greetSub: { fontSize: 13, color: colors.textSecondary, marginTop: 5 },
 
-  ctaWrap: {
-    marginHorizontal: spacing.lg, marginBottom: 24,
-    borderRadius: radius.lg, overflow: 'hidden',
-    shadowColor: colors.primary, shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 4 },
-    elevation: 10,
+  // ── Conditions Hero Card ──
+  condHeroWrap: {
+    marginHorizontal: spacing.lg,
+    marginBottom: 16,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,170,0.22)',
+    shadowColor: '#00D4AA',
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 4,
   },
-  ctaGrad: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 10, paddingVertical: 18,
+  condHero: {
+    borderRadius: radius.lg,
   },
-  ctaText: { fontSize: 14, fontWeight: '800', color: '#031A12', letterSpacing: 2 },
+  condBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: 20,
+    paddingBottom: 12,
+    gap: 20,
+  },
+  scoreCol: {
+    alignItems: 'flex-start',
+    position: 'relative',
+  },
+  scoreGlowCircle: {
+    position: 'absolute',
+    width: 90, height: 90, borderRadius: 45,
+    backgroundColor: 'rgba(0,212,170,0.07)',
+    top: -15, left: -18,
+  },
+  scoreNum: {
+    fontSize: 52, fontWeight: '900', letterSpacing: -2, lineHeight: 56,
+  },
+  scoreLabel: {
+    fontSize: 11, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2,
+  },
+  condStatsCol: {
+    flex: 1, gap: 10,
+  },
+  condStatItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+  },
+  condStatVal: {
+    fontSize: 13, fontWeight: '700', color: colors.textPrimary,
+  },
+  condStatLabel: {
+    fontSize: 10, color: colors.textTertiary,
+  },
+  condLoadRow: {
+    padding: 24, alignItems: 'center',
+  },
+  condLoadText: { fontSize: 13, color: colors.textTertiary },
+  condWindowStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(245,158,11,0.15)',
+    backgroundColor: 'rgba(245,158,11,0.06)',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 10,
+  },
+  condWindowText: {
+    flex: 1, fontSize: 12, fontWeight: '600', color: colors.textSecondary,
+  },
+  condFullLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+  },
+  condFullLinkText: {
+    fontSize: 11, fontWeight: '700', color: colors.primary,
+  },
 
-  // ── Choose Spot Prompt
-  chooseSpotCard: {
-    marginHorizontal: spacing.lg, marginBottom: 24,
-    backgroundColor: colors.surface, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
-    padding: spacing.lg, alignItems: 'center', gap: 12,
-    ...elevation.raised,
+  // ── Spot Selector Row ──
+  spotSelectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    marginBottom: 8,
+    gap: 8,
   },
-  chooseSpotLabel: {
-    fontSize: 10, fontWeight: '800', color: colors.primary,
+  spotSelectorLabel: {
+    fontSize: 10, fontWeight: '800', color: colors.textTertiary,
     letterSpacing: 1.5, textTransform: 'uppercase',
   },
-  chooseSpotText: {
-    fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20,
+  spotSelectorName: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4,
   },
-  chooseSpotBtn: {
-    backgroundColor: colors.primary, borderRadius: radius.full,
-    paddingHorizontal: 24, paddingVertical: 12, marginTop: 4,
+  spotSelectorNameText: {
+    fontSize: 14, fontWeight: '800', color: '#00D4AA',
   },
-  chooseSpotBtnText: { fontSize: 14, fontWeight: '700', color: '#031A12' },
+  refreshBtn: {
+    width: 28, height: 28, alignItems: 'center', justifyContent: 'center',
+  },
+  spotSelectorDivider: {
+    height: 1, backgroundColor: colors.border,
+    marginHorizontal: spacing.lg, marginBottom: spacing.lg,
+  },
 
-  // ── Conditions card
-  condCard: {
-    marginHorizontal: spacing.lg, marginBottom: 28,
-    backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: radius.lg,
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.18)',
-    padding: spacing.lg, gap: 16,
-    shadowColor: '#00D4AA', shadowOpacity: 0.06, shadowRadius: 12, shadowOffset: { width: 0, height: 0 },
-    elevation: 3,
+  // ── Quick Actions 2x2 ──
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
   },
-  condHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  condLabel: { fontSize: 10, fontWeight: '800', color: colors.textTertiary, letterSpacing: 1.5, textTransform: 'uppercase' },
-  condSpotName: { fontSize: 15, fontWeight: '800', color: colors.textPrimary, marginTop: 2 },
-  condHeaderRight: { alignItems: 'flex-end', gap: 8 },
-
-  scoreBadge: {
-    borderWidth: 2, borderRadius: 30,
-    width: 60, height: 60,
+  quickActionCard: {
+    width: '47.5%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(0,212,170,0.15)',
+    paddingVertical: 18,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    gap: 10,
+    ...elevation.raised,
+  },
+  quickActionIconWrap: {
+    width: 48, height: 48, borderRadius: radius.md,
+    backgroundColor: 'rgba(0,212,170,0.1)',
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
   },
-  scoreBadgeNum: { fontSize: 18, fontWeight: '900', lineHeight: 22 },
-  scoreBadgeLabel: { fontSize: 9, fontWeight: '700' },
-
-  changeBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    borderWidth: 1, borderColor: colors.border, borderRadius: radius.full,
-    paddingHorizontal: 12, paddingVertical: 5,
+  quickActionLabel: {
+    fontSize: 12, fontWeight: '700', color: colors.textPrimary, textAlign: 'center',
   },
-  changeBtnText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
-  refreshButton: { position: 'absolute', right: -2, top: 70, width: 30, height: 30, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
 
-  scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  scoreLeft: { gap: 3 },
-  scoreNum: { fontSize: 52, fontWeight: '900', letterSpacing: -2, lineHeight: 56, color: '#00D4AA' },
-  scoreGlow: { position: 'absolute', width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(0,212,170,0.08)', top: -10, left: -14 },
-  scoreLabelText: { fontSize: 14, fontWeight: '800', letterSpacing: -0.3 },
-  scoreDesc: { fontSize: 11, color: colors.textTertiary },
-  scoreRight: { flex: 1, gap: 10 },
-  condItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  condItemVal: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
-  condItemLabel: { fontSize: 10, color: colors.textTertiary },
-
-  condDescRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: 'rgba(0,212,170,0.05)', borderRadius: radius.sm,
-    padding: 10, borderWidth: 1, borderColor: 'rgba(0,212,170,0.1)',
-  },
-  condDescText: { flex: 1, fontSize: 13, color: colors.textPrimary, fontWeight: '600' },
-  condWindDir: { fontSize: 11, color: colors.textTertiary },
-
-  bestWindow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    backgroundColor: 'rgba(245,158,11,0.07)', borderRadius: radius.sm,
-    borderWidth: 1, borderColor: 'rgba(245,158,11,0.15)', padding: 12,
-  },
-  bestWindowTitle: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
-  bestWindowSub: { fontSize: 12, color: colors.textSecondary },
-  updateRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -7 },
-  updateText: { flex: 1, fontSize: 10, color: colors.textTertiary },
-
-  loadingRow: { alignItems: 'center', padding: 20 },
-  loadingText: { fontSize: 13, color: colors.textTertiary },
-
+  // ── Nearby Spots ──
   sectionHead: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: spacing.lg, marginBottom: 14,
   },
-  sectionBar: { width: 3, height: 18, borderRadius: 2, backgroundColor: colors.primary },
+  sectionBar: { width: 3, height: 16, borderRadius: 2, backgroundColor: colors.primary },
   sectionTitleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle: { fontSize: 12, fontWeight: '800', color: colors.textPrimary, letterSpacing: 1.5, textTransform: 'uppercase' },
+  sectionTitle: {
+    fontSize: 11, fontWeight: '800', color: colors.textPrimary,
+    letterSpacing: 1.5, textTransform: 'uppercase',
+  },
   nearBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: radius.full,
@@ -571,15 +593,12 @@ const s = StyleSheet.create({
   seeAll: { fontSize: 13, color: colors.primary, fontWeight: '600' },
 
   spotsScroll: { paddingHorizontal: spacing.lg, gap: 10, paddingBottom: 4, marginBottom: 8 },
-  spotSelectorHint: {
-    marginHorizontal: spacing.lg,
-    marginBottom: 28,
-    color: colors.textTertiary,
-    fontSize: 10,
-    lineHeight: 15,
+  spotHint: {
+    marginHorizontal: spacing.lg, marginBottom: 28,
+    color: colors.textTertiary, fontSize: 10, lineHeight: 15,
   },
   spotCard: {
-    width: 140, height: 185, borderRadius: radius.md, overflow: 'hidden',
+    width: 160, height: 120, borderRadius: radius.md, overflow: 'hidden',
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)',
     justifyContent: 'space-between',
     ...elevation.raised,
@@ -587,47 +606,51 @@ const s = StyleSheet.create({
   spotCardSelected: {
     borderColor: colors.primary, borderWidth: 2,
   },
-  spotBadge: {
+  distBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
     alignSelf: 'flex-end', margin: 8,
-    backgroundColor: 'rgba(3,8,18,0.7)', borderRadius: radius.full,
+    backgroundColor: 'rgba(3,8,18,0.75)', borderRadius: radius.full,
     paddingHorizontal: 7, paddingVertical: 3,
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
+    borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)',
   },
-  spotBadgeText: { fontSize: 9, color: colors.primary, fontWeight: '700' },
+  distBadgeText: { fontSize: 9, color: colors.secondary, fontWeight: '700' },
   spotSelectedBadge: {
     position: 'absolute', top: 8, left: 8,
     backgroundColor: 'rgba(3,8,18,0.7)', borderRadius: radius.full, padding: 2,
   },
   spotInfo: { padding: 10 },
   spotName: { fontSize: 13, fontWeight: '700', color: '#fff', marginBottom: 4 },
-  spotMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  spotType: { fontSize: 10, color: 'rgba(255,255,255,0.5)', textTransform: 'capitalize' },
-  spotRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  spotRating: { fontSize: 10, fontWeight: '700', color: colors.secondary },
-  spotSpeciesRow: { flexDirection: 'row', gap: 4, flexWrap: 'wrap', marginTop: 4 },
-  spotSpeciesChip: {
-    backgroundColor: 'rgba(0,212,170,0.18)',
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
+  spotTypeRow: { flexDirection: 'row' },
+  spotTypeChip: {
+    fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'capitalize',
   },
-  spotSpeciesText: { fontSize: 9, color: colors.primary, fontWeight: '700' },
 
+  // ── Tip of the Day ──
   tipCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
     marginHorizontal: spacing.lg, marginBottom: 28,
-    backgroundColor: 'rgba(245,158,11,0.06)', borderRadius: radius.md,
-    borderWidth: 1, borderColor: 'rgba(245,158,11,0.15)', padding: spacing.md,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    padding: spacing.md, overflow: 'hidden',
+  },
+  tipAccent: {
+    position: 'absolute', left: 0, top: 0, bottom: 0,
+    width: 4, backgroundColor: colors.secondary,
+    borderTopLeftRadius: radius.md, borderBottomLeftRadius: radius.md,
   },
   tipIconWrap: {
     width: 36, height: 36, borderRadius: radius.sm,
     backgroundColor: 'rgba(245,158,11,0.12)', alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)',
+    marginLeft: 8,
   },
-  tipLabel: { fontSize: 9, fontWeight: '800', color: colors.secondary, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 5 },
+  tipLabel: {
+    fontSize: 9, fontWeight: '800', color: colors.secondary,
+    letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 5,
+  },
   tipText: { fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
 
+  // ── Recent Catches ──
   emptyCatches: {
     marginHorizontal: spacing.lg, marginBottom: 28,
     borderRadius: radius.lg, overflow: 'hidden',
@@ -663,22 +686,7 @@ const s = StyleSheet.create({
   catchMeta: { fontSize: 12, color: colors.textSecondary },
   catchTime: { fontSize: 12, color: colors.textTertiary },
 
-  quickLinksRow: {
-    flexDirection: 'row', paddingHorizontal: spacing.lg, gap: 10,
-  },
-  quickLink: {
-    flex: 1, alignItems: 'center', gap: 8,
-    backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border, paddingVertical: 14,
-    ...elevation.raised,
-  },
-  quickLinkIcon: {
-    width: 38, height: 38, borderRadius: radius.sm,
-    backgroundColor: 'rgba(0,212,170,0.08)', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.15)',
-  },
-  quickLinkLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, textAlign: 'center' },
-
+  // ── Modal ──
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,6,10,0.72)' },
   spotSheet: { height: '84%', backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderWidth: 1, borderColor: colors.borderStrong, paddingTop: spacing.sm },
   sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.borderStrong, alignSelf: 'center', marginBottom: spacing.md },
