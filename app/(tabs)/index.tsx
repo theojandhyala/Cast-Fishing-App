@@ -101,34 +101,10 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 const ACTION_CARDS = [
-  {
-    icon: 'play-circle',
-    title: 'Start\nSession',
-    iconColor: colors.primary,
-    bg: 'rgba(0,212,170,0.12)',
-    route: '/(tabs)/session',
-  },
-  {
-    icon: 'camera',
-    title: 'Scan\nFish',
-    iconColor: colors.secondary,
-    bg: 'rgba(77,163,255,0.12)',
-    route: '/identifier',
-  },
-  {
-    icon: 'fish',
-    title: 'Log\nCatch',
-    iconColor: colors.accent,
-    bg: 'rgba(245,158,11,0.12)',
-    route: '/identifier',
-  },
-  {
-    icon: 'map-marker',
-    title: 'Explore\nSpots',
-    iconColor: '#A78BFA',
-    bg: 'rgba(167,139,250,0.12)',
-    route: '/(tabs)/map',
-  },
+  { icon: 'play-circle-outline', title: 'Start Session', route: '/(tabs)/session' },
+  { icon: 'camera-outline', title: 'Scan Fish', route: '/identifier' },
+  { icon: 'notebook-outline', title: 'Log Catch', route: '/identifier' },
+  { icon: 'map-marker-outline', title: 'Explore Spots', route: '/(tabs)/map' },
 ];
 
 export default function HomeScreen() {
@@ -226,17 +202,19 @@ export default function HomeScreen() {
               </View>
               <Text style={s.scoreConditions}>{getConditionsLabel(score)}</Text>
             </View>
-            <ScoreRing score={score} />
+            <View style={s.scoreBarWrap}>
+              <View style={s.scoreBarTrack}>
+                <View style={[s.scoreBarFill, { width: `${score}%` as any }]} />
+              </View>
+              {nextWindowStr ? (
+                <View style={s.primeInline}>
+                  <MaterialCommunityIcons name="clock-outline" size={11} color={colors.textTertiary} />
+                  <Text style={s.primeInlineText}>Next prime {nextWindowStr}</Text>
+                </View>
+              ) : null}
+            </View>
           </View>
         </View>
-
-        {/* Next Prime Window (outside card) */}
-        {nextWindowStr ? (
-          <View style={s.primeRow}>
-            <Text style={s.primeLabel}>Next Prime Window</Text>
-            <Text style={s.primeTime}>{nextWindowStr}</Text>
-          </View>
-        ) : null}
 
         {/* Sunrise / Sunset arc */}
         <View style={s.sunRow}>
@@ -299,20 +277,17 @@ export default function HomeScreen() {
         {/* Quick Actions */}
         <View style={s.section}>
           <Text style={s.sectionHeader}>QUICK ACTIONS</Text>
-          <View style={s.actionsGrid}>
-            {ACTION_CARDS.map((card) => (
+          <View style={s.actionsList}>
+            {ACTION_CARDS.map((card, i) => (
               <TouchableOpacity
                 key={card.title}
-                style={[s.actionCard, { backgroundColor: card.bg }]}
+                style={[s.actionRow, i < ACTION_CARDS.length - 1 && s.actionRowBorder]}
                 onPress={() => router.push(card.route as any)}
-                activeOpacity={0.75}
+                activeOpacity={0.7}
               >
-                <MaterialCommunityIcons
-                  name={card.icon as any}
-                  size={28}
-                  color={card.iconColor}
-                />
-                <Text style={[s.actionTitle, { color: card.iconColor }]}>{card.title}</Text>
+                <MaterialCommunityIcons name={card.icon as any} size={20} color={colors.textSecondary} />
+                <Text style={s.actionRowTitle}>{card.title}</Text>
+                <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
               </TouchableOpacity>
             ))}
           </View>
@@ -388,61 +363,72 @@ const s = StyleSheet.create({
   // Score card
   scoreCard: {
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
   },
   scoreCardLabel: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '600',
     color: colors.textTertiary,
-    letterSpacing: 1.5,
-    marginBottom: 8,
+    letterSpacing: 2,
+    marginBottom: 10,
   },
   scoreCardBody: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-end',
+    gap: 16,
   },
-  scoreLeft: { gap: 4 },
-  scoreNumRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  scoreLeft: { gap: 2 },
+  scoreNumRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
   scoreNum: {
-    fontSize: 64,
-    fontWeight: '800',
-    color: colors.primary,
-    lineHeight: 68,
+    fontSize: 56,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    lineHeight: 60,
     letterSpacing: -2,
   },
   scoreDenom: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.textSecondary,
+    fontSize: 16,
+    fontWeight: '500',
+    color: colors.textTertiary,
   },
   scoreConditions: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '500',
     color: colors.primary,
+    marginTop: 2,
   },
-
-  // Prime window
-  primeRow: {
+  scoreBarWrap: {
+    flex: 1,
+    gap: 6,
+    paddingBottom: 4,
+  },
+  scoreBarTrack: {
+    height: 3,
+    backgroundColor: colors.surface2,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  scoreBarFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 2,
+  },
+  primeInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: 4,
   },
-  primeLabel: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
-  primeTime: { fontSize: 14, fontWeight: '700', color: colors.primary },
+  primeInlineText: {
+    fontSize: 10,
+    color: colors.textTertiary,
+    fontWeight: '500',
+  },
 
   // Sun row
   sunRow: {
@@ -491,32 +477,37 @@ const s = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   sectionHeader: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: 10,
+    fontWeight: '600',
     color: colors.textTertiary,
-    letterSpacing: 1,
-    marginBottom: 12,
+    letterSpacing: 2,
+    marginBottom: 10,
   },
 
   // Quick Actions
-  actionsGrid: {
+  actionsList: {
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  actionRow: {
     flexDirection: 'row',
-    gap: 10,
-  },
-  actionCard: {
-    flex: 1,
-    borderRadius: radius.lg,
-    padding: 14,
     alignItems: 'center',
-    gap: 8,
-    minHeight: 90,
-    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+    gap: 12,
   },
-  actionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    textAlign: 'center',
-    lineHeight: 16,
+  actionRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  actionRowTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.textPrimary,
   },
 
   // Stats
@@ -534,7 +525,7 @@ const s = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
@@ -542,19 +533,20 @@ const s = StyleSheet.create({
   statItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 14,
-    gap: 4,
+    paddingVertical: 16,
+    gap: 3,
   },
   statValue: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '700',
     color: colors.textPrimary,
+    letterSpacing: -0.5,
   },
   statLabel: {
     fontSize: 9,
-    fontWeight: '600',
+    fontWeight: '500',
     color: colors.textTertiary,
     textAlign: 'center',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
 });

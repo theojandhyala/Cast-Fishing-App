@@ -5,7 +5,7 @@ import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { colors, spacing } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
 
-const TAB_BAR_HEIGHT = 72;
+const TAB_BAR_HEIGHT = 58;
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   return (
@@ -90,21 +90,17 @@ export default function TabsLayout() {
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: colors.surface,
+            backgroundColor: colors.bg,
             borderTopWidth: 1,
-            borderTopColor: colors.border,
+            borderTopColor: 'rgba(255,255,255,0.05)',
             height: TAB_BAR_HEIGHT,
-            paddingBottom: 12,
-            paddingTop: 8,
-            elevation: 8,
-            shadowColor: '#000',
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
+            paddingBottom: 8,
+            paddingTop: 6,
           },
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textTertiary,
           tabBarShowLabel: true,
-          tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 2 },
+          tabBarLabelStyle: { fontSize: 10, fontWeight: '500', marginTop: 1 },
         }}
       >
         <Tabs.Screen
@@ -186,20 +182,20 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -16,
+    marginTop: -8,
   },
   centerBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: colors.primary,
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 12,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
   },
 
   // Session banner
