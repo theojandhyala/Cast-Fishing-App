@@ -48,8 +48,28 @@ let allSpotsPromise: Promise<FishingSpotRecord[]> | null = null;
 export function loadAllFishingSpots(): Promise<FishingSpotRecord[]> {
   if (FISHING_SPOTS.length > CURATED_FISHING_SPOTS.length) return Promise.resolve(FISHING_SPOTS);
   if (!allSpotsPromise) {
-    allSpotsPromise = import('./osmFishingSpots.generated').then(({ OSM_FISHING_SPOTS }) => {
+    allSpotsPromise = Promise.all([
+      import('./osmFishingSpots.generated'),
+      import('./globalFishingSpots'),
+    ]).then(([{ OSM_FISHING_SPOTS }, { GLOBAL_FISHING_SPOTS }]) => {
       FISHING_SPOTS.push(...OSM_FISHING_SPOTS.map(adaptOsmFishingSpot));
+      FISHING_SPOTS.push(...(GLOBAL_FISHING_SPOTS as any[]).map((tuple: any) => {
+        const [id, name, latitude, longitude, type, area, speciesList, accessTag] = tuple;
+        const rawSpecies = speciesList ? speciesList.split('|').map((s: string) => s.trim()).filter(Boolean) : [];
+        const species = enrichSpecies(latitude, longitude, type, rawSpecies);
+        return {
+          id, name, country: area, region: area, coverageRegion: coverageFromCoordinate(latitude, longitude),
+          continent: area, type, latitude, longitude, coordinatePrecision: 'named_feature' as const, species,
+          bestBait: [], bestSeason: [], difficulty: 'unknown' as const,
+          access: { summary: 'Check local access rights and regulations before fishing.', permit: (accessTag === 'permit' || accessTag === 'private') ? 'required' as const : 'unknown' as const },
+          description: `A named fishing location in ${area}.`,
+          tips: 'Conditions are fetched live. Always check local regulations.',
+          facilities: [], verification: 'partially_verified' as const,
+          verificationNotes: 'Location sourced from curated global fishing database.',
+          sources: [], dataset: 'imported' as const, updatedAt: '2026-06-23', rating: 0,
+          permitRequired: accessTag === 'permit' || accessTag === 'private',
+        };
+      }));
       refreshMetadata();
       return FISHING_SPOTS;
     }).catch((error) => {
