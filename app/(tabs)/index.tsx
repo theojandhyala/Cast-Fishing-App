@@ -269,26 +269,19 @@ export default function HomeScreen() {
         </View>
 
         {/* Quick Actions */}
-        <View style={s.section}>
-          <Text style={s.sectionHeader}>QUICK ACTIONS</Text>
-          <View style={s.actionsList}>
-            {ACTION_CARDS.map((card, i) => (
-              <TouchableOpacity
-                key={card.title}
-                style={[s.actionRow, i < ACTION_CARDS.length - 1 && s.actionRowBorder]}
-                onPress={() => router.push(card.route as any)}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons name={card.icon as any} size={20} color={colors.textSecondary} />
-                <Text style={s.actionRowTitle}>{card.title}</Text>
-                <MaterialCommunityIcons name="chevron-right" size={16} color={colors.textTertiary} />
-              </TouchableOpacity>
-            ))}
-          </View>
+        <View style={s.actionsRow}>
+          <TouchableOpacity style={s.actionPrimary} onPress={() => router.push('/(tabs)/session' as any)} activeOpacity={0.8}>
+            <MaterialCommunityIcons name="play-circle-outline" size={22} color={colors.bg} />
+            <Text style={s.actionPrimaryText}>Start Session</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.actionSecondary} onPress={() => router.push('/identifier' as any)} activeOpacity={0.8}>
+            <MaterialCommunityIcons name="camera-outline" size={22} color={colors.primary} />
+            <Text style={s.actionSecondaryText}>Scan Fish</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Your Stats */}
-        <View style={s.section}>
+        <View style={[s.section, { paddingTop: 8 }]}>
           <View style={s.statsHeaderRow}>
             <Text style={s.sectionHeader}>YOUR STATS</Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/catches' as any)} activeOpacity={0.75}>
@@ -301,11 +294,14 @@ export default function HomeScreen() {
               { value: String(stats.species), label: 'Species' },
               { value: '142', label: 'Hours Fished' },
               { value: String(stats.streak), label: 'Day Streak' },
-            ].map((item) => (
-              <View key={item.label} style={s.statItem}>
-                <Text style={s.statValue}>{item.value}</Text>
-                <Text style={s.statLabel}>{item.label}</Text>
-              </View>
+            ].map((item, i) => (
+              <React.Fragment key={item.label}>
+                {i > 0 && <View style={s.statDivider} />}
+                <View style={s.statItem}>
+                  <Text style={s.statValue}>{item.value}</Text>
+                  <Text style={s.statLabel}>{item.label}</Text>
+                </View>
+              </React.Fragment>
             ))}
           </View>
         </View>
@@ -371,42 +367,32 @@ const s = StyleSheet.create({
     letterSpacing: 2,
     marginBottom: 10,
   },
-  scoreCardBody: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    gap: 16,
-  },
-  scoreLeft: { gap: 2 },
-  scoreNumRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
+  scoreNumRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 3 },
   scoreNum: {
-    fontSize: 56,
-    fontWeight: '700',
+    fontSize: 96,
+    fontWeight: '800',
     color: colors.textPrimary,
-    lineHeight: 60,
-    letterSpacing: -2,
+    lineHeight: 96,
+    letterSpacing: -3,
   },
   scoreDenom: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
     color: colors.textTertiary,
+    marginTop: 8,
   },
   scoreConditions: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
     color: colors.primary,
-    marginTop: 2,
-  },
-  scoreBarWrap: {
-    flex: 1,
-    gap: 6,
-    paddingBottom: 4,
+    marginBottom: 10,
   },
   scoreBarTrack: {
     height: 3,
     backgroundColor: colors.surface2,
     borderRadius: 2,
     overflow: 'hidden',
+    marginBottom: 6,
   },
   scoreBarFill: {
     height: '100%',
@@ -450,15 +436,17 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   weatherChipValue: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '700',
     color: colors.textPrimary,
     textAlign: 'center',
   },
   weatherChipSub: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '600',
     color: colors.textTertiary,
     letterSpacing: 0.3,
@@ -479,30 +467,11 @@ const s = StyleSheet.create({
   },
 
   // Quick Actions
-  actionsList: {
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-    gap: 12,
-  },
-  actionRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  actionRowTitle: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-    color: colors.textPrimary,
-  },
+  actionsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 24, marginBottom: 24 },
+  actionPrimary: { flex: 1, backgroundColor: colors.primary, borderRadius: 10, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  actionPrimaryText: { fontSize: 14, fontWeight: '700', color: colors.bg },
+  actionSecondary: { flex: 1, backgroundColor: colors.surface, borderRadius: 10, paddingVertical: 14, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  actionSecondaryText: { fontSize: 14, fontWeight: '600', color: colors.primary },
 
   // Stats
   statsHeaderRow: {
@@ -518,20 +487,21 @@ const s = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
+    paddingHorizontal: 0,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignSelf: 'stretch',
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 8,
     gap: 3,
   },
   statValue: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     color: colors.textPrimary,
     letterSpacing: -0.5,
@@ -542,5 +512,6 @@ const s = StyleSheet.create({
     color: colors.textTertiary,
     textAlign: 'center',
     letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 });
