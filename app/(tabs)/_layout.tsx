@@ -6,7 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, radius, spacing } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
 
-const TAB_BAR_HEIGHT = 68;
+const TAB_BAR_HEIGHT = 64;
 
 function TabIcon({ name, color, focused, label }: { name: string; color: string; focused: boolean; label: string }) {
   return (
@@ -103,7 +103,10 @@ export default function TabsLayout() {
             height: TAB_BAR_HEIGHT,
             paddingBottom: 10,
             paddingTop: 6,
-            elevation: 0,
+            elevation: 8,
+            shadowColor: '#000',
+            shadowOpacity: 0.3,
+            shadowRadius: 8,
           },
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textSecondary,
@@ -156,9 +159,9 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="friends"
           options={{
-            title: 'Friends',
+            title: 'Explore',
             tabBarIcon: ({ color, focused }) => (
-              <TabIcon name={focused ? 'account-group' : 'account-group-outline'} color={color} focused={focused} label="Friends" />
+              <TabIcon name="dots-grid" color={color} focused={focused} label="Explore" />
             ),
           }}
         />
@@ -202,13 +205,13 @@ const styles = StyleSheet.create({
     marginTop: -18,
   },
   centerBtn: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#00D4AA',
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.3,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 4 },
     elevation: 12,

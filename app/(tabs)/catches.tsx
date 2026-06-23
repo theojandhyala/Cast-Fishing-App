@@ -78,9 +78,8 @@ export default function CatchesScreen() {
       {/* ── Header ── */}
       <View style={s.header}>
         <View>
-          <Text style={s.headerSuperLabel}>LOGBOOK</Text>
-          <Text style={s.headerTitle}>{catches.length}</Text>
-          <Text style={s.headerSub}>catches</Text>
+          <Text style={s.headerTitle}>Logbook</Text>
+          <Text style={s.headerSub}>{catches.length} catches</Text>
         </View>
         <TouchableOpacity
           style={s.addBtn}
@@ -282,15 +281,10 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm,
   },
-  headerSuperLabel: {
-    fontSize: 11, fontWeight: '800', letterSpacing: 3, color: 'rgba(255,255,255,0.35)',
-    textTransform: 'uppercase',
-  },
   headerTitle: {
-    fontSize: 28, fontWeight: '900', color: '#ffffff',
+    fontSize: 22, fontWeight: '700', color: colors.textPrimary,
   },
-  headerSub: { fontSize: 13, color: colors.textSecondary, marginTop: 0 },
-  headerSubCount: { color: '#00D4AA', fontWeight: '700' },
+  headerSub: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   addBtn: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: '#00D4AA', alignItems: 'center', justifyContent: 'center',
@@ -301,7 +295,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: colors.surface2,
     borderRadius: 50,
     padding: 3, gap: 3,
   },
@@ -309,11 +303,10 @@ const s = StyleSheet.create({
     flex: 1, paddingVertical: 9,
     borderRadius: 50,
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  tabPillActive: { backgroundColor: '#00D4AA' },
-  tabPillText: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.5)' },
-  tabPillTextActive: { color: '#050A12', fontWeight: '900' },
+  tabPillActive: { backgroundColor: colors.primary },
+  tabPillText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  tabPillTextActive: { color: colors.background, fontWeight: '700' },
 
   // ── Filter Row ──
   filterRow: {
@@ -342,10 +335,7 @@ const s = StyleSheet.create({
     flex: 1, minWidth: 0,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    borderLeftWidth: 3, borderLeftColor: '#00D4AA',
-    borderTopWidth: 1, borderTopColor: 'rgba(0,212,170,0.12)',
-    borderRightWidth: 1, borderRightColor: 'rgba(0,212,170,0.06)',
-    borderBottomWidth: 1, borderBottomColor: 'rgba(0,212,170,0.06)',
+    borderWidth: 1, borderColor: colors.border,
     overflow: 'hidden',
   },
   catchCardBg: { position: 'relative' },
@@ -357,12 +347,11 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(2,11,17,0.72)',
   },
   catchCardBody: { padding: 10, gap: 4 },
-  catchSpecies: { fontSize: 15, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.3 },
+  catchSpecies: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   catchChips: { flexDirection: 'row', gap: 5, flexWrap: 'wrap' },
   chipTeal: {
     backgroundColor: 'rgba(0,212,170,0.15)', borderRadius: 4,
     paddingHorizontal: 6, paddingVertical: 2,
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.25)',
   },
   chipTealText: { fontSize: 10, fontWeight: '700', color: '#00D4AA' },
   chipGray: {

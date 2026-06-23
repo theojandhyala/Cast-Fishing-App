@@ -163,7 +163,7 @@ export default function HomeScreen() {
                 <View style={s.condBody}>
                   <View style={s.scoreCol}>
                     <View style={s.scoreGlowCircle} />
-                    <Text style={[s.scoreNum, { color: scoreColor, textShadowColor: 'rgba(0,212,170,0.4)', textShadowRadius: 12 }]}>{w.fishingScore}</Text>
+                    <Text style={[s.scoreNum, { color: scoreColor }]}>{w.fishingScore}</Text>
                     <Text style={[s.scoreLabel, { color: scoreInfo.color }]}>{scoreInfo.label}</Text>
                   </View>
                   <View style={s.condStatsCol}>
@@ -228,13 +228,34 @@ export default function HomeScreen() {
         </View>
         <View style={s.spotSelectorDivider} />
 
+        {/* ── AI Advisor Banner ── */}
+        <TouchableOpacity
+          style={s.advisorBanner}
+          onPress={() => router.push('/ai-advisor' as any)}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={['#0D2420', '#071510']}
+            style={s.advisorBannerInner}
+          >
+            <View style={s.advisorIcon}>
+              <MaterialCommunityIcons name="robot-outline" size={22} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.advisorTitle}>Ask the AI Advisor</Text>
+              <Text style={s.advisorSub}>Get personalised fishing tips for today</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={18} color={colors.primary} />
+          </LinearGradient>
+        </TouchableOpacity>
+
         {/* ── Quick Actions 2×2 ── */}
         <View style={s.quickActionsGrid}>
           {[
             { icon: 'camera-iris', label: 'Scan Fish', route: '/identifier' },
             { icon: 'weather-partly-cloudy', label: 'Conditions', route: '/conditions' },
             { icon: 'chart-line', label: 'My Stats', route: '/my-stats' },
-            { icon: 'calendar-month', label: 'Trip Planner', route: '/trip-planner' },
+            { icon: 'play-circle-outline', label: 'Start Session', route: '/(tabs)/map' },
           ].map(item => (
             <TouchableOpacity
               key={item.label}
@@ -475,7 +496,7 @@ const s = StyleSheet.create({
     top: -15, left: -18,
   },
   scoreNum: {
-    fontSize: 52, fontWeight: '900', letterSpacing: -2, lineHeight: 56,
+    fontSize: 48, fontWeight: '800', letterSpacing: -2, lineHeight: 56,
   },
   scoreLabel: {
     fontSize: 11, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2,
@@ -542,6 +563,13 @@ const s = StyleSheet.create({
     marginHorizontal: spacing.lg, marginBottom: spacing.lg,
   },
 
+  // ── AI Advisor Banner ──
+  advisorBanner: { marginHorizontal: spacing.lg, marginBottom: 12 },
+  advisorBannerInner: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: radius.md, borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)' },
+  advisorIcon: { width: 40, height: 40, borderRadius: radius.sm, backgroundColor: 'rgba(0,212,170,0.12)', alignItems: 'center', justifyContent: 'center' },
+  advisorTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  advisorSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+
   // ── Quick Actions 2x2 ──
   quickActionsGrid: {
     flexDirection: 'row',
@@ -553,16 +581,13 @@ const s = StyleSheet.create({
   quickActionCard: {
     width: '47.5%',
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(0,212,170,0.15)',
-    borderTopWidth: 2,
-    borderTopColor: 'rgba(0,212,170,0.35)',
+    borderColor: colors.border,
     paddingVertical: 18,
     paddingHorizontal: spacing.md,
     alignItems: 'center',
     gap: 10,
-    ...elevation.raised,
   },
   quickActionIconWrap: {
     width: 48, height: 48, borderRadius: radius.md,
@@ -582,8 +607,7 @@ const s = StyleSheet.create({
   sectionBar: { width: 3, height: 16, borderRadius: 2, backgroundColor: colors.primary },
   sectionTitleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: {
-    fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.35)',
-    letterSpacing: 2, textTransform: 'uppercase',
+    fontSize: 13, fontWeight: '700', color: colors.textSecondary,
   },
   nearBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
@@ -631,9 +655,8 @@ const s = StyleSheet.create({
   tipCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 12,
     marginHorizontal: spacing.lg, marginBottom: 28,
-    backgroundColor: 'rgba(245,158,11,0.04)', borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    borderLeftWidth: 3, borderLeftColor: '#F59E0B',
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderLeftWidth: 3, borderLeftColor: colors.secondary,
     padding: spacing.md, overflow: 'hidden',
   },
   tipAccent: {

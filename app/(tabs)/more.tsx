@@ -166,13 +166,7 @@ export default function MoreScreen() {
 
         {/* ── Menu Sections ── */}
         {MENU_SECTIONS.map((section, sectionIndex) => {
-          const sectionIconBg = [
-            'rgba(0,212,170,0.1)',
-            'rgba(45,212,255,0.08)',
-            'rgba(245,158,11,0.08)',
-            'rgba(139,92,246,0.1)',
-            'rgba(255,255,255,0.06)',
-          ][sectionIndex] ?? 'rgba(0,212,170,0.1)';
+          const sectionIconBg = 'rgba(255,255,255,0.06)';
           return (
           <View key={section.section} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.section}</Text>
@@ -305,7 +299,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.25)',
-    textTransform: 'uppercase', letterSpacing: 2, marginBottom: spacing.xs,
+    textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: spacing.xs,
   },
   menuCard: {
     backgroundColor: colors.surface,
@@ -329,9 +323,8 @@ const styles = StyleSheet.create({
   menuItemDimmed: { opacity: 0.55 },
   menuIconWrap: {
     width: 36, height: 36, borderRadius: radius.md,
-    backgroundColor: 'rgba(0,212,170,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
   },
   menuLabel: { fontSize: 15, color: colors.textPrimary, fontWeight: '600' },
   menuLabelDimmed: { color: colors.textSecondary },

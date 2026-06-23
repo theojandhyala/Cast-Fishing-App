@@ -1,5 +1,5 @@
-import FriendsScreen from '../friends';
+import { Redirect } from 'expo-router';
 
 export default function FriendsTab() {
-  return <FriendsScreen embedded />;
+  return <Redirect href="/(tabs)/more" />;
 }

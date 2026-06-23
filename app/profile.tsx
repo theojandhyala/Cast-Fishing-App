@@ -56,6 +56,7 @@ const MENU_ITEMS = [
   { icon: 'account-group-outline', label: 'Friends', route: '/friends' },
   { icon: 'earth', label: 'Community & Head-to-head', route: '/(tabs)/social' },
   { icon: 'trophy-outline', label: 'Leaderboard', route: '/leaderboard' },
+  { icon: 'trophy-outline', label: 'Personal Records', route: '/records' },
   { icon: 'medal-outline', label: 'Achievements', route: '/challenges' },
   { icon: 'bag-personal-outline', label: 'Gear', route: '/gear-tracker' },
   { icon: 'heart-outline', label: 'Favourite Spots', route: '/map' },
@@ -171,7 +172,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
   headerTitle: {
-    fontSize: 13, fontWeight: '900', color: colors.textPrimary, letterSpacing: 2.5,
+    fontSize: 13, fontWeight: '900', color: colors.textPrimary, letterSpacing: 0.5,
   },
 
   profileHeader: {
@@ -208,7 +209,7 @@ const s = StyleSheet.create({
     marginHorizontal: spacing.lg, marginBottom: spacing.lg,
     backgroundColor: colors.surface, borderRadius: radius.lg,
     borderWidth: 1, borderColor: colors.border,
-    paddingVertical: 18, ...elevation.raised,
+    paddingVertical: 18,
   },
   statItem: { flex: 1, alignItems: 'center', gap: 4 },
   statVal: { fontSize: 26, fontWeight: '900', color: '#00D4AA', letterSpacing: -0.8 },
@@ -230,7 +231,6 @@ const s = StyleSheet.create({
     width: 36, height: 36, borderRadius: radius.sm,
     backgroundColor: 'rgba(0,212,170,0.1)',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
   },
   menuLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.textPrimary },
 });
