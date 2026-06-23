@@ -117,7 +117,14 @@ export default function ProfileScreen() {
           </LinearGradient>
 
           <View style={s.identity}>
-            <Text style={s.displayName}>{displayName}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={s.displayName}>{displayName}</Text>
+              {user?.isPro && (
+                <View style={{ backgroundColor: '#00D4AA', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 8 }}>
+                  <Text style={{ fontSize: 10, fontWeight: '900', color: '#050A12', letterSpacing: 1 }}>PRO</Text>
+                </View>
+              )}
+            </View>
             <Text style={s.handle}>{handle}</Text>
             <TouchableOpacity onPress={() => router.push('/settings' as any)}><Text style={s.editProfileLink}>Edit Profile</Text></TouchableOpacity>
           </View>
@@ -155,6 +162,34 @@ export default function ProfileScreen() {
               <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textTertiary} />
             </TouchableOpacity>
           ))}
+
+          {/* Pro upgrade / manage row */}
+          {user?.isPro ? (
+            <TouchableOpacity
+              style={[s.menuRow, s.menuRowBorder]}
+              onPress={() => router.push('/pro' as any)}
+              activeOpacity={0.75}
+            >
+              <MaterialCommunityIcons name="crown" size={20} color="#00D4AA" />
+              <Text style={[s.menuLabel, { color: '#00D4AA' }]}>Manage Subscription</Text>
+              <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textTertiary} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[s.menuRow, s.menuRowBorder]}
+              onPress={() => router.push('/pro' as any)}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={['rgba(0,212,170,0.15)', 'rgba(0,212,170,0.05)']}
+                style={s.upgradeRowGradient}
+              >
+                <MaterialCommunityIcons name="crown" size={20} color="#00D4AA" />
+                <Text style={[s.menuLabel, { color: '#00D4AA', fontWeight: '800' }]}>Upgrade to Pro</Text>
+                <MaterialCommunityIcons name="chevron-right" size={18} color="#00D4AA" />
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
         </View>
 
       </ScrollView>
@@ -290,6 +325,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   menuLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+  upgradeRowGradient: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: spacing.md, paddingVertical: 16, marginHorizontal: -spacing.md, marginVertical: -16, borderRadius: 0 },
 
   // CTAs
   ctaRow: {

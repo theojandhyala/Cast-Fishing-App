@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../components/ui/Icon';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCatchStore, Catch } from '../store/catchStore';
@@ -571,18 +572,11 @@ export default function MyStatsScreen() {
             </View>
           ) : (
             <>
+              {/* Basic stats — always visible */}
               <Section title="Your Fishing Brain" icon="brain" accentColor={colors.primary}>
                 {insights.map((ins, i) => (
                   <InsightCard key={i} {...ins} />
                 ))}
-              </Section>
-
-              <Section title="Your Most Productive Hours" icon="clock-outline" accentColor="#2DD4FF">
-                <HourlyChart byHour={stats.byHour} currentHour={currentHour} />
-              </Section>
-
-              <Section title="What's Working" icon="hook" accentColor={colors.secondary}>
-                <BaitBars baitCounts={stats.baitCounts} />
               </Section>
 
               <Section title="Species Caught" icon="fish" accentColor="#EC4899">
@@ -606,9 +600,35 @@ export default function MyStatsScreen() {
                 </Section>
               )}
 
-              <Section title="Catches by Month" icon="calendar-month-outline" accentColor={colors.primary}>
-                <MonthlyChart byMonth={stats.byMonth} />
-              </Section>
+              {/* Advanced analytics — Pro only */}
+              {!user?.isPro && (
+                <TouchableOpacity onPress={() => router.push('/pro' as any)} style={{ marginBottom: 16, borderRadius: 14, overflow: 'hidden' }}>
+                  <LinearGradient colors={['rgba(0,212,170,0.12)', 'rgba(0,212,170,0.04)']} style={{ padding: 16, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <MaterialCommunityIcons name="lock-outline" size={22} color="#00D4AA" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '800', color: '#fff' }}>Advanced Analytics — Pro</Text>
+                      <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>Unlock hourly patterns, bait intelligence & pressure trends</Text>
+                    </View>
+                    <MaterialCommunityIcons name="chevron-right" size={18} color="#00D4AA" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+
+              {user?.isPro ? (
+                <>
+                  <Section title="Your Most Productive Hours" icon="clock-outline" accentColor="#2DD4FF">
+                    <HourlyChart byHour={stats.byHour} currentHour={currentHour} />
+                  </Section>
+
+                  <Section title="What's Working" icon="hook" accentColor={colors.secondary}>
+                    <BaitBars baitCounts={stats.baitCounts} />
+                  </Section>
+
+                  <Section title="Catches by Month" icon="calendar-month-outline" accentColor={colors.primary}>
+                    <MonthlyChart byMonth={stats.byMonth} />
+                  </Section>
+                </>
+              ) : null}
             </>
           )}
         </View>

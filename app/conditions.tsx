@@ -8,11 +8,13 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocationStore } from '../store/locationStore';
 import { useLocation } from '../hooks/useLocation';
 import { useWeather } from '../hooks/useWeather';
 import { useMarineConditions } from '../hooks/useMarineConditions';
+import { useAuthStore } from '../store/authStore';
 import { colors, radius, spacing, typography, fonts } from '../constants/theme';
 
 function formatMarineTime(value?: string) {
@@ -23,6 +25,7 @@ function formatMarineTime(value?: string) {
 
 export default function ConditionsScreen() {
   const router = useRouter();
+  const { user } = useAuthStore();
   const { location } = useLocationStore();
   const { location: gpsLocation } = useLocation();
   const latitude = location?.latitude ?? gpsLocation?.latitude;
@@ -164,8 +167,23 @@ export default function ConditionsScreen() {
           ))}
         </View>
 
-        {/* 7-day forecast */}
-        <View style={styles.section}>
+        {/* 7-day forecast — Pro feature */}
+        {!user?.isPro && (
+          <TouchableOpacity onPress={() => router.push('/pro' as any)} style={styles.forecastProBanner} activeOpacity={0.85}>
+            <LinearGradient colors={['rgba(0,212,170,0.12)', 'rgba(0,212,170,0.04)']} style={styles.forecastProBannerGradient}>
+              <MaterialCommunityIcons name="lock-outline" size={20} color="#00D4AA" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.forecastProTitle}>7-Day Forecast & Tidal Alerts — Pro Feature</Text>
+                <Text style={styles.forecastProSub}>Extended outlook with fishing scores for every day</Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push('/pro' as any)} style={styles.forecastProBtn}>
+                <Text style={styles.forecastProBtnText}>Unlock with Pro →</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        <View style={[styles.section, !user?.isPro && styles.forecastBlurred]}>
           <Text style={styles.sectionTitle}>7-Day Forecast</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.forecastRow}>
@@ -185,6 +203,11 @@ export default function ConditionsScreen() {
               })}
             </View>
           </ScrollView>
+          {!user?.isPro && (
+            <View style={styles.forecastLockOverlay}>
+              <MaterialCommunityIcons name="lock" size={32} color="#00D4AA" />
+            </View>
+          )}
         </View>
 
         <Text style={styles.liveNote}>
@@ -281,4 +304,12 @@ const styles = StyleSheet.create({
   forecastScore: { borderRadius: radius.full, paddingHorizontal: 6, paddingVertical: 2, marginTop: 2 },
   forecastScoreText: { fontSize: 11, fontWeight: '800' },
   liveNote: { color: colors.textTertiary, fontSize: 10, lineHeight: 15, textAlign: 'center', marginTop: spacing.sm },
+  forecastProBanner: { marginBottom: spacing.sm },
+  forecastProBannerGradient: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)' },
+  forecastProTitle: { fontSize: 13, fontWeight: '800', color: '#fff', marginBottom: 2 },
+  forecastProSub: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
+  forecastProBtn: { backgroundColor: '#00D4AA', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  forecastProBtnText: { fontSize: 11, fontWeight: '800', color: '#050A12' },
+  forecastBlurred: { opacity: 0.3, pointerEvents: 'none' },
+  forecastLockOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
 });

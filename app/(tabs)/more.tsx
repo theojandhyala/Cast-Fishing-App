@@ -128,6 +128,15 @@ export default function MoreScreen() {
             )}
           </View>
           <Text style={styles.userName}>{user?.name || 'Angler'}</Text>
+          {user?.isPro ? (
+            <LinearGradient colors={['#F59E0B', '#00D4AA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.proMemberPill}>
+              <Text style={styles.proMemberText}>PRO MEMBER</Text>
+            </LinearGradient>
+          ) : (
+            <TouchableOpacity onPress={() => router.push('/pro' as any)} style={styles.goProBtn}>
+              <Text style={styles.goProText}>GO PRO →</Text>
+            </TouchableOpacity>
+          )}
           <Text style={styles.userEmail}>{user?.email || ''}</Text>
           <View style={styles.levelRow}>
             <View style={styles.levelBadge}>
@@ -275,6 +284,31 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 4,
+  },
+  proMemberPill: {
+    borderRadius: radius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    marginBottom: 6,
+  },
+  proMemberText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#050A12',
+    letterSpacing: 1.2,
+  },
+  goProBtn: {
+    backgroundColor: '#00D4AA',
+    borderRadius: radius.full,
+    paddingHorizontal: 16,
+    paddingVertical: 5,
+    marginBottom: 6,
+  },
+  goProText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#050A12',
+    letterSpacing: 0.8,
   },
   userEmail: {
     fontSize: 14,

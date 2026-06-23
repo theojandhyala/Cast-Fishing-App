@@ -20,8 +20,11 @@ import { useCatchStore } from '../store/catchStore';
 import { useLocationStore } from '../store/locationStore';
 import { useWeather } from '../hooks/useWeather';
 import { useSolunar } from '../hooks/useSolunar';
+import { useAuthStore } from '../store/authStore';
 
 const HISTORY_KEY = '@cast_fish_id_history';
+const SCAN_COUNT_KEY = 'cast_scan_count_month';
+const FREE_SCAN_LIMIT = 5;
 
 interface HistoryItem {
   id: string;
@@ -44,8 +47,10 @@ export default function IdentifierScreen() {
   const location = useLocationStore((s) => s.location);
   const { weather } = useWeather(location?.latitude, location?.longitude);
   const solunar = useSolunar(location?.latitude ?? 51.5, location?.longitude ?? -0.1);
+  const { user } = useAuthStore();
+  const [scanCount, setScanCount] = useState(0);
 
-  useEffect(() => { loadHistory(); }, []);
+  useEffect(() => { loadHistory(); loadScanCount(); }, []);
   useEffect(() => {
     if (result) saveToHistory(result);
   }, [result]);
@@ -54,6 +59,32 @@ export default function IdentifierScreen() {
     try {
       const stored = await AsyncStorage.getItem(HISTORY_KEY);
       if (stored) setHistory(JSON.parse(stored));
+    } catch {}
+  };
+
+  const loadScanCount = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(SCAN_COUNT_KEY);
+      if (stored) {
+        const data: { count: number; month: string } = JSON.parse(stored);
+        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+        if (data.month === currentMonth) {
+          setScanCount(data.count);
+        } else {
+          // New month — reset
+          setScanCount(0);
+          await AsyncStorage.setItem(SCAN_COUNT_KEY, JSON.stringify({ count: 0, month: currentMonth }));
+        }
+      }
+    } catch {}
+  };
+
+  const incrementScanCount = async () => {
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const newCount = scanCount + 1;
+    setScanCount(newCount);
+    try {
+      await AsyncStorage.setItem(SCAN_COUNT_KEY, JSON.stringify({ count: newCount, month: currentMonth }));
     } catch {}
   };
 
@@ -106,12 +137,27 @@ export default function IdentifierScreen() {
         Alert.alert('Photo unavailable', 'CAST Lens could not read that photo. Please try again.');
         return;
       }
+
+      // Check scan limit for free users
+      if (!user?.isPro && scanCount >= FREE_SCAN_LIMIT) {
+        Alert.alert(
+          'Scan Limit Reached',
+          'Free plan includes 5 AI scans per month. Upgrade to Pro for unlimited scanning.',
+          [
+            { text: 'Not Now', style: 'cancel' },
+            { text: 'Upgrade to Pro →', onPress: () => router.push('/pro' as any) },
+          ]
+        );
+        return;
+      }
+
       setImageUri(asset.uri);
       setImageBase64(asset.base64);
       setImageMediaType(asset.mimeType || 'image/jpeg');
       setRecorded(false);
       setRecordedData(null);
       reset();
+      await incrementScanCount();
       await identify(asset.base64, asset.mimeType || 'image/jpeg');
     }
   };
@@ -206,6 +252,13 @@ export default function IdentifierScreen() {
             )}
           </View>
         )}
+
+        {/* Scan count indicator */}
+        <Text style={styles.scanCountText}>
+          {user?.isPro
+            ? 'Unlimited scans'
+            : `${scanCount} / ${FREE_SCAN_LIMIT} scans used this month`}
+        </Text>
 
         {!imageUri && (
           <View style={styles.pickRow}>
@@ -400,6 +453,7 @@ const styles = StyleSheet.create({
   scanBadgeText: { fontSize: 9, fontWeight: '800', color: colors.primary, letterSpacing: 1.2 },
   removeImage: { position: 'absolute', top: spacing.sm, right: spacing.sm },
 
+  scanCountText: { fontSize: 11, color: colors.textTertiary, textAlign: 'center', marginBottom: spacing.sm },
   pickRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   pickBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,

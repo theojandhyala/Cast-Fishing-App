@@ -177,6 +177,11 @@ export default function AIAdvisorScreen() {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>AI Advisor</Text>
+          {user?.isPro && (
+            <View style={styles.proBadge}>
+              <Text style={styles.proBadgeText}>PRO</Text>
+            </View>
+          )}
           <View style={styles.onlineDot} />
           <Text style={styles.onlineText}>Online</Text>
         </View>
@@ -243,6 +248,21 @@ export default function AIAdvisorScreen() {
           </ScrollView>
         )}
 
+        {/* Free limit banner */}
+        {!user?.isPro && messageCount >= FREE_MESSAGE_LIMIT && (
+          <View style={styles.limitBanner}>
+            <MaterialCommunityIcons name="lock-outline" size={16} color="#F59E0B" />
+            <Text style={styles.limitText}>You've reached your free limit. Upgrade to Pro for unlimited AI advice.</Text>
+            <TouchableOpacity onPress={() => router.push('/pro' as any)} style={styles.limitUpgradeBtn}>
+              <Text style={styles.limitUpgradeText}>Upgrade</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!user?.isPro && messageCount < FREE_MESSAGE_LIMIT && messageCount > 0 && (
+          <Text style={styles.freeCountText}>{FREE_MESSAGE_LIMIT - messageCount} free {FREE_MESSAGE_LIMIT - messageCount === 1 ? 'message' : 'messages'} remaining</Text>
+        )}
+
         <View style={styles.inputArea}>
           <TextInput
             style={styles.input}
@@ -253,11 +273,12 @@ export default function AIAdvisorScreen() {
             multiline
             maxLength={500}
             onSubmitEditing={() => sendMessage(input)}
+            editable={user?.isPro || messageCount < FREE_MESSAGE_LIMIT}
           />
           <TouchableOpacity
-            style={[styles.sendBtn, (!input.trim() || loading) && styles.sendBtnDisabled]}
+            style={[styles.sendBtn, (!input.trim() || loading || (!user?.isPro && messageCount >= FREE_MESSAGE_LIMIT)) && styles.sendBtnDisabled]}
             onPress={() => sendMessage(input)}
-            disabled={!input.trim() || loading}
+            disabled={!input.trim() || loading || (!user?.isPro && messageCount >= FREE_MESSAGE_LIMIT)}
           >
             {loading ? (
               <ActivityIndicator size="small" color="#0A0E1A" />
@@ -305,4 +326,11 @@ const styles = StyleSheet.create({
   input: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.xl, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: 15, color: colors.textPrimary, maxHeight: 120 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   sendBtnDisabled: { opacity: 0.4 },
+  proBadge: { backgroundColor: '#00D4AA', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
+  proBadgeText: { fontSize: 9, fontWeight: '900', color: '#050A12', letterSpacing: 0.8 },
+  limitBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(245,158,11,0.1)', borderTopWidth: 1, borderTopColor: 'rgba(245,158,11,0.25)', paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
+  limitText: { flex: 1, fontSize: 12, color: '#F59E0B', lineHeight: 17 },
+  limitUpgradeBtn: { backgroundColor: '#F59E0B', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
+  limitUpgradeText: { fontSize: 11, fontWeight: '800', color: '#050A12' },
+  freeCountText: { fontSize: 11, color: colors.textTertiary, textAlign: 'center', paddingVertical: 4 },
 });
