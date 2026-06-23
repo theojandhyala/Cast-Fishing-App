@@ -8,7 +8,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocationStore } from '../store/locationStore';
 import { useLocation } from '../hooks/useLocation';
@@ -21,6 +20,14 @@ function formatMarineTime(value?: string) {
   if (!value) return '—';
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value.slice(-5) : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatWindow(isoTime: string) {
+  const d = new Date(isoTime);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return isToday ? time : `Tomorrow ${time}`;
 }
 
 export default function ConditionsScreen() {
@@ -78,6 +85,19 @@ export default function ConditionsScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+
+        {/* Best Time Today */}
+        {weather?.solunarTimes?.find(t => t.type === 'major') && (() => {
+          const major = weather.solunarTimes.find(t => t.type === 'major')!;
+          return (
+            <View style={styles.bestTimeCard}>
+              <Text style={styles.bestTimeLabel}>BEST TIME TODAY</Text>
+              <Text style={styles.bestTimeVal}>{major.start}</Text>
+              <Text style={styles.bestTimeSub}>Major feeding window · {w.fishingScore >= 7 ? 'Excellent' : w.fishingScore >= 5 ? 'Good' : 'Fair'} conditions</Text>
+            </View>
+          );
+        })()}
+
         {/* Current conditions hero */}
         <View style={styles.heroCard}>
           <View style={styles.heroTop}>
@@ -103,6 +123,15 @@ export default function ConditionsScreen() {
             </View>
           </View>
         </View>
+
+        {/* UV Index */}
+        {(w as any)?.uvIndex !== undefined && (
+          <View style={styles.uvRow}>
+            <MaterialCommunityIcons name="white-balance-sunny" size={16} color={colors.secondary} />
+            <Text style={styles.condRowLabel}>UV Index</Text>
+            <Text style={styles.condRowVal}>{Math.round((w as any).uvIndex)} {(w as any).uvIndex >= 8 ? '— Very High' : (w as any).uvIndex >= 6 ? '— High' : (w as any).uvIndex >= 3 ? '— Moderate' : '— Low'}</Text>
+          </View>
+        )}
 
         {/* Tide */}
         <View style={styles.card}>
@@ -174,7 +203,7 @@ export default function ConditionsScreen() {
         {/* 7-day forecast — Pro feature */}
         {!user?.isPro && (
           <TouchableOpacity onPress={() => router.push('/pro' as any)} style={styles.forecastProBanner} activeOpacity={0.85}>
-            <LinearGradient colors={['rgba(0,212,170,0.12)', 'rgba(0,212,170,0.04)']} style={styles.forecastProBannerGradient}>
+            <View style={styles.forecastProBannerInner}>
               <MaterialCommunityIcons name="lock-outline" size={20} color="#00D4AA" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.forecastProTitle}>7-Day Forecast & Tidal Alerts — Pro Feature</Text>
@@ -183,7 +212,7 @@ export default function ConditionsScreen() {
               <TouchableOpacity onPress={() => router.push('/pro' as any)} style={styles.forecastProBtn}>
                 <Text style={styles.forecastProBtnText}>Unlock with Pro →</Text>
               </TouchableOpacity>
-            </LinearGradient>
+            </View>
           </TouchableOpacity>
         )}
 
@@ -274,7 +303,7 @@ const styles = StyleSheet.create({
   curveLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   curveLabel: { fontSize: 9, color: colors.textTertiary, fontFamily: fonts.mono },
 
-  solunarValue: { fontSize: 56, fontWeight: '900', textShadowColor: 'rgba(0,212,170,0.5)', textShadowRadius: 14 },
+  solunarValue: { fontSize: 56, fontWeight: '800' },
   solunarLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 2 },
   solunarSub: { ...typography.bodySmall, marginBottom: spacing.md },
   barsWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 48, gap: 5 },
@@ -287,7 +316,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm,
     borderWidth: 1, borderColor: colors.border, gap: spacing.md,
   },
-  windowCardMajor: { borderColor: 'rgba(0,212,170,0.3)', backgroundColor: 'rgba(0,212,170,0.06)' },
+  windowCardMajor: { borderLeftWidth: 3, borderLeftColor: colors.primary },
   windowDot: { width: 8, height: 8, borderRadius: 4 },
   windowInfo: { flex: 1 },
   windowTime: { ...typography.mono, fontSize: 15 },
@@ -311,11 +340,31 @@ const styles = StyleSheet.create({
   liveNote: { color: colors.textTertiary, fontSize: 10, lineHeight: 15, textAlign: 'center', marginTop: spacing.sm },
   sourceLabel: { fontSize: 9, color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' },
   forecastProBanner: { marginBottom: spacing.sm },
-  forecastProBannerGradient: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)' },
+  forecastProBannerInner: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)', backgroundColor: colors.surface },
   forecastProTitle: { fontSize: 13, fontWeight: '800', color: '#fff', marginBottom: 2 },
   forecastProSub: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
   forecastProBtn: { backgroundColor: '#00D4AA', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
   forecastProBtnText: { fontSize: 11, fontWeight: '800', color: '#050A12' },
   forecastBlurred: { opacity: 0.3, pointerEvents: 'none' },
   forecastLockOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+
+  // Best Time Today card
+  bestTimeCard: {
+    marginBottom: 16,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border, padding: 16,
+  },
+  bestTimeLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.8 },
+  bestTimeVal: { fontSize: 32, fontWeight: '800', color: colors.primary, marginVertical: 4 },
+  bestTimeSub: { fontSize: 12, color: colors.textSecondary },
+
+  // UV index row
+  uvRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: spacing.md,
+  },
+  condRowLabel: { flex: 1, fontSize: 13, color: colors.textSecondary },
+  condRowVal: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
 });

@@ -4,7 +4,6 @@ import {
   FlatList, TouchableOpacity, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { useCatchStore } from '../../store/catchStore';
@@ -14,17 +13,6 @@ import { FishSpeciesPhoto } from '../../components/fish/FishSpeciesPhoto';
 const TABS = ['Catches', 'Stats'] as const;
 type Tab = typeof TABS[number];
 type SortMode = 'Newest' | 'Heaviest' | 'Longest';
-
-function getSpeciesTint(species: string): [string, string] {
-  const s = species.toLowerCase();
-  if (s.includes('bass')) return ['#0F2318', '#061510'];
-  if (s.includes('trout')) return ['#0F1E2E', '#060E18'];
-  if (s.includes('salmon')) return ['#2A1018', '#150809'];
-  if (s.includes('pike')) return ['#0F1C0F', '#070D07'];
-  if (s.includes('carp')) return ['#201A08', '#100D04'];
-  if (s.includes('tuna') || s.includes('marlin')) return ['#0A1525', '#051018'];
-  return ['#101827', '#080E14'];
-}
 
 function formatDate(dateStr: string) {
   const d = new Date(dateStr);
@@ -39,6 +27,7 @@ export default function CatchesScreen() {
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('Newest');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'week' | 'month'>('all');
   const stats = getStats();
 
   const totalWeight = catches.reduce((sum, c) => sum + (c.weight || 0), 0);
@@ -46,11 +35,20 @@ export default function CatchesScreen() {
   const topSpecies = Object.entries(stats.speciesCounts || {})
     .sort((a, b) => b[1] - a[1]);
 
+  const filteredCatches = useMemo(() => {
+    if (timeFilter === 'all') return catches;
+    const now = new Date();
+    const cutoff = new Date(now);
+    if (timeFilter === 'week') cutoff.setDate(now.getDate() - 7);
+    else cutoff.setMonth(now.getMonth() - 1);
+    return catches.filter(c => new Date(c.date) >= cutoff);
+  }, [catches, timeFilter]);
+
   const visibleCatches = useMemo(() => {
     const query = search.trim().toLocaleLowerCase();
     const matches = query
-      ? catches.filter((item) => [item.species, item.location, item.bait].some((value) => value?.toLocaleLowerCase().includes(query)))
-      : [...catches];
+      ? filteredCatches.filter((item) => [item.species, item.location, item.bait].some((value) => value?.toLocaleLowerCase().includes(query)))
+      : [...filteredCatches];
     return matches.sort((a, b) =>
       sortMode === 'Heaviest'
         ? (b.weight || 0) - (a.weight || 0)
@@ -58,7 +56,7 @@ export default function CatchesScreen() {
           ? (b.length || 0) - (a.length || 0)
           : new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-  }, [catches, search, sortMode]);
+  }, [filteredCatches, search, sortMode]);
 
   const cycleSort = () =>
     setSortMode((current) =>
@@ -109,6 +107,21 @@ export default function CatchesScreen() {
 
       {activeTab === 'Catches' ? (
         <>
+          {/* Time filter pills */}
+          <View style={s.timeFilterRow}>
+            {(['all', 'week', 'month'] as const).map((f) => (
+              <TouchableOpacity
+                key={f}
+                style={[s.timeFilterPill, timeFilter === f && s.timeFilterPillActive]}
+                onPress={() => setTimeFilter(f)}
+              >
+                <Text style={[s.timeFilterText, timeFilter === f && s.timeFilterTextActive]}>
+                  {f === 'all' ? 'All' : f === 'week' ? 'Week' : 'Month'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           {/* Search + Sort */}
           <View style={s.filterRow}>
             <View style={s.searchBox}>
@@ -157,15 +170,13 @@ export default function CatchesScreen() {
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => {
                 const isSaved = saved.has(item.id);
-                const tint = getSpeciesTint(item.species);
                 return (
                   <TouchableOpacity
                     style={s.catchCard}
                     onPress={() => router.push({ pathname: '/catch-detail', params: { id: item.id } } as any)}
                     activeOpacity={0.85}
                   >
-                    {/* Color-tinted species background */}
-                    <LinearGradient colors={tint} style={s.catchCardBg}>
+                    <View style={s.catchCardBg}>
                       <FishSpeciesPhoto species={item.species} photo={item.photo} style={s.catchPhoto} />
                       <TouchableOpacity
                         style={s.bookmarkBtn}
@@ -178,7 +189,7 @@ export default function CatchesScreen() {
                           color={isSaved ? colors.primary : 'rgba(255,255,255,0.5)'}
                         />
                       </TouchableOpacity>
-                    </LinearGradient>
+                    </View>
                     <View style={s.catchCardBody}>
                       <Text style={s.catchSpecies} numberOfLines={1}>{item.species}</Text>
                       <View style={s.catchChips}>
@@ -241,10 +252,32 @@ export default function CatchesScreen() {
                 ))}
               </View>
 
+              {/* Weight stats row */}
+              {catches.length > 0 && (() => {
+                const weights = catches.filter(c => c.weight).map(c => c.weight!);
+                if (!weights.length) return null;
+                const avg = weights.reduce((a, b) => a + b, 0) / weights.length;
+                const max = Math.max(...weights);
+                return (
+                  <View style={s.weightRow}>
+                    {[
+                      { label: 'Best', val: `${max.toFixed(1)}kg` },
+                      { label: 'Avg', val: `${avg.toFixed(1)}kg` },
+                      { label: 'Count', val: `${weights.length}` },
+                    ].map(({ label, val }) => (
+                      <View key={label} style={s.weightStat}>
+                        <Text style={s.weightVal}>{val}</Text>
+                        <Text style={s.weightLabel}>{label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                );
+              })()}
+
               {/* Species chart */}
               {topSpecies.length > 0 && (
                 <View style={s.speciesSection}>
-                  <Text style={s.sectionTitle}>TOP SPECIES</Text>
+                  <Text style={s.sectionTitle}>Top Species</Text>
                   <View style={s.speciesCard}>
                     {topSpecies.slice(0, 6).map(([species, count], i) => {
                       const pct = (count / topSpecies[0][1]) * 100;
@@ -252,11 +285,7 @@ export default function CatchesScreen() {
                         <View key={species} style={[s.speciesRow, i > 0 && s.speciesRowBorder]}>
                           <Text style={s.speciesName} numberOfLines={1}>{species}</Text>
                           <View style={s.speciesBarWrap}>
-                            <LinearGradient
-                              colors={['#00D4AA', '#00A882']}
-                              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                              style={[s.speciesBar, { width: `${pct}%` as any }]}
-                            />
+                            <View style={[s.speciesBar, { width: `${pct}%` as any }]} />
                           </View>
                           <Text style={s.speciesCount}>{count}</Text>
                         </View>
@@ -294,7 +323,7 @@ const s = StyleSheet.create({
   tabPillRow: {
     flexDirection: 'row',
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     backgroundColor: colors.surface2,
     borderRadius: 50,
     padding: 3, gap: 3,
@@ -307,6 +336,24 @@ const s = StyleSheet.create({
   tabPillActive: { backgroundColor: colors.primary },
   tabPillText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
   tabPillTextActive: { color: colors.background, fontWeight: '700' },
+
+  // Time filter pills
+  timeFilterRow: {
+    flexDirection: 'row', gap: 8,
+    paddingHorizontal: spacing.lg, marginBottom: spacing.sm,
+  },
+  timeFilterPill: {
+    paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: radius.full,
+    backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  timeFilterPillActive: {
+    backgroundColor: 'rgba(0,212,170,0.12)',
+    borderColor: colors.primary,
+  },
+  timeFilterText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  timeFilterTextActive: { color: colors.primary },
 
   // ── Filter Row ──
   filterRow: {
@@ -388,21 +435,32 @@ const s = StyleSheet.create({
   bigStatItem: {
     flex: 1, alignItems: 'center', gap: 4,
   },
-  bigStatVal: { fontSize: 36, fontWeight: '900', color: '#00D4AA', letterSpacing: -1 },
-  bigStatLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1, color: 'rgba(255,255,255,0.4)' },
+  bigStatVal: { fontSize: 36, fontWeight: '800', color: '#00D4AA' },
+  bigStatLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: 'rgba(255,255,255,0.4)' },
+
+  // Weight stats row
+  weightRow: {
+    flexDirection: 'row', justifyContent: 'space-around',
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    padding: 16, marginBottom: 12,
+    marginHorizontal: spacing.lg,
+  },
+  weightStat: { alignItems: 'center' },
+  weightVal: { fontSize: 18, fontWeight: '800', color: colors.primary },
+  weightLabel: { fontSize: 10, color: colors.textSecondary, marginTop: 2 },
 
   speciesSection: {
     paddingHorizontal: spacing.lg, marginBottom: spacing.lg,
   },
   sectionTitle: {
-    fontSize: 10, fontWeight: '800', color: colors.textTertiary,
-    letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12,
+    fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 12,
   },
   speciesCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.border,
-    overflow: 'hidden', ...elevation.raised,
+    overflow: 'hidden',
   },
   speciesRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -412,8 +470,8 @@ const s = StyleSheet.create({
   speciesName: { width: 110, fontSize: 13, fontWeight: '600', color: colors.textPrimary },
   speciesBarWrap: {
     flex: 1, height: 6, backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 3, overflow: 'hidden',
+    borderRadius: radius.full, overflow: 'hidden',
   },
-  speciesBar: { height: '100%', borderRadius: 3 },
+  speciesBar: { height: '100%', backgroundColor: colors.primary, borderRadius: radius.full },
   speciesCount: { width: 24, fontSize: 13, fontWeight: '800', color: '#00D4AA', textAlign: 'right' },
 });

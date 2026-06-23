@@ -60,11 +60,30 @@ export default function SessionScreen() {
   const [weight, setWeight] = useState('');
   const [bait, setBait] = useState('');
   const [saved, setSaved] = useState(false);
+  const [timeToWindow, setTimeToWindow] = useState('');
+  const [tackleNote, setTackleNote] = useState('');
+  const [editingTackle, setEditingTackle] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Solunar countdown
+  useEffect(() => {
+    const update = () => {
+      const nextMajor = weather?.solunarTimes?.find((t) => t.type === 'major')?.start;
+      if (!nextMajor) return;
+      const diff = new Date(nextMajor).getTime() - Date.now();
+      if (diff <= 0) { setTimeToWindow('Active now'); return; }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      setTimeToWindow(h > 0 ? `${h}h ${m}m` : `${m}m`);
+    };
+    update();
+    const id = setInterval(update, 60000);
+    return () => clearInterval(id);
+  }, [weather]);
 
   const elapsedMs = activeSession ? now - new Date(activeSession.startTime).getTime() : 0;
 
@@ -244,6 +263,35 @@ export default function SessionScreen() {
               </View>
             </View>
           </View>
+
+          {/* Solunar countdown + Tackle note */}
+          <View style={s.infoRowsWrap}>
+            <View style={s.infoRow}>
+              <MaterialCommunityIcons name="clock-fast" size={14} color={colors.primary} />
+              <Text style={s.infoLabel}>Next bite window</Text>
+              <Text style={s.infoVal}>{timeToWindow || '—'}</Text>
+            </View>
+            {editingTackle ? (
+              <TextInput
+                style={s.tackleInput}
+                value={tackleNote}
+                onChangeText={setTackleNote}
+                placeholder="Rig / tackle note..."
+                placeholderTextColor={colors.textTertiary}
+                autoFocus
+                onEndEditing={() => setEditingTackle(false)}
+                onBlur={() => setEditingTackle(false)}
+              />
+            ) : (
+              <TouchableOpacity onPress={() => setEditingTackle(true)} style={s.tackleRow}>
+                <MaterialCommunityIcons name="hook" size={14} color={colors.textSecondary} />
+                <Text style={s.tackleText} numberOfLines={1}>
+                  {tackleNote || 'Add rig / tackle note...'}
+                </Text>
+                <MaterialCommunityIcons name="pencil-outline" size={14} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
+          </View>
         </LinearGradient>
 
         {/* ─── BEST FISHING TIMES + FISH ACTIVITY ─── */}
@@ -305,13 +353,12 @@ export default function SessionScreen() {
               <Text style={s.cardTitle}>FISH ACTIVITY</Text>
               <MaterialCommunityIcons name="information-outline" size={14} color={colors.textTertiary} />
             </View>
-            {/* Ring */}
-            <View style={s.ringContainer}>
-              <View style={s.ringOuter}>
-                <View style={s.ringInner}>
-                  <Text style={s.ringPct}>{weather?.fishingScore ?? '—'}{weather ? '%' : ''}</Text>
-                  <Text style={s.ringLabel}>{!weather ? 'Loading' : weather.fishingScore >= 75 ? 'High' : weather.fishingScore >= 50 ? 'Moderate' : 'Low'}</Text>
-                </View>
+            {/* Activity % as plain stat */}
+            <View style={s.activityStatWrap}>
+              <Text style={s.activityPct}>{weather?.fishingScore ?? '—'}{weather ? '%' : ''}</Text>
+              <Text style={s.activityLabel}>{!weather ? 'Loading' : weather.fishingScore >= 75 ? 'High' : weather.fishingScore >= 50 ? 'Moderate' : 'Low'}</Text>
+              <View style={s.activityBarWrap}>
+                <View style={[s.activityBar, { width: `${weather?.fishingScore ?? 0}%` as any }]} />
               </View>
             </View>
             {/* Major times */}
@@ -357,19 +404,18 @@ export default function SessionScreen() {
             </View>
             {sessionCatches.length === 0 ? (
               <>
-                {/* Demo catches when no real ones */}
                 {[
                   { name: 'European Sea Bass', meta: '72 cm · 4.2 kg', time: '7:15 AM' },
                   { name: 'Bluefin Tuna', meta: '112 cm · 18.7 kg', time: 'Yesterday' },
                   { name: 'Mackerel', meta: '51 cm · 2.1 kg', time: 'Yesterday' },
                 ].map(c => (
                   <View key={c.name} style={s.miniCatch}>
-                    <LinearGradient colors={['#132035', '#0a1525']} style={s.miniCatchPhoto}>
+                    <View style={s.miniCatchPhoto}>
                       <MaterialCommunityIcons name="fish" size={14} color="rgba(0,212,170,0.4)" />
                       <View style={s.miniCatchBookmark}>
                         <MaterialCommunityIcons name="bookmark-outline" size={10} color="rgba(255,255,255,0.5)" />
                       </View>
-                    </LinearGradient>
+                    </View>
                     <Text style={s.miniCatchName} numberOfLines={1}>{c.name}</Text>
                     <Text style={s.miniCatchMeta}>{c.meta}</Text>
                     <Text style={s.miniCatchTime}>{c.time}</Text>
@@ -378,9 +424,9 @@ export default function SessionScreen() {
               </>
             ) : sessionCatches.slice(0, 3).map(c => (
               <View key={c.id} style={s.miniCatch}>
-                <LinearGradient colors={['#1a3a2a', '#0d1f16']} style={s.miniCatchPhoto}>
+                <View style={[s.miniCatchPhoto, { backgroundColor: 'rgba(0,212,170,0.08)' }]}>
                   <MaterialCommunityIcons name="fish" size={14} color="rgba(0,212,170,0.4)" />
-                </LinearGradient>
+                </View>
                 <Text style={s.miniCatchName} numberOfLines={1}>{c.species}</Text>
                 <Text style={s.miniCatchMeta}>{c.weight ? `${c.weight} kg` : ''}</Text>
                 <Text style={s.miniCatchTime}>{formatTime(new Date(c.date))}</Text>
@@ -417,13 +463,6 @@ export default function SessionScreen() {
                 <Text style={s.tideAxis}>0 m</Text>
                 <View style={s.tideAxisLine} />
               </View>
-              {/* Wave */}
-              <View style={s.tideWaveContainer}>
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,212,170,0.25)']}
-                  style={s.tideWaveFill}
-                />
-              </View>
               <View style={s.tideBottomLabels}>
                 {['12 AM','6 AM','12 PM','6 PM','12 AM'].map(l => (
                   <Text key={l} style={s.tideBottomLabel}>{l}</Text>
@@ -437,9 +476,9 @@ export default function SessionScreen() {
         <View style={s.twoColRow}>
           {/* Spot info */}
           <View style={[s.card, { flex: 1, padding: 0, overflow: 'hidden' }]}>
-            <LinearGradient colors={['#1a2a40', '#0d1828']} style={s.spotPhotoArea}>
+            <View style={s.spotPhotoArea}>
               <MaterialCommunityIcons name="map-marker" size={28} color="rgba(0,212,170,0.3)" />
-            </LinearGradient>
+            </View>
             <View style={s.spotCardInfo}>
               <Text style={s.spotCardName}>{spotName}</Text>
               <View style={s.spotCardMeta}>
@@ -561,12 +600,12 @@ const s = StyleSheet.create({
   },
   noSessionTitle: { fontSize: 22, fontWeight: '800', color: colors.textPrimary, marginTop: 8 },
   noSessionSub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
-  noSessionBtn: { borderRadius: radius.full, overflow: 'hidden', marginTop: 16, alignSelf: 'stretch', ...elevation.glow },
+  noSessionBtn: { borderRadius: radius.full, overflow: 'hidden', marginTop: 16, alignSelf: 'stretch' },
   noSessionBtnGrad: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 10, paddingVertical: 16,
   },
-  noSessionBtnText: { fontSize: 14, fontWeight: '800', color: '#051410', letterSpacing: 1.5 },
+  noSessionBtnText: { fontSize: 14, fontWeight: '800', color: '#051410', letterSpacing: 0.8 },
 
   historySection: {
     marginHorizontal: spacing.lg,
@@ -576,11 +615,10 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
-    ...elevation.raised,
   },
   historyTitle: {
     fontSize: 10, fontWeight: '800', color: colors.textTertiary,
-    letterSpacing: 1.5, paddingHorizontal: spacing.md, paddingTop: 14, paddingBottom: 10,
+    letterSpacing: 0.8, paddingHorizontal: spacing.md, paddingTop: 14, paddingBottom: 10,
   },
   historyRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -614,16 +652,14 @@ const s = StyleSheet.create({
   timerCol: { flex: 1 },
   sessionActivePill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(0,212,170,0.18)',
-    borderWidth: 1.5, borderColor: 'rgba(0,212,170,0.5)',
-    borderRadius: radius.full, paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: 'rgba(0,212,170,0.12)',
+    borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 4,
     alignSelf: 'flex-start', marginBottom: 10,
-    shadowColor: '#00D4AA', shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
   },
   activeDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#00D4AA' },
   sessionActiveText: { fontSize: 11, fontWeight: '800', color: '#00D4AA', letterSpacing: 0.8 },
 
-  timerText: { fontSize: 44, fontWeight: '700', color: '#fff', letterSpacing: -2, marginBottom: 4, fontVariant: ['tabular-nums'] },
+  timerText: { fontSize: 44, fontWeight: '700', color: '#fff', marginBottom: 4, fontVariant: ['tabular-nums'] },
   timerLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 12 },
 
   endBtn: {
@@ -643,13 +679,35 @@ const s = StyleSheet.create({
     padding: 10,
   },
   condHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  condTitle: { fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 1 },
+  condTitle: { fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.8 },
   condViewAll: { fontSize: 10, color: colors.primary, fontWeight: '600' },
   condGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   condItem: { width: '33.33%', marginBottom: 10 },
   condItemTop: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 2 },
   condValue: { fontSize: 11, fontWeight: '700', color: colors.textPrimary },
   condLabel: { fontSize: 9, color: colors.textSecondary },
+
+  // Info rows (solunar + tackle)
+  infoRowsWrap: { marginTop: 12, gap: 8 },
+  infoRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: radius.sm,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  infoLabel: { flex: 1, fontSize: 12, color: colors.textSecondary },
+  infoVal: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  tackleRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: radius.sm,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  tackleText: { flex: 1, fontSize: 12, color: colors.textSecondary },
+  tackleInput: {
+    backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: radius.sm,
+    borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 12, paddingVertical: 8,
+    fontSize: 12, color: colors.textPrimary,
+  },
 
   // Two-column sections
   twoColRow: {
@@ -661,10 +719,9 @@ const s = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.border,
     padding: 12,
-    ...elevation.raised,
   },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  cardTitle: { fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 1 },
+  cardTitle: { fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.8 },
   viewAll: { fontSize: 11, color: colors.primary, fontWeight: '600' },
 
   // Stars
@@ -683,25 +740,23 @@ const s = StyleSheet.create({
   legendDot: { width: 6, height: 6, borderRadius: 3 },
   legendText: { fontSize: 9, color: colors.textSecondary },
 
-  // Activity ring
-  ringContainer: { alignItems: 'center', marginVertical: 10 },
-  ringOuter: {
-    width: 72, height: 72, borderRadius: 36,
-    borderWidth: 5, borderColor: colors.primary,
-    alignItems: 'center', justifyContent: 'center',
-    ...elevation.glow,
+  // Activity % plain stat
+  activityStatWrap: { alignItems: 'center', marginVertical: 10 },
+  activityPct: { fontSize: 28, fontWeight: '800', color: colors.textPrimary },
+  activityLabel: { fontSize: 11, color: colors.textSecondary, marginBottom: 8 },
+  activityBarWrap: {
+    width: '100%', height: 6, backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: radius.full, overflow: 'hidden',
   },
-  ringInner: { alignItems: 'center' },
-  ringPct: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
-  ringLabel: { fontSize: 10, color: colors.textSecondary },
+  activityBar: { height: '100%', backgroundColor: colors.primary, borderRadius: radius.full },
 
-  majorTimesTitle: { fontSize: 9, fontWeight: '800', color: colors.textTertiary, letterSpacing: 1, marginBottom: 6 },
+  majorTimesTitle: { fontSize: 9, fontWeight: '800', color: colors.textTertiary, letterSpacing: 0.8, marginBottom: 6 },
   majorTimeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 },
   majorTimeText: { fontSize: 10, color: colors.textSecondary },
 
   // Actions
   actionsSection: { paddingHorizontal: spacing.lg, marginBottom: 10 },
-  sectionTitle: { fontSize: 11, fontWeight: '800', color: colors.textSecondary, letterSpacing: 1, marginBottom: 10 },
+  sectionTitle: { fontSize: 11, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.8, marginBottom: 10 },
   actionsGrid: {
     flexDirection: 'row', gap: 8,
   },
@@ -711,7 +766,6 @@ const s = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
     paddingVertical: 20,
-    ...elevation.raised,
   },
   actionLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, textAlign: 'center' },
 
@@ -719,6 +773,7 @@ const s = StyleSheet.create({
   miniCatch: { marginBottom: 10 },
   miniCatchPhoto: {
     height: 60, borderRadius: radius.sm, overflow: 'hidden',
+    backgroundColor: 'rgba(19,32,53,0.8)',
     alignItems: 'center', justifyContent: 'center', marginBottom: 5, position: 'relative',
   },
   miniCatchBookmark: { position: 'absolute', top: 4, right: 4 },
@@ -737,13 +792,14 @@ const s = StyleSheet.create({
   tideAxisRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
   tideAxis: { fontSize: 8, color: colors.textTertiary, width: 22 },
   tideAxisLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  tideWaveContainer: { position: 'absolute', bottom: 16, left: 0, right: 0, height: 28, overflow: 'hidden' },
-  tideWaveFill: { flex: 1, borderRadius: 8 },
   tideBottomLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
   tideBottomLabel: { fontSize: 8, color: colors.textTertiary },
 
   // Spot card
-  spotPhotoArea: { height: 80, alignItems: 'center', justifyContent: 'center' },
+  spotPhotoArea: {
+    height: 80, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(26,42,64,0.8)',
+  },
   spotCardInfo: { padding: 10 },
   spotCardName: { fontSize: 14, fontWeight: '800', color: colors.textPrimary, marginBottom: 4 },
   spotCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3 },
@@ -798,7 +854,7 @@ const s = StyleSheet.create({
     backgroundColor: colors.primary, borderRadius: radius.full,
     alignItems: 'center', paddingVertical: 15, marginTop: 8,
   },
-  saveBtnText: { fontSize: 14, fontWeight: '800', color: '#0A0E1A', letterSpacing: 1 },
+  saveBtnText: { fontSize: 14, fontWeight: '800', color: '#0A0E1A', letterSpacing: 0.8 },
   confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', padding: 32 },
   confirmBox: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 28, width: '100%', maxWidth: 360, alignItems: 'center' },
   confirmTitle: { fontSize: 22, fontWeight: '800', color: colors.textPrimary, marginBottom: 8 },

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../../store/authStore';
 import { useCatchStore } from '../../store/catchStore';
 import { colors, radius, spacing } from '../../constants/theme';
@@ -92,6 +91,17 @@ export default function MoreScreen() {
   const { getStats } = useCatchStore();
   const router = useRouter();
   const stats = getStats();
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const r = await fetch('https://1.1.1.1', { method: 'HEAD' });
+        setIsOnline(r.ok || r.status < 500);
+      } catch { setIsOnline(false); }
+    };
+    check();
+  }, []);
 
   const handleLogout = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -117,17 +127,11 @@ export default function MoreScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* ── Profile Header ── */}
-        <LinearGradient colors={['#0A1E1A', '#050A12']} style={styles.profileGradient}>
+        <View style={styles.profileHeader}>
           {/* Avatar */}
-          <LinearGradient
-            colors={['#00D4AA', '#00A882']}
-            style={styles.avatarRing}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.avatarInner}>
-              <Text style={styles.avatarInitials}>{initials}</Text>
-            </View>
-          </LinearGradient>
+          <View style={styles.avatarRing}>
+            <Text style={styles.avatarInitials}>{initials}</Text>
+          </View>
 
           <Text style={styles.userName}>{user?.name || 'Angler'}</Text>
           <Text style={styles.userHandle}>@{(user?.email?.split('@')[0] || 'angler').toLowerCase()}</Text>
@@ -135,11 +139,7 @@ export default function MoreScreen() {
           {/* XP bar */}
           <View style={styles.xpBarContainer}>
             <View style={styles.xpBar}>
-              <LinearGradient
-                colors={['#00D4AA', '#2DD4FF']}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={[styles.xpFill, { width: `${xpProgress * 100}%` as any }]}
-              />
+              <View style={[styles.xpFill, { width: `${xpProgress * 100}%` as any }]} />
             </View>
             <Text style={styles.xpBarPct}>{Math.round(xpProgress * 100)}%</Text>
           </View>
@@ -162,11 +162,18 @@ export default function MoreScreen() {
               </React.Fragment>
             ))}
           </View>
-        </LinearGradient>
+        </View>
+
+        {/* Offline banner */}
+        {!isOnline && (
+          <View style={styles.offlineBanner}>
+            <MaterialCommunityIcons name="wifi-off" size={14} color={colors.secondary} />
+            <Text style={styles.offlineText}>Offline — data syncs when connection returns</Text>
+          </View>
+        )}
 
         {/* ── Menu Sections ── */}
-        {MENU_SECTIONS.map((section, sectionIndex) => {
-          const sectionIconBg = 'rgba(255,255,255,0.06)';
+        {MENU_SECTIONS.map((section) => {
           return (
           <View key={section.section} style={styles.section}>
             <Text style={styles.sectionTitle}>{section.section}</Text>
@@ -193,7 +200,7 @@ export default function MoreScreen() {
                     }
                   }}
                 >
-                  <View style={[styles.menuIconWrap, { backgroundColor: sectionIconBg }]}>
+                  <View style={styles.menuIconWrap}>
                     <MaterialCommunityIcons name={item.icon as any} size={20} color={colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -233,24 +240,24 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
   // ── Profile Header ──
-  profileGradient: {
+  profileHeader: {
     alignItems: 'center',
     paddingTop: spacing.xl,
     paddingBottom: spacing.xl,
     paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   avatarRing: {
     width: 70, height: 70, borderRadius: 35,
+    borderWidth: 2, borderColor: colors.primary,
+    backgroundColor: colors.surface2,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: spacing.md,
   },
-  avatarInner: {
-    width: 64, height: 64, borderRadius: 32,
-    backgroundColor: colors.surface,
-    alignItems: 'center', justifyContent: 'center',
-  },
   avatarInitials: {
-    fontSize: 22, fontWeight: '900', color: '#00D4AA',
+    fontSize: 22, fontWeight: '800', color: '#00D4AA',
   },
   userName: {
     fontSize: 20, fontWeight: '800', color: colors.textPrimary, marginBottom: 3,
@@ -268,7 +275,7 @@ const styles = StyleSheet.create({
     borderRadius: 3, overflow: 'hidden',
   },
   xpFill: {
-    height: '100%', backgroundColor: '#00D4AA', borderRadius: 3,
+    height: '100%', backgroundColor: colors.primary, borderRadius: 3,
   },
   xpBarPct: {
     fontSize: 11, fontWeight: '700', color: '#00D4AA',
@@ -288,14 +295,24 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   statItem: { flex: 1, alignItems: 'center', gap: 3 },
-  statValue: { fontSize: 18, fontWeight: '900', color: '#00D4AA' },
+  statValue: { fontSize: 18, fontWeight: '800', color: '#00D4AA' },
   statLabel: { fontSize: 10, color: colors.textSecondary },
   statsDivider: { width: 1, height: 28, backgroundColor: colors.border, alignSelf: 'center' },
+
+  // Offline banner
+  offlineBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: spacing.lg, marginTop: 8,
+    backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: radius.sm,
+    padding: 10, borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)',
+  },
+  offlineText: { fontSize: 12, color: colors.secondary, flex: 1 },
 
   // ── Section ──
   section: {
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   sectionTitle: {
     fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.25)',

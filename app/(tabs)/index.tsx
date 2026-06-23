@@ -48,6 +48,14 @@ function getScoreLabel(score: number) {
   return { label: 'POOR', color: '#EF4444' };
 }
 
+function formatNextWindow(isoTime: string) {
+  const d = new Date(isoTime);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return isToday ? time : `Tomorrow ${time}`;
+}
+
 const FISHING_TIPS = [
   'Fish move into shallow margins at dawn — this is your best chance for specimen fish.',
   'A rising barometer signals improved feeding activity across most freshwater species.',
@@ -66,7 +74,7 @@ function getTipOfDay(): string {
 
 export default function HomeScreen() {
   const { user } = useAuthStore();
-  const { catches } = useCatchStore();
+  const catches = useCatchStore(s => s.catches);
   const router = useRouter();
   const { location: gpsLocation, permissionGranted } = useLocation();
   const setDataLocation = useLocationStore((state) => state.setLocation);
@@ -128,6 +136,26 @@ export default function HomeScreen() {
   const scoreColor = w ? getScoreColor(w.fishingScore) : '#F59E0B';
   const scoreInfo = w ? getScoreLabel(w.fishingScore) : { label: 'UNKNOWN', color: '#F59E0B' };
 
+  // Catch streak
+  const catchStreak = useMemo(() => {
+    if (!catches.length) return 0;
+    const days = new Set(catches.map(c => new Date(c.date).toDateString()));
+    let streak = 0;
+    const today = new Date();
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      if (days.has(d.toDateString())) streak++; else break;
+    }
+    return streak;
+  }, [catches]);
+
+  // Next solunar window from solunarTimes array
+  const nextMajorWindow = useMemo(() => {
+    if (!w?.solunarTimes?.length) return null;
+    const major = w.solunarTimes.find(t => t.type === 'major');
+    return major ? major.start : null;
+  }, [w]);
+
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -152,7 +180,21 @@ export default function HomeScreen() {
             {getGreeting()}, <Text style={s.greetLineName}>{firstName}</Text>
           </Text>
           <Text style={s.greetSub}>Here's your fishing brief</Text>
+          {catchStreak > 0 && (
+            <View style={s.streakChip}>
+              <MaterialCommunityIcons name="fire" size={12} color={colors.secondary} />
+              <Text style={s.streakText}>{catchStreak} day streak</Text>
+            </View>
+          )}
         </View>
+
+        {/* ── Weather Alert Banner ── */}
+        {(w?.wind ?? 0) > 25 && (
+          <View style={s.alertBanner}>
+            <MaterialCommunityIcons name="weather-windy" size={14} color={colors.secondary} />
+            <Text style={s.alertText}>High winds {w!.wind} km/h — use caution on open water</Text>
+          </View>
+        )}
 
         {/* ── Conditions Hero Card ── */}
         {selectedSpot && (
@@ -162,9 +204,17 @@ export default function HomeScreen() {
               {w ? (
                 <View style={s.condBody}>
                   <View style={s.scoreCol}>
-                    <View style={s.scoreGlowCircle} />
                     <Text style={[s.scoreNum, { color: scoreColor }]}>{w.fishingScore}</Text>
                     <Text style={[s.scoreLabel, { color: scoreInfo.color }]}>{scoreInfo.label}</Text>
+                    {/* Next bite window */}
+                    {nextMajorWindow && (
+                      <View style={s.nextBiteRow}>
+                        <MaterialCommunityIcons name="clock-outline" size={12} color={colors.primary} />
+                        <Text style={s.nextBiteLabel}>Next bite: </Text>
+                        <Text style={s.nextBiteTime}>{formatNextWindow(nextMajorWindow)}</Text>
+                        <View style={s.bitePill}><Text style={s.bitePillText}>MAJOR</Text></View>
+                      </View>
+                    )}
                   </View>
                   <View style={s.condStatsCol}>
                     {[
@@ -188,7 +238,7 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {/* Amber window strip */}
+              {/* Window row - plain, no amber background */}
               <View style={s.condWindowStrip}>
                 <MaterialCommunityIcons name="chart-timeline-variant" size={13} color={colors.secondary} />
                 <Text style={s.condWindowText} numberOfLines={1}>
@@ -455,10 +505,28 @@ const s = StyleSheet.create({
     paddingBottom: spacing.lg,
   },
   greetLine: {
-    fontSize: 26, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.5,
+    fontSize: 26, fontWeight: '800', color: colors.textPrimary,
   },
   greetLineName: { color: '#00D4AA' },
   greetSub: { fontSize: 13, color: colors.textSecondary, marginTop: 5 },
+
+  // Streak chip
+  streakChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(245,158,11,0.1)',
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: radius.full, alignSelf: 'flex-start', marginTop: 4,
+  },
+  streakText: { fontSize: 11, fontWeight: '700', color: colors.secondary },
+
+  // Alert banner
+  alertBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: spacing.lg, marginBottom: 8,
+    backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: radius.sm,
+    padding: 10, borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)',
+  },
+  alertText: { fontSize: 12, color: colors.secondary, flex: 1 },
 
   // ── Conditions Hero Card ──
   condHeroWrap: {
@@ -468,11 +536,6 @@ const s = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(0,212,170,0.22)',
-    shadowColor: '#00D4AA',
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 4,
   },
   condHero: {
     borderRadius: radius.lg,
@@ -487,20 +550,20 @@ const s = StyleSheet.create({
   },
   scoreCol: {
     alignItems: 'flex-start',
-    position: 'relative',
-  },
-  scoreGlowCircle: {
-    position: 'absolute',
-    width: 90, height: 90, borderRadius: 45,
-    backgroundColor: 'rgba(0,212,170,0.07)',
-    top: -15, left: -18,
   },
   scoreNum: {
-    fontSize: 48, fontWeight: '800', letterSpacing: -2, lineHeight: 56,
+    fontSize: 48, fontWeight: '800', lineHeight: 56,
   },
   scoreLabel: {
-    fontSize: 11, fontWeight: '800', letterSpacing: 2, textTransform: 'uppercase', marginTop: 2,
+    fontSize: 11, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 2,
   },
+  // Next bite row
+  nextBiteRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
+  nextBiteLabel: { fontSize: 12, color: colors.textSecondary },
+  nextBiteTime: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  bitePill: { backgroundColor: 'rgba(0,212,170,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  bitePillText: { fontSize: 9, fontWeight: '800', color: colors.primary, letterSpacing: 0.5 },
+
   condStatsCol: {
     flex: 1, gap: 10,
   },
@@ -522,13 +585,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(245,158,11,0.15)',
-    backgroundColor: 'rgba(245,158,11,0.06)',
+    borderTopColor: 'rgba(255,255,255,0.08)',
     paddingHorizontal: spacing.lg,
     paddingVertical: 10,
   },
   condWindowText: {
-    flex: 1, fontSize: 12, fontWeight: '600', color: colors.textSecondary,
+    flex: 1, fontSize: 12, fontWeight: '600', color: colors.secondary,
   },
   condFullLink: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
@@ -547,7 +609,7 @@ const s = StyleSheet.create({
   },
   spotSelectorLabel: {
     fontSize: 10, fontWeight: '800', color: colors.textTertiary,
-    letterSpacing: 1.5, textTransform: 'uppercase',
+    letterSpacing: 0.8, textTransform: 'uppercase',
   },
   spotSelectorName: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4,
@@ -607,7 +669,7 @@ const s = StyleSheet.create({
   sectionBar: { width: 3, height: 16, borderRadius: 2, backgroundColor: colors.primary },
   sectionTitleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionTitle: {
-    fontSize: 13, fontWeight: '700', color: colors.textSecondary,
+    fontSize: 13, fontWeight: '600', color: colors.textSecondary,
   },
   nearBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
@@ -627,7 +689,6 @@ const s = StyleSheet.create({
     width: 160, height: 120, borderRadius: radius.md, overflow: 'hidden',
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)',
     justifyContent: 'space-between',
-    ...elevation.raised,
   },
   spotCardSelected: {
     borderColor: colors.primary, borderWidth: 2,
@@ -672,7 +733,7 @@ const s = StyleSheet.create({
   },
   tipLabel: {
     fontSize: 9, fontWeight: '800', color: '#F59E0B',
-    letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 5,
+    letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 5,
   },
   tipText: { fontSize: 13, color: '#ffffff', lineHeight: 19 },
 
@@ -696,7 +757,7 @@ const s = StyleSheet.create({
     marginHorizontal: spacing.lg, marginBottom: 28,
     backgroundColor: colors.surface, borderRadius: radius.md,
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)',
-    overflow: 'hidden', ...elevation.raised,
+    overflow: 'hidden',
   },
   catchRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
@@ -717,7 +778,7 @@ const s = StyleSheet.create({
   spotSheet: { height: '84%', backgroundColor: colors.background, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, borderWidth: 1, borderColor: colors.borderStrong, paddingTop: spacing.sm },
   sheetHandle: { width: 36, height: 4, borderRadius: 2, backgroundColor: colors.borderStrong, alignSelf: 'center', marginBottom: spacing.md },
   sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: spacing.lg, gap: spacing.md },
-  sheetTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.3 },
+  sheetTitle: { fontSize: 20, fontWeight: '700', color: colors.textPrimary },
   sheetSubtitle: { fontSize: 12, color: colors.textSecondary, lineHeight: 17, marginTop: 3 },
   sheetClose: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.surface },
   searchBox: { margin: spacing.lg, marginBottom: spacing.sm, height: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },

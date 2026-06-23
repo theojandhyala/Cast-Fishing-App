@@ -1,14 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../store/authStore';
 import { useCatchStore } from '../store/catchStore';
-import { colors, radius, spacing, elevation } from '../constants/theme';
+import { colors, radius, spacing } from '../constants/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -84,6 +83,26 @@ export default function ProfileScreen() {
     .toUpperCase()
     .slice(0, 2);
 
+  // Catch streak
+  const catchStreak = useMemo(() => {
+    if (!catches.length) return 0;
+    const days = new Set(catches.map(c => new Date(c.date).toDateString()));
+    let streak = 0;
+    const today = new Date();
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(today); d.setDate(d.getDate() - i);
+      if (days.has(d.toDateString())) streak++; else break;
+    }
+    return streak;
+  }, [catches]);
+
+  const milestones = [
+    { icon: 'fish', label: 'First Catch', done: catches.length >= 1 },
+    { icon: 'numeric-10-circle-outline', label: '10 Catches', done: catches.length >= 10 },
+    { icon: 'trophy-outline', label: '50 Catches', done: catches.length >= 50 },
+    { icon: 'star-outline', label: 'Week Streak', done: catchStreak >= 7 },
+  ].filter(m => m.done);
+
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -99,15 +118,9 @@ export default function ProfileScreen() {
 
         {/* ── Avatar + identity ── */}
         <View style={s.profileHeader}>
-          <LinearGradient
-            colors={['#00D4AA', '#00A882']}
-            style={s.avatarRing}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          >
-            <View style={s.avatarInner}>
-              <Text style={s.avatarInitials}>{initials}</Text>
-            </View>
-          </LinearGradient>
+          <View style={s.avatarRing}>
+            <Text style={s.avatarInitials}>{initials}</Text>
+          </View>
 
           <View style={s.identity}>
             <Text style={s.displayName}>{displayName}</Text>
@@ -135,6 +148,18 @@ export default function ProfileScreen() {
             </React.Fragment>
           ))}
         </View>
+
+        {/* ── Milestones ── */}
+        {milestones.length > 0 && (
+          <View style={s.milestonesRow}>
+            {milestones.map(m => (
+              <View key={m.label} style={s.milestoneBadge}>
+                <MaterialCommunityIcons name={m.icon as any} size={16} color={colors.primary} />
+                <Text style={s.milestoneLabel}>{m.label}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* ── Menu items ── */}
         <View style={s.menuCard}>
@@ -182,20 +207,17 @@ const s = StyleSheet.create({
     gap: spacing.md,
   },
   avatarRing: {
-    width: 84, height: 84, borderRadius: 42,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  avatarInner: {
-    width: 78, height: 78, borderRadius: 39,
+    width: 72, height: 72, borderRadius: 36,
+    borderWidth: 2, borderColor: colors.primary,
     backgroundColor: colors.surface,
     alignItems: 'center', justifyContent: 'center',
   },
   avatarInitials: {
-    fontSize: 28, fontWeight: '900', color: '#00D4AA',
+    fontSize: 26, fontWeight: '800', color: '#00D4AA',
   },
   identity: { flex: 1, alignItems: 'flex-start' },
   displayName: {
-    fontSize: 20, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.5,
+    fontSize: 20, fontWeight: '800', color: colors.textPrimary,
   },
   handle: {
     fontSize: 12, color: colors.textSecondary, fontWeight: '500', marginTop: 2,
@@ -212,15 +234,28 @@ const s = StyleSheet.create({
     paddingVertical: 18,
   },
   statItem: { flex: 1, alignItems: 'center', gap: 4 },
-  statVal: { fontSize: 26, fontWeight: '900', color: '#00D4AA', letterSpacing: -0.8 },
+  statVal: { fontSize: 26, fontWeight: '800', color: '#00D4AA' },
   statLabel: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
   statDivider: { width: 1, height: 32, backgroundColor: colors.border },
+
+  // Milestones
+  milestonesRow: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+    marginHorizontal: spacing.lg, marginBottom: 16,
+  },
+  milestoneBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(0,212,170,0.08)', borderRadius: radius.sm,
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
+  },
+  milestoneLabel: { fontSize: 11, fontWeight: '600', color: colors.textPrimary },
 
   menuCard: {
     marginHorizontal: spacing.lg, marginBottom: spacing.lg,
     backgroundColor: colors.surface, borderRadius: radius.lg,
     borderWidth: 1, borderColor: colors.border,
-    overflow: 'hidden', ...elevation.raised,
+    overflow: 'hidden',
   },
   menuRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
