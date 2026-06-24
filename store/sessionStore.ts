@@ -9,6 +9,7 @@ export interface ActiveSession {
   longitude?: number;
   startTime: string; // ISO
   catchIds: string[];
+  castCount: number;
 }
 
 export interface SessionSummary {
@@ -24,6 +25,7 @@ interface SessionState {
   sessionHistory: SessionSummary[];
   startSession: (spotName: string, opts?: { spotQuery?: string; latitude?: number; longitude?: number }) => void;
   addCatchToSession: (catchId: string) => void;
+  incrementCastCount: () => void;
   endSession: () => void;
   discardSession: () => void;
   clearSummary: () => void;
@@ -45,8 +47,15 @@ export const useSessionStore = create<SessionState>()(
             longitude: opts?.longitude,
             startTime: new Date().toISOString(),
             catchIds: [],
+            castCount: 0,
           },
         }),
+
+      incrementCastCount: () => {
+        const session = get().activeSession;
+        if (!session) return;
+        set({ activeSession: { ...session, castCount: (session.castCount ?? 0) + 1 } });
+      },
 
       addCatchToSession: (catchId) => {
         const session = get().activeSession;

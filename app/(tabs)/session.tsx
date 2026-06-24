@@ -103,6 +103,7 @@ export default function SessionTab() {
   const router = useRouter();
   const activeSession = useSessionStore((s) => s.activeSession);
   const endSession = useSessionStore((s) => s.endSession);
+  const incrementCastCount = useSessionStore((s) => s.incrementCastCount);
   const catches = useCatchStore((s) => s.catches);
   const [now, setNow] = useState(Date.now());
 
@@ -209,7 +210,7 @@ export default function SessionTab() {
           <ArcGauge score={weather?.fishingScore ?? 0} />
         </View>
 
-        {/* Catches + Keepers */}
+        {/* Catches + Keepers + Casts */}
         <View style={s.statsRow}>
           <View style={s.statCard}>
             <Text style={s.statHeaderLabel}>CATCHES</Text>
@@ -221,10 +222,24 @@ export default function SessionTab() {
               {sessionCatches.filter((c) => (c.weight ?? 0) > 0).length}
             </Text>
           </View>
+          <View style={s.statCard}>
+            <Text style={s.statHeaderLabel}>CASTS</Text>
+            <Text style={s.statValue}>{activeSession.castCount ?? 0}</Text>
+          </View>
         </View>
 
-        {/* Log Catch button full width */}
-        <View style={s.logCatchWrap}>
+        {/* Cast counter button */}
+        <View style={s.castCounterRow}>
+          <TouchableOpacity
+            style={s.castBtn}
+            onPress={incrementCastCount}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Count a cast"
+          >
+            <MaterialCommunityIcons name="hook" size={20} color={colors.textSecondary} />
+            <Text style={s.castBtnText}>Count Cast</Text>
+          </TouchableOpacity>
           <TouchableOpacity
             style={s.logBtn}
             onPress={() => router.push('/identifier' as any)}
@@ -445,13 +460,32 @@ const s = StyleSheet.create({
     lineHeight: 44,
   },
 
-  // Log Catch button
-  logCatchWrap: {
+  // Cast counter + Log Catch row
+  castCounterRow: {
+    flexDirection: 'row',
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.md,
+    gap: 10,
+  },
+  castBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    height: 54,
+    paddingHorizontal: 18,
+  },
+  castBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
   },
   logBtn: {
-    width: '100%',
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary,

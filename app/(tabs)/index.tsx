@@ -13,6 +13,7 @@ import { useLocation } from '../../hooks/useLocation';
 import { useSessionStore } from '../../store/sessionStore';
 import { useSolunar } from '../../hooks/useSolunar';
 import { colors, spacing, radius } from '../../constants/theme';
+import { FishSpeciesPhoto } from '../../components/fish/FishSpeciesPhoto';
 
 function getConditionsLabel(score: number) {
   if (score >= 80) return 'Excellent Conditions';
@@ -160,6 +161,23 @@ export default function HomeScreen() {
     return `in ${Math.floor(min / 60)}h ${min % 60}m`;
   }, [solunar]);
 
+  const recentCatches = useMemo(() => catches.slice(0, 5), [catches]);
+
+  const targetSpecies = useMemo(() => {
+    const s = score;
+    const phase = moonPhase?.toLowerCase() ?? '';
+    if (s >= 75) {
+      if (phase.includes('full') || phase.includes('new')) return { name: 'Murray Cod', reason: 'Moon + high conditions' };
+      return { name: 'Bass', reason: 'Peak feeding window' };
+    }
+    if (s >= 50) {
+      const hour = new Date().getHours();
+      if (hour < 9 || hour > 17) return { name: 'Bream', reason: 'Active at low light' };
+      return { name: 'Flathead', reason: 'Moderate activity' };
+    }
+    return { name: 'Carp', reason: 'Tolerant of tough conditions' };
+  }, [score, moonPhase]);
+
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -305,6 +323,59 @@ export default function HomeScreen() {
             ))}
           </View>
         </View>
+
+        {/* Today's Target */}
+        <TouchableOpacity
+          style={s.targetCard}
+          onPress={() => router.push('/(tabs)/catches' as any)}
+          activeOpacity={0.85}
+        >
+          <View style={s.targetLeft}>
+            <Text style={s.targetEyebrow}>TODAY'S TARGET</Text>
+            <Text style={s.targetName}>{targetSpecies.name}</Text>
+            <Text style={s.targetReason}>{targetSpecies.reason}</Text>
+          </View>
+          <View style={s.targetPhotoWrap}>
+            <FishSpeciesPhoto species={targetSpecies.name} style={s.targetPhoto} />
+          </View>
+        </TouchableOpacity>
+
+        {/* Recent Catches */}
+        {recentCatches.length > 0 && (
+          <View style={s.recentSection}>
+            <View style={s.statsHeaderRow}>
+              <Text style={s.sectionHeader}>RECENT CATCHES</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/catches' as any)} activeOpacity={0.75}>
+                <Text style={s.viewAll}>View all &rsaquo;</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.recentStrip}
+            >
+              {recentCatches.map((c) => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={s.recentCard}
+                  onPress={() => router.push(`/catch-detail?id=${c.id}` as any)}
+                  activeOpacity={0.85}
+                >
+                  <View style={s.recentPhotoWrap}>
+                    <FishSpeciesPhoto species={c.species} photo={c.photo} style={s.recentPhoto} />
+                  </View>
+                  <Text style={s.recentSpecies} numberOfLines={1}>{c.species}</Text>
+                  {c.weight > 0 && (
+                    <Text style={s.recentWeight}>{c.weight.toFixed(1)} kg</Text>
+                  )}
+                  <Text style={s.recentDate}>
+                    {new Date(c.date).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
       </ScrollView>
     </SafeAreaView>
@@ -513,5 +584,92 @@ const s = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
+  },
+
+  // Today's Target card
+  targetCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  targetLeft: { flex: 1, gap: 4 },
+  targetEyebrow: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 2,
+  },
+  targetName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: -0.3,
+  },
+  targetReason: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  targetPhotoWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+    backgroundColor: colors.surface2,
+  },
+  targetPhoto: { width: 72, height: 72, borderRadius: radius.sm },
+
+  // Recent Catches
+  recentSection: {
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
+  },
+  recentStrip: {
+    gap: 10,
+    paddingRight: spacing.lg,
+  },
+  recentCard: {
+    width: 100,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+    padding: 0,
+  },
+  recentPhotoWrap: {
+    width: 100,
+    height: 80,
+    backgroundColor: colors.surface2,
+    overflow: 'hidden',
+  },
+  recentPhoto: { width: 100, height: 80 },
+  recentSpecies: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    paddingHorizontal: 8,
+    paddingTop: 7,
+  },
+  recentWeight: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.primary,
+    paddingHorizontal: 8,
+    marginTop: 1,
+  },
+  recentDate: {
+    fontSize: 10,
+    color: colors.textTertiary,
+    paddingHorizontal: 8,
+    paddingBottom: 7,
+    marginTop: 2,
   },
 });

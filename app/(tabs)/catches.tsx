@@ -49,6 +49,12 @@ export default function CatchesScreen() {
   );
   const speciesCount = Object.keys(stats.speciesCounts ?? {}).length;
 
+  const personalBests = useMemo(() => {
+    return Object.entries(stats.personalBests ?? {})
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 6);
+  }, [stats.personalBests]);
+
   const filteredCatches = useMemo(() => {
     if (timeFilter === 'all') return catches;
     const now = new Date();
@@ -123,6 +129,25 @@ export default function CatchesScreen() {
 
         </View>
       </View>
+
+      {/* Personal Bests */}
+      {personalBests.length > 0 && (
+        <View style={s.pbSection}>
+          <Text style={s.pbHeader}>PERSONAL BESTS</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.pbStrip}
+          >
+            {personalBests.map(([species, weight]) => (
+              <View key={species} style={s.pbCard}>
+                <Text style={s.pbWeight}>{weight.toFixed(1)}<Text style={s.pbUnit}> kg</Text></Text>
+                <Text style={s.pbSpecies} numberOfLines={1}>{species}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {filteredCatches.length === 0 ? (
         <View style={s.empty}>
@@ -398,6 +423,51 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: colors.textSecondary,
     fontWeight: '500',
+  },
+
+  // Personal Bests
+  pbSection: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  pbHeader: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textTertiary,
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
+  pbStrip: {
+    gap: 8,
+    paddingRight: spacing.lg,
+  },
+  pbCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    minWidth: 90,
+    alignItems: 'center',
+    gap: 3,
+  },
+  pbWeight: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: -0.5,
+  },
+  pbUnit: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textTertiary,
+  },
+  pbSpecies: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 
   // Empty
