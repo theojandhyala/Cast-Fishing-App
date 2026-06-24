@@ -141,16 +141,18 @@ export default function SessionScreen() {
       <SafeAreaView style={s.safe} edges={['top']}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
           <LinearGradient colors={['#0A1E2E', '#051015']} style={s.noSessionHero}>
-            <MaterialCommunityIcons name="fish" size={48} color="rgba(0,212,170,0.3)" />
-            <Text style={s.noSessionTitle}>No Active Session</Text>
-            <Text style={s.noSessionSub}>Start fishing to track your session</Text>
+            <View style={s.noSessionIconCircle}>
+              <MaterialCommunityIcons name="fish" size={40} color={colors.primary} />
+            </View>
+            <Text style={s.noSessionTitle}>Ready to fish?</Text>
+            <Text style={s.noSessionSub}>Start a session to track catches, conditions, and bite windows in real time.</Text>
             <TouchableOpacity
               style={s.noSessionBtn}
               onPress={() => router.push('/(tabs)/map' as any)}
               activeOpacity={0.85}
             >
               <LinearGradient colors={['#00D4AA', '#00B891']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.noSessionBtnGrad}>
-                <MaterialCommunityIcons name="fish" size={18} color="#051410" />
+                <MaterialCommunityIcons name="map-marker-outline" size={18} color="#051410" />
                 <Text style={s.noSessionBtnText}>FIND A SPOT</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -206,6 +208,10 @@ export default function SessionScreen() {
               <Text style={s.heroNavName}>{spotName}</Text>
             </View>
             <View style={s.heroNavRight}>
+              <View style={s.liveChip}>
+                <View style={s.liveDot} />
+                <Text style={s.liveText}>LIVE</Text>
+              </View>
               <TouchableOpacity style={s.heroNavBtn}>
                 <MaterialCommunityIcons name="share-variant-outline" size={18} color="rgba(255,255,255,0.7)" />
               </TouchableOpacity>
@@ -229,6 +235,10 @@ export default function SessionScreen() {
               </View>
               <Text style={s.timerText}>{formatElapsed(elapsedMs)}</Text>
               <Text style={s.timerLabel}>Session Time</Text>
+              <View style={s.locationChip}>
+                <MaterialCommunityIcons name="map-marker-outline" size={12} color={colors.textTertiary} />
+                <Text style={s.locationChipText} numberOfLines={1}>{spotName}</Text>
+              </View>
               <TouchableOpacity style={s.endBtn} onPress={handleEnd} activeOpacity={0.85}>
                 <MaterialCommunityIcons name="stop-circle-outline" size={14} color={colors.danger} />
                 <Text style={s.endBtnText}>End Session</Text>
@@ -598,9 +608,15 @@ const s = StyleSheet.create({
   noSessionHero: {
     alignItems: 'center', justifyContent: 'center', gap: 12, padding: 40, paddingVertical: 60,
   },
-  noSessionTitle: { fontSize: 22, fontWeight: '800', color: colors.textPrimary, marginTop: 8 },
-  noSessionSub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
-  noSessionBtn: { borderRadius: radius.full, overflow: 'hidden', marginTop: 16, alignSelf: 'stretch' },
+  noSessionIconCircle: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: colors.primaryDim,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
+  },
+  noSessionTitle: { fontSize: 24, fontWeight: '800', color: colors.textPrimary },
+  noSessionSub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  noSessionBtn: { borderRadius: radius.full, overflow: 'hidden', marginTop: 8, alignSelf: 'stretch' },
   noSessionBtnGrad: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 10, paddingVertical: 16,
@@ -644,7 +660,16 @@ const s = StyleSheet.create({
   heroNavBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   heroNavCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
   heroNavName: { fontSize: 17, fontWeight: '700', color: '#fff' },
-  heroNavRight: { flexDirection: 'row', gap: 0 },
+  heroNavRight: { flexDirection: 'row', alignItems: 'center', gap: 0 },
+  liveChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    borderRadius: radius.full, paddingHorizontal: 9, paddingVertical: 4,
+    borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)',
+    marginRight: 4,
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444' },
+  liveText: { fontSize: 10, fontWeight: '800', color: '#EF4444', letterSpacing: 0.8 },
   heroSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 20, marginLeft: 36 },
 
   heroBody: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
@@ -660,7 +685,12 @@ const s = StyleSheet.create({
   sessionActiveText: { fontSize: 11, fontWeight: '800', color: '#00D4AA', letterSpacing: 0.8 },
 
   timerText: { fontSize: 44, fontWeight: '700', color: '#fff', marginBottom: 4, fontVariant: ['tabular-nums'] },
-  timerLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 12 },
+  timerLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 8 },
+  locationChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    alignSelf: 'flex-start', marginBottom: 12,
+  },
+  locationChipText: { fontSize: 11, color: colors.textTertiary },
 
   endBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,

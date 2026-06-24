@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
@@ -21,18 +22,18 @@ const MENU_SECTIONS = [
   {
     title: 'MY FISHING',
     items: [
-      { icon: 'calendar-month', label: 'Fishing Calendar', route: '/fishing-calendar' },
-      { icon: 'trophy', label: 'Personal Records', route: '/records' },
-      { icon: 'robot-outline', label: 'AI Advisor', route: '/ai-advisor' },
-      { icon: 'chart-line', label: 'Conditions & Intel', route: '/conditions' },
+      { icon: 'calendar-month', label: 'Fishing Calendar', route: '/fishing-calendar', chipBg: 'rgba(77,163,255,0.18)', chipColor: '#4DA3FF' },
+      { icon: 'trophy', label: 'Personal Records', route: '/records', chipBg: 'rgba(245,158,11,0.18)', chipColor: '#F59E0B' },
+      { icon: 'robot-outline', label: 'AI Advisor', route: '/ai-advisor', chipBg: 'rgba(168,85,247,0.18)', chipColor: '#A855F7' },
+      { icon: 'chart-line', label: 'Conditions & Intel', route: '/conditions', chipBg: 'rgba(0,212,170,0.18)', chipColor: '#00D4AA' },
     ],
   },
   {
     title: 'ACCOUNT',
     items: [
-      { icon: 'crown', label: 'Manage Subscription', route: '/pro' },
-      { icon: 'cog', label: 'Settings', route: '/settings' },
-      { icon: 'help-circle-outline', label: 'Help & Support', route: null as string | null },
+      { icon: 'crown', label: 'Manage Subscription', route: '/pro', chipBg: 'rgba(245,158,11,0.18)', chipColor: '#F59E0B' },
+      { icon: 'cog', label: 'Settings', route: '/settings', chipBg: 'rgba(100,116,139,0.18)', chipColor: '#64748B' },
+      { icon: 'help-circle-outline', label: 'Help & Support', route: null as string | null, chipBg: 'rgba(100,116,139,0.18)', chipColor: '#64748B' },
     ],
   },
 ];
@@ -84,8 +85,8 @@ export default function MoreScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
       >
 
-        {/* Profile Header */}
-        <View style={s.profileHeader}>
+        {/* Profile Header — LinearGradient panel */}
+        <LinearGradient colors={['#0D1E33', '#091525']} style={s.profileHeader}>
           <View style={s.avatarWrap}>
             <View style={s.avatar}>
               <Text style={s.avatarInitials}>{initials}</Text>
@@ -109,7 +110,7 @@ export default function MoreScreen() {
           >
             <Text style={s.editBtnText}>Edit</Text>
           </TouchableOpacity>
-        </View>
+        </LinearGradient>
 
         {/* Stats Dashboard */}
         <View style={s.statsSection}>
@@ -176,8 +177,8 @@ export default function MoreScreen() {
                   }}
                   activeOpacity={0.75}
                 >
-                  <View style={s.menuIconWrap}>
-                    <MaterialCommunityIcons name={item.icon as any} size={18} color={colors.textSecondary} />
+                  <View style={[s.menuIconWrap, { backgroundColor: item.chipBg }]}>
+                    <MaterialCommunityIcons name={item.icon as any} size={18} color={item.chipColor} />
                   </View>
                   <Text style={s.menuLabel}>{item.label}</Text>
                   <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textTertiary} />
@@ -187,7 +188,7 @@ export default function MoreScreen() {
           </View>
         ))}
 
-        {/* Sign Out */}
+        {/* Sign Out — outline button */}
         <TouchableOpacity
           style={s.signOut}
           onPress={handleLogout}
@@ -204,19 +205,19 @@ export default function MoreScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
 
-  // Profile header
+  // Profile header — gradient panel
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.lg,
     gap: 14,
   },
   avatarWrap: {},
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.surface2,
     borderWidth: 2,
     borderColor: colors.primary,
@@ -224,7 +225,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarInitials: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '800',
     color: colors.primary,
   },
@@ -275,6 +276,7 @@ const s = StyleSheet.create({
   // Stats
   statsSection: {
     paddingHorizontal: spacing.lg,
+    marginTop: spacing.md,
     marginBottom: spacing.md,
   },
   statsGrid: {
@@ -378,8 +380,7 @@ const s = StyleSheet.create({
   menuIconWrap: {
     width: 32,
     height: 32,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surface2,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -390,12 +391,16 @@ const s = StyleSheet.create({
     color: colors.textPrimary,
   },
 
-  // Sign out
+  // Sign out — outline button
   signOut: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.danger,
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    justifyContent: 'center',
   },
   signOutText: {
     fontSize: 15,
