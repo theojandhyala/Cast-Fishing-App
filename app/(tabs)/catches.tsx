@@ -117,6 +117,7 @@ export default function CatchesScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={s.filterScroll}
         contentContainerStyle={s.filterPills}
       >
         {FILTER_LABELS.map((f) => (
@@ -314,10 +315,11 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  filterScroll: { flexGrow: 0 },
   filterPills: {
     paddingHorizontal: spacing.lg,
     gap: 8,
-    marginBottom: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   filterPill: {
     paddingHorizontal: 16,
