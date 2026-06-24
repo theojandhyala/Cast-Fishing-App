@@ -14,6 +14,7 @@ import { useSessionStore } from '../../store/sessionStore';
 import { useSolunar } from '../../hooks/useSolunar';
 import { colors, spacing, radius } from '../../constants/theme';
 import { FishSpeciesPhoto } from '../../components/fish/FishSpeciesPhoto';
+import { getTipOfDay } from '../../data/tipOfDay';
 
 function getConditionsLabel(score: number) {
   if (score >= 80) return 'Excellent Conditions';
@@ -178,6 +179,10 @@ export default function HomeScreen() {
     return { name: 'Carp', reason: 'Tolerant of tough conditions' };
   }, [score, moonPhase]);
 
+  const tip = useMemo(() => getTipOfDay(), []);
+
+  const solunarWindows = solunar?.windows ?? [];
+
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
@@ -339,6 +344,50 @@ export default function HomeScreen() {
             <FishSpeciesPhoto species={targetSpecies.name} style={s.targetPhoto} />
           </View>
         </TouchableOpacity>
+
+        {/* Solunar Table */}
+        <View style={[s.section]}>
+          <View style={s.statsHeaderRow}>
+            <Text style={s.sectionHeader}>FEEDING WINDOWS TODAY</Text>
+            <View style={s.moonPillRow}>
+              <MaterialCommunityIcons name="moon-waning-crescent" size={13} color={colors.textTertiary} />
+              <Text style={s.moonPillText}>{solunar?.moonPhaseName ?? 'Moon'} · {solunar?.moonIllumination ?? 0}%</Text>
+            </View>
+          </View>
+          <View style={s.solunarTable}>
+            {solunarWindows.map((win, i) => (
+              <View
+                key={i}
+                style={[s.solunarRow, win.isActive && s.solunarRowActive]}
+              >
+                <View style={s.solunarLeft}>
+                  {win.isActive && <View style={s.solunarActiveDot} />}
+                  <View style={[s.solunarBadge, win.quality === 'major' ? s.solunarBadgeMajor : s.solunarBadgeMinor]}>
+                    <Text style={[s.solunarBadgeText, win.quality === 'major' ? s.solunarBadgeMajorText : s.solunarBadgeMinorText]}>
+                      {win.quality === 'major' ? 'MAJOR' : 'MINOR'}
+                    </Text>
+                  </View>
+                  <Text style={s.solunarLabel}>{win.label}</Text>
+                </View>
+                <View style={s.solunarRight}>
+                  <Text style={s.solunarTime}>{win.time}–{win.endTime}</Text>
+                  <Text style={s.solunarDuration}>{win.duration}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Tip of the Day */}
+        <View style={s.tipCard}>
+          <View style={s.tipHeader}>
+            <Text style={s.tipEyebrow}>TIP OF THE DAY</Text>
+            <View style={s.tipCategoryBadge}>
+              <Text style={s.tipCategoryText}>{tip.category}</Text>
+            </View>
+          </View>
+          <Text style={s.tipText}>{tip.tip}</Text>
+        </View>
 
         {/* Recent Catches */}
         {recentCatches.length > 0 && (
@@ -672,4 +721,77 @@ const s = StyleSheet.create({
     paddingBottom: 7,
     marginTop: 2,
   },
+
+  // Moon pill
+  moonPillRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  moonPillText: { fontSize: 11, color: colors.textTertiary, fontWeight: '500' },
+
+  // Solunar table
+  solunarTable: {
+    gap: 8,
+  },
+  solunarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  solunarRowActive: {
+    borderColor: 'rgba(0,212,170,0.4)',
+    backgroundColor: 'rgba(0,212,170,0.06)',
+  },
+  solunarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  solunarActiveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  solunarBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  solunarBadgeMajor: { backgroundColor: 'rgba(0,212,170,0.15)' },
+  solunarBadgeMinor: { backgroundColor: 'rgba(77,163,255,0.12)' },
+  solunarBadgeText: { fontSize: 9, fontWeight: '800', letterSpacing: 0.8 },
+  solunarBadgeMajorText: { color: colors.primary },
+  solunarBadgeMinorText: { color: '#4DA3FF' },
+  solunarLabel: { fontSize: 13, fontWeight: '500', color: colors.textSecondary },
+  solunarRight: { alignItems: 'flex-end', gap: 2 },
+  solunarTime: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+  solunarDuration: { fontSize: 10, color: colors.textTertiary, fontWeight: '500' },
+
+  // Tip of the Day
+  tipCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent,
+    padding: spacing.lg,
+    gap: 10,
+  },
+  tipHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  tipEyebrow: { fontSize: 9, fontWeight: '700', color: colors.accent, letterSpacing: 2 },
+  tipCategoryBadge: {
+    backgroundColor: 'rgba(245,158,11,0.12)',
+    borderRadius: radius.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  tipCategoryText: { fontSize: 10, fontWeight: '700', color: colors.accent, letterSpacing: 0.5 },
+  tipText: { fontSize: 14, color: colors.textPrimary, lineHeight: 22, fontWeight: '400' },
 });
