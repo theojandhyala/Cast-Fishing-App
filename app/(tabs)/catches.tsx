@@ -10,6 +10,9 @@ import { useRouter } from 'expo-router';
 import { useCatchStore } from '../../store/catchStore';
 import { colors, spacing, radius } from '../../constants/theme';
 
+const TEAL_LINE = 'rgba(0,212,170,0.12)';
+const PANEL_RADIUS = radius.sm;
+
 type TimeFilter = 'all' | 'week' | 'month';
 
 const SPECIES_COLORS: Record<string, string> = {
@@ -99,7 +102,7 @@ export default function CatchesScreen() {
       {/* Header */}
       <View style={s.header}>
         <View style={s.headerLeft}>
-          <Text style={s.headerTitle}>Logbook</Text>
+          <Text style={s.brand}>LOGBOOK</Text>
           <View style={s.countBadge}>
             <Text style={s.countBadgeText}>{catches.length}</Text>
           </View>
@@ -289,27 +292,30 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+  brand: {
+    fontSize: 18,
+    fontWeight: '800',
     color: colors.textPrimary,
-    letterSpacing: -0.3,
+    letterSpacing: 4,
   },
   countBadge: {
-    backgroundColor: colors.primaryDim,
-    borderRadius: radius.full,
-    paddingHorizontal: 10,
+    backgroundColor: 'rgba(0,212,170,0.1)',
+    borderRadius: radius.xs,
+    paddingHorizontal: 8,
     paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
   },
   countBadgeText: {
     fontSize: 12,
     fontWeight: '700',
     color: colors.primary,
+    fontVariant: ['tabular-nums'],
   },
   addBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: PANEL_RADIUS,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -322,21 +328,23 @@ const s = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   filterPill: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: radius.full,
+    borderRadius: PANEL_RADIUS,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: TEAL_LINE,
   },
   filterPillActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   filterPillText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
     color: colors.textSecondary,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   filterPillTextActive: {
     color: colors.bg,
@@ -349,31 +357,33 @@ const s = StyleSheet.create({
     marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: PANEL_RADIUS,
     borderWidth: 1,
-    borderColor: colors.border,
-    paddingVertical: 12,
+    borderColor: TEAL_LINE,
+    paddingVertical: 14,
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   statDivider: {
     width: 1,
     height: 28,
-    backgroundColor: colors.border,
+    backgroundColor: TEAL_LINE,
   },
   statValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
   },
   statLabel: {
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: 9,
+    fontWeight: '700',
     color: colors.textTertiary,
-    letterSpacing: 0.3,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
 
   // Feed
@@ -384,10 +394,10 @@ const s = StyleSheet.create({
 
   // Date section header
   dateHeader: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '700',
     color: colors.textTertiary,
-    letterSpacing: 1.5,
+    letterSpacing: 2,
     textTransform: 'uppercase',
     paddingVertical: 8,
     paddingTop: 12,
@@ -403,29 +413,29 @@ const s = StyleSheet.create({
     gap: 12,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderLeftColor: colors.border,
-    borderRightColor: colors.border,
+    borderLeftColor: TEAL_LINE,
+    borderRightColor: TEAL_LINE,
   },
   catchRowFirst: {
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderTopLeftRadius: PANEL_RADIUS,
+    borderTopRightRadius: PANEL_RADIUS,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: TEAL_LINE,
   },
   catchRowLast: {
-    borderBottomLeftRadius: radius.lg,
-    borderBottomRightRadius: radius.lg,
+    borderBottomLeftRadius: PANEL_RADIUS,
+    borderBottomRightRadius: PANEL_RADIUS,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: TEAL_LINE,
   },
   catchRowBorder: {
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: TEAL_LINE,
   },
   catchThumb: {
     width: 60,
     height: 60,
-    borderRadius: radius.md,
+    borderRadius: PANEL_RADIUS,
   },
   catchInfo: {
     flex: 1,
@@ -461,7 +471,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: TEAL_LINE,
   },
   condChipText: {
     fontSize: 11,
@@ -469,13 +479,14 @@ const s = StyleSheet.create({
     fontWeight: '500',
   },
   weightBadge: {
-    borderRadius: radius.full,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
+    borderRadius: radius.xs,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
   },
   weightBadgeText: {
     fontSize: 12,
     fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
 
   // Personal Bests
@@ -484,10 +495,10 @@ const s = StyleSheet.create({
     marginBottom: spacing.md,
   },
   pbHeader: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '700',
     color: colors.textTertiary,
-    letterSpacing: 1.5,
+    letterSpacing: 2,
     textTransform: 'uppercase',
     marginBottom: 10,
   },
@@ -497,9 +508,9 @@ const s = StyleSheet.create({
   },
   pbCard: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: PANEL_RADIUS,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: TEAL_LINE,
     paddingHorizontal: 14,
     paddingVertical: 12,
     minWidth: 90,
@@ -509,8 +520,9 @@ const s = StyleSheet.create({
   pbWeight: {
     fontSize: 20,
     fontWeight: '800',
-    color: colors.textPrimary,
+    color: colors.primary,
     letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
   },
   pbUnit: {
     fontSize: 12,
@@ -536,15 +548,19 @@ const s = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: colors.primaryDim,
+    backgroundColor: 'rgba(0,212,170,0.08)',
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     color: colors.textPrimary,
+    letterSpacing: 3,
+    textTransform: 'uppercase',
   },
   emptySub: {
     fontSize: 14,
@@ -554,13 +570,15 @@ const s = StyleSheet.create({
   emptyBtn: {
     marginTop: 8,
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: radius.full,
+    paddingVertical: 13,
+    borderRadius: PANEL_RADIUS,
     backgroundColor: colors.primary,
   },
   emptyBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
     color: colors.bg,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
 });

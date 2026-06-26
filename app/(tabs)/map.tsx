@@ -17,6 +17,9 @@ import { useRouter } from 'expo-router';
 import { FISHING_SPOTS, loadAllFishingSpots } from '../../data/fishingSpots';
 import { FishingSpotRecord } from '../../types/fishingSpot';
 import { colors, radius, spacing, elevation } from '../../constants/theme';
+
+const TEAL_LINE = 'rgba(0,212,170,0.12)';
+const PANEL_RADIUS = radius.sm;
 import { useSessionStore } from '../../store/sessionStore';
 import { SpotPhoto } from '../../components/map/SpotPhoto';
 import { useSpotStore } from '../../store/spotStore';
@@ -188,8 +191,8 @@ export default function SpotsScreen() {
       {/* Header */}
       <View style={s.header}>
         <View>
-          <Text style={s.headerTitle}>Fishing Spots</Text>
-          <Text style={s.headerSub}>{loadingSpots ? 'Loading 10,000 locations…' : `${filtered.length} locations`}</Text>
+          <Text style={s.brand}>SPOTS</Text>
+          <Text style={s.headerSub}>{loadingSpots ? 'LOADING CHART DATA…' : `${filtered.length} LOCATIONS`}</Text>
         </View>
         <TouchableOpacity style={[s.nearBtn, nearCoordinate && s.nearBtnActive]} onPress={handleNearMe} disabled={locating} accessibilityRole="button" accessibilityLabel={nearCoordinate ? 'Stop sorting by distance' : 'Sort spots near me'}>
           <MaterialCommunityIcons name="crosshairs-gps" size={16} color={colors.primary} />
@@ -344,8 +347,8 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     marginHorizontal: spacing.lg, marginTop: spacing.sm,
     backgroundColor: 'rgba(0,212,170,0.08)',
-    borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 12,
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
+    borderRadius: PANEL_RADIUS, paddingHorizontal: 14, paddingVertical: 12,
+    borderWidth: 1, borderColor: TEAL_LINE,
   },
   sessionDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary },
   sessionText: { flex: 1, fontSize: 13, color: colors.primary, fontWeight: '600' },
@@ -354,54 +357,54 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
   },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: colors.textPrimary, letterSpacing: -0.5 },
-  headerSub: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  brand: { fontSize: 18, fontWeight: '800', color: colors.textPrimary, letterSpacing: 4 },
+  headerSub: { fontSize: 9, color: colors.textTertiary, marginTop: 4, letterSpacing: 2, fontWeight: '700' },
   nearBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: radius.full,
+    backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: PANEL_RADIUS,
     paddingHorizontal: 14, paddingVertical: 10,
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.25)',
+    borderWidth: 1, borderColor: TEAL_LINE,
     marginTop: 4,
   },
   nearBtnActive: { backgroundColor: 'rgba(0,212,170,0.18)', borderColor: colors.primary },
-  nearText: { fontSize: 13, color: colors.primary, fontWeight: '700' },
+  nearText: { fontSize: 11, color: colors.primary, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
 
   searchRow: {
     paddingHorizontal: spacing.lg, paddingBottom: spacing.sm,
   },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surface, borderRadius: PANEL_RADIUS,
+    borderWidth: 1, borderColor: TEAL_LINE,
     paddingHorizontal: spacing.md, paddingVertical: 12,
   },
   searchInput: { flex: 1, fontSize: 14, color: colors.textPrimary },
 
-  displayTabs: { flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: 3, backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },
-  displayTab: { flex: 1, minHeight: 34, alignItems: 'center', justifyContent: 'center', borderRadius: radius.sm },
+  displayTabs: { flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: 3, backgroundColor: colors.surface, borderRadius: PANEL_RADIUS, borderWidth: 1, borderColor: TEAL_LINE },
+  displayTab: { flex: 1, minHeight: 34, alignItems: 'center', justifyContent: 'center', borderRadius: radius.xs },
   displayTabActive: { backgroundColor: colors.primary },
-  displayTabText: { color: colors.textSecondary, fontSize: 12, fontWeight: '700' },
+  displayTabText: { color: colors.textSecondary, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
   displayTabTextActive: { color: colors.background },
 
   pillsRow: { paddingHorizontal: spacing.lg, gap: 8, paddingBottom: 8 },
   pill: {
-    paddingHorizontal: 16, paddingVertical: 9, minHeight: 36,
-    borderRadius: radius.full, backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 14, paddingVertical: 9, minHeight: 36,
+    borderRadius: PANEL_RADIUS, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: TEAL_LINE,
     alignItems: 'center', justifyContent: 'center',
   },
   pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  pillText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  pillText: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, letterSpacing: 1.5, textTransform: 'uppercase' },
   pillTextActive: { color: '#051410', fontWeight: '700' },
 
   tagPill: {
     paddingHorizontal: 14, paddingVertical: 7, minHeight: 32,
-    borderRadius: radius.full, backgroundColor: 'transparent',
-    borderWidth: 1, borderColor: colors.border,
+    borderRadius: PANEL_RADIUS, backgroundColor: 'transparent',
+    borderWidth: 1, borderColor: TEAL_LINE,
     alignItems: 'center', justifyContent: 'center',
   },
   tagPillActive: { borderColor: colors.secondary, backgroundColor: 'rgba(245,158,11,0.1)' },
-  tagPillText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  tagPillText: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, letterSpacing: 1.5, textTransform: 'uppercase' },
   tagPillTextActive: { color: colors.secondary },
 
   featuredSection: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
@@ -411,13 +414,13 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: spacing.lg, marginBottom: 12, marginTop: 4,
   },
-  sectionAccent: { width: 3, height: 16, borderRadius: 2, backgroundColor: colors.primary },
-  sectionTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  sectionCount: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
+  sectionAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: colors.primary },
+  sectionTitle: { flex: 1, fontSize: 11, fontWeight: '700', color: colors.textPrimary, letterSpacing: 2, textTransform: 'uppercase' },
+  sectionCount: { fontSize: 13, color: colors.textSecondary, fontWeight: '600', fontVariant: ['tabular-nums'] },
 
   featuredCard: {
-    borderRadius: radius.lg, overflow: 'hidden',
-    borderWidth: 1, borderColor: colors.border,
+    borderRadius: PANEL_RADIUS, overflow: 'hidden',
+    borderWidth: 1, borderColor: TEAL_LINE,
     ...elevation.card,
     height: 200,
   },
@@ -453,8 +456,8 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: spacing.lg, marginBottom: 10,
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
+    borderRadius: PANEL_RADIUS,
+    borderWidth: 1, borderColor: TEAL_LINE,
     overflow: 'hidden',
     ...elevation.raised,
   },
@@ -491,10 +494,10 @@ const s = StyleSheet.create({
   diffText: { fontSize: 10, fontWeight: '800' },
 
   emptyState: { alignItems: 'center', paddingHorizontal: 32, paddingVertical: 52 },
-  emptyTitle: { marginTop: 10, fontSize: 16, fontWeight: '800', color: colors.textPrimary },
+  emptyTitle: { marginTop: 10, fontSize: 14, fontWeight: '800', color: colors.textPrimary, letterSpacing: 2, textTransform: 'uppercase' },
   emptyText: { marginTop: 5, fontSize: 13, color: colors.textSecondary, textAlign: 'center' },
-  clearFiltersButton: { marginTop: 16, borderRadius: radius.full, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 10 },
-  clearFiltersText: { color: colors.background, fontSize: 13, fontWeight: '800' },
+  clearFiltersButton: { marginTop: 16, borderRadius: PANEL_RADIUS, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 11 },
+  clearFiltersText: { color: colors.background, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' },
 
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
 });
