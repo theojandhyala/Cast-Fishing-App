@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { colors, spacing, radius } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
 import { useCatchStore } from '../../store/catchStore';
+import { useFriendsStore } from '../../store/friendsStore';
 import { useWeather } from '../../hooks/useWeather';
 
 const TEAL_LINE = 'rgba(0,212,170,0.12)';
@@ -69,8 +70,15 @@ export default function SessionTab() {
   const activeSession = useSessionStore((s) => s.activeSession);
   const endSession = useSessionStore((s) => s.endSession);
   const incrementCastCount = useSessionStore((s) => s.incrementCastCount);
+  const inviteFriend = useSessionStore((s) => s.inviteFriend);
+  const refreshLive = useSessionStore((s) => s.refreshLive);
+  const goingLive = useSessionStore((s) => s.goingLive);
   const catches = useCatchStore((s) => s.catches);
+  const friends = useFriendsStore((s) => s.friends);
+  const hydrateFriends = useFriendsStore((s) => s.hydrate);
   const [now, setNow] = useState(Date.now());
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [invitedIds, setInvitedIds] = useState<string[]>([]);
 
   const { weather } = useWeather(
     activeSession?.latitude,
@@ -82,6 +90,25 @@ export default function SessionTab() {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [activeSession]);
+
+  // Keep the live crew (and host-ended state) in sync while sharing a session.
+  const liveId = activeSession?.liveId;
+  useEffect(() => {
+    if (!liveId) return;
+    refreshLive();
+    const id = setInterval(refreshLive, 10000);
+    return () => clearInterval(id);
+  }, [liveId, refreshLive]);
+
+  const openInvite = async () => {
+    if (friends.length === 0) await hydrateFriends();
+    setInviteOpen(true);
+  };
+  const handleInvite = async (friendId: string) => {
+    const ok = await inviteFriend(friendId);
+    if (ok) setInvitedIds((prev) => [...prev, friendId]);
+  };
+  const participants = activeSession?.participants ?? [];
 
   const elapsedMs = activeSession
     ? now - new Date(activeSession.startTime).getTime()
@@ -147,6 +174,38 @@ export default function SessionTab() {
               <Text style={s.endBtnText}>END</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Live crew panel */}
+        <View style={[s.panel, { marginHorizontal: spacing.lg, marginBottom: 10 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={[s.eyebrow, { marginBottom: 0 }]}>CREW</Text>
+            {activeSession.role !== 'guest' && (
+              <TouchableOpacity onPress={openInvite} activeOpacity={0.75} style={s.inviteBtn} disabled={goingLive}>
+                <MaterialCommunityIcons name="account-plus" size={14} color={colors.primary} />
+                <Text style={s.inviteBtnText}>{goingLive ? 'STARTING…' : 'INVITE FRIEND'}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {participants.length > 0 ? (
+            <View style={{ marginTop: 10, gap: 8 }}>
+              {participants.map((p) => (
+                <View key={p.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={[s.avatar, { backgroundColor: p.avatarColor }]}>
+                    <Text style={s.avatarText}>{p.name.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <Text style={s.crewName}>{p.name}</Text>
+                  <Text style={[s.crewStatus, p.status === 'joined' && { color: colors.primary }]}>
+                    {p.role === 'host' ? 'HOST' : p.status === 'joined' ? 'JOINED' : p.status === 'declined' ? 'DECLINED' : 'INVITED'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={s.crewEmpty}>
+              {activeSession.role === 'guest' ? 'You joined this session.' : 'Fishing solo — invite a friend to share this session live.'}
+            </Text>
+          )}
         </View>
 
         {/* Activity + stats cluster */}
@@ -250,12 +309,85 @@ export default function SessionTab() {
         )}
 
       </ScrollView>
+
+      {/* Invite-a-friend modal */}
+      <Modal visible={inviteOpen} animationType="slide" transparent onRequestClose={() => setInviteOpen(false)}>
+        <View style={s.modalBackdrop}>
+          <View style={s.modalSheet}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <Text style={s.modalTitle}>INVITE TO SESSION</Text>
+              <TouchableOpacity onPress={() => setInviteOpen(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <MaterialCommunityIcons name="close" size={22} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={s.modalSub}>They’ll get a prompt to join — and your session goes live on their device with the same timer.</Text>
+            <ScrollView style={{ marginTop: 12, maxHeight: 360 }} showsVerticalScrollIndicator={false}>
+              {friends.length === 0 ? (
+                <Text style={s.crewEmpty}>Add friends first to invite them to live sessions.</Text>
+              ) : friends.map((f) => {
+                const already = invitedIds.includes(f.id) || participants.some((p) => p.id === f.id);
+                return (
+                  <View key={f.id} style={s.friendRow}>
+                    <View style={[s.avatar, { backgroundColor: f.avatarColor }]}>
+                      <Text style={s.avatarText}>{f.name.charAt(0).toUpperCase()}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.crewName}>{f.name}</Text>
+                      <Text style={s.crewMeta}>Lvl {f.level} · {f.catchCount} catches</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[s.inviteRowBtn, already && s.inviteRowBtnDone]}
+                      onPress={() => handleInvite(f.id)}
+                      disabled={already}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[s.inviteRowBtnText, already && { color: colors.primary }]}>
+                        {already ? 'INVITED' : 'INVITE'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
+
+  // Live crew + invite
+  inviteBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    borderWidth: 1, borderColor: TEAL_LINE, borderRadius: radius.sm,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  inviteBtnText: { fontSize: 9, fontWeight: '800', letterSpacing: 1.5, color: colors.primary },
+  avatar: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  crewName: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, flex: 1 },
+  crewMeta: { fontSize: 11, color: colors.textTertiary, marginTop: 1 },
+  crewStatus: { fontSize: 9, fontWeight: '800', letterSpacing: 1.5, color: colors.textTertiary },
+  crewEmpty: { fontSize: 12, color: colors.textTertiary, marginTop: 8, lineHeight: 17 },
+
+  // Invite modal
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg,
+    borderWidth: 1, borderColor: TEAL_LINE, padding: spacing.lg, paddingBottom: spacing.xl,
+  },
+  modalTitle: { fontSize: 13, fontWeight: '800', letterSpacing: 2, color: colors.textPrimary },
+  modalSub: { fontSize: 12, color: colors.textSecondary, marginTop: 6, lineHeight: 17 },
+  friendRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10,
+    borderTopWidth: 1, borderTopColor: TEAL_LINE,
+  },
+  inviteRowBtn: { backgroundColor: colors.primary, borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 8 },
+  inviteRowBtnDone: { backgroundColor: 'rgba(0,212,170,0.12)', borderWidth: 1, borderColor: TEAL_LINE },
+  inviteRowBtnText: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5, color: colors.bg },
 
   header: {
     flexDirection: 'row',

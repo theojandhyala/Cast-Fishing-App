@@ -4,6 +4,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { colors, spacing } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
+import { SessionInvitePrompt } from '../../components/social/SessionInvitePrompt';
 
 const TAB_BAR_HEIGHT = 58;
 
@@ -161,6 +162,7 @@ export default function TabsLayout() {
       </Tabs>
 
       <SessionBanner />
+      <SessionInvitePrompt />
     </View>
   );
 }

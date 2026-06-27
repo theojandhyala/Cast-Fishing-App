@@ -437,6 +437,92 @@ async function handleApi(request, env, url, origin, payload) {
     return json({ ok: true }, 200, origin);
   }
 
+  // ---- Live sessions (invite friends to fish together in real time) ----
+  const areFriends = async (a, b) => {
+    const low = a < b ? a : b, high = a < b ? b : a;
+    return !!(await db.prepare('SELECT 1 AS yes FROM friendships WHERE user_low=? AND user_high=?').bind(low, high).first());
+  };
+  const sessionShape = async (row) => {
+    const parts = await db.prepare(`SELECT p.user_id, p.role, p.status, u.username, u.avatar_color
+      FROM live_session_participants p JOIN users u ON u.id = p.user_id
+      WHERE p.session_id = ? ORDER BY p.role DESC, u.username COLLATE NOCASE`).bind(row.id).all();
+    return {
+      id: row.id, hostId: row.host_id, spotName: row.spot_name,
+      latitude: row.latitude, longitude: row.longitude, startTime: row.start_time, status: row.status,
+      participants: parts.results.map((p) => ({
+        id: p.user_id, name: p.username, avatarColor: p.avatar_color || '#15565D',
+        role: p.role, status: p.status,
+      })),
+    };
+  };
+
+  if (url.pathname === '/sessions' && request.method === 'POST') {
+    const spotName = String(payload?.spotName || 'Fishing session').trim().slice(0, 80) || 'Fishing session';
+    const startTime = typeof payload?.startTime === 'string' ? payload.startTime : new Date().toISOString();
+    const now = new Date().toISOString();
+    const id = crypto.randomUUID();
+    await db.batch([
+      db.prepare(`INSERT INTO live_sessions (id,host_id,spot_name,latitude,longitude,start_time,status,created_at)
+        VALUES (?,?,?,?,?,?,?,?)`).bind(id, user.id, spotName,
+        payload?.latitude ?? null, payload?.longitude ?? null, startTime, 'active', now),
+      db.prepare(`INSERT INTO live_session_participants (session_id,user_id,role,status,created_at,updated_at)
+        VALUES (?,?,?,?,?,?)`).bind(id, user.id, 'host', 'joined', now, now),
+    ]);
+    const row = await db.prepare('SELECT * FROM live_sessions WHERE id=?').bind(id).first();
+    return json({ session: await sessionShape(row) }, 201, origin);
+  }
+
+  const inviteMatch = url.pathname.match(/^\/sessions\/([^/]+)\/invite$/);
+  if (inviteMatch && request.method === 'POST') {
+    const row = await db.prepare(`SELECT * FROM live_sessions WHERE id=? AND status='active'`).bind(inviteMatch[1]).first();
+    if (!row || row.host_id !== user.id) return json({ error: 'Session not found.' }, 404, origin);
+    const friendId = String(payload?.friendId || '');
+    if (!(await areFriends(user.id, friendId))) return json({ error: 'You can only invite friends.' }, 403, origin);
+    const now = new Date().toISOString();
+    await db.prepare(`INSERT INTO live_session_participants (session_id,user_id,role,status,invited_by,created_at,updated_at)
+      VALUES (?,?,?,?,?,?,?)
+      ON CONFLICT(session_id,user_id) DO UPDATE SET status=CASE WHEN live_session_participants.status='declined' THEN 'invited' ELSE live_session_participants.status END, updated_at=excluded.updated_at`)
+      .bind(row.id, friendId, 'guest', 'invited', user.id, now, now).run();
+    return json({ session: await sessionShape(row) }, 200, origin);
+  }
+
+  if (url.pathname === '/sessions/invites' && request.method === 'GET') {
+    const result = await db.prepare(`SELECT s.*, u.username AS host_name FROM live_session_participants p
+      JOIN live_sessions s ON s.id = p.session_id
+      JOIN users u ON u.id = s.host_id
+      WHERE p.user_id = ? AND p.status = 'invited' AND s.status = 'active'
+      ORDER BY s.created_at DESC`).bind(user.id).all();
+    const invites = await Promise.all(result.results.map(async (row) => ({
+      ...(await sessionShape(row)), hostName: row.host_name,
+    })));
+    return json({ invites }, 200, origin);
+  }
+
+  const respondMatch = url.pathname.match(/^\/sessions\/([^/]+)\/(accept|decline|end)$/);
+  if (respondMatch && request.method === 'POST') {
+    const [, sid, action] = respondMatch;
+    const row = await db.prepare('SELECT * FROM live_sessions WHERE id=?').bind(sid).first();
+    if (!row) return json({ error: 'Session not found.' }, 404, origin);
+    const now = new Date().toISOString();
+    if (action === 'end') {
+      if (row.host_id !== user.id) return json({ error: 'Only the host can end this session.' }, 403, origin);
+      await db.prepare(`UPDATE live_sessions SET status='ended', ended_at=? WHERE id=?`).bind(now, sid).run();
+      return json({ ok: true }, 200, origin);
+    }
+    await db.prepare(`UPDATE live_session_participants SET status=?, updated_at=? WHERE session_id=? AND user_id=?`)
+      .bind(action === 'accept' ? 'joined' : 'declined', now, sid, user.id).run();
+    return json({ session: await sessionShape(row) }, 200, origin);
+  }
+
+  const sessionMatch = url.pathname.match(/^\/sessions\/([^/]+)$/);
+  if (sessionMatch && request.method === 'GET') {
+    const row = await db.prepare('SELECT * FROM live_sessions WHERE id=?').bind(sessionMatch[1]).first();
+    if (!row) return json({ error: 'Session not found.' }, 404, origin);
+    const member = await db.prepare('SELECT 1 AS yes FROM live_session_participants WHERE session_id=? AND user_id=?').bind(row.id, user.id).first();
+    if (!member) return json({ error: 'Session not found.' }, 404, origin);
+    return json({ session: await sessionShape(row) }, 200, origin);
+  }
+
   return json({ error: 'Unknown API endpoint' }, 404, origin);
 }
 
@@ -509,7 +595,8 @@ export default {
 
     try {
       if (url.pathname.startsWith('/auth/') || url.pathname === '/profile'
-        || url.pathname.startsWith('/friends') || url.pathname.startsWith('/billing/')) {
+        || url.pathname.startsWith('/friends') || url.pathname.startsWith('/billing/')
+        || url.pathname.startsWith('/sessions')) {
         return await handleApi(request, env, url, origin, payloadIn);
       }
       if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405, origin);
