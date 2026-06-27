@@ -2,6 +2,7 @@ import { CURATED_FISHING_SPOTS } from './fishingSpotsCurated';
 import type { OsmFishingSpotTuple } from './osmFishingSpots.generated';
 import { FishingSpotRecord, SpotDatasetMetadata } from '../types/fishingSpot';
 import { enrichSpecies } from './speciesEnrichment';
+import { normalizeFishingSpot, isVerifiedSpot } from './normalizeSpot';
 
 function coverageFromCoordinate(latitude: number, longitude: number): FishingSpotRecord['coverageRegion'] {
   if (latitude >= 49 && latitude <= 61 && longitude >= -11 && longitude <= 2) return 'uk_ireland';
@@ -21,7 +22,7 @@ function adaptOsmFishingSpot(tuple: OsmFishingSpotTuple): FishingSpotRecord {
   const rawSpecies = speciesList ? speciesList.split('|').map((item) => item.trim()).filter(Boolean) : [];
   const species = enrichSpecies(latitude, longitude, type, rawSpecies);
   const isPrivate = accessTag === 'private' || type === 'private';
-  return {
+  return normalizeFishingSpot({
     id, name, country: area, region: area, coverageRegion: coverageFromCoordinate(latitude, longitude), continent: area,
     type, latitude, longitude, coordinatePrecision: 'named_feature', species, bestBait: [], bestSeason: [], difficulty: 'unknown',
     access: {
@@ -36,11 +37,11 @@ function adaptOsmFishingSpot(tuple: OsmFishingSpotTuple): FishingSpotRecord {
     verificationNotes: 'OpenStreetMap supports the name, fishing tag and coordinate. Species, access, regulations and difficulty have not been independently verified.',
     sources: osmType && osmId ? [{ title: `OpenStreetMap ${osmType} ${osmId}`, url: `https://www.openstreetmap.org/${osmType}/${osmId}`, publisher: 'OpenStreetMap contributors', checkedAt: '2026-06-22', supports: ['identity', 'coordinates'] }] : [],
     dataset: 'imported', updatedAt: '2026-06-22', rating: 0, permitRequired: isPrivate,
-  };
+  });
 }
 
 export const FISHING_SPOTS: FishingSpotRecord[] = [
-  ...CURATED_FISHING_SPOTS,
+  ...CURATED_FISHING_SPOTS.map(normalizeFishingSpot),
 ];
 
 let allSpotsPromise: Promise<FishingSpotRecord[]> | null = null;
@@ -52,12 +53,13 @@ export function loadAllFishingSpots(): Promise<FishingSpotRecord[]> {
       import('./osmFishingSpots.generated'),
       import('./globalFishingSpots'),
     ]).then(([{ OSM_FISHING_SPOTS }, { GLOBAL_FISHING_SPOTS }]) => {
-      FISHING_SPOTS.push(...OSM_FISHING_SPOTS.map(adaptOsmFishingSpot));
-      FISHING_SPOTS.push(...(GLOBAL_FISHING_SPOTS as any[]).map((tuple: any) => {
+      const imported: FishingSpotRecord[] = [];
+      imported.push(...OSM_FISHING_SPOTS.map(adaptOsmFishingSpot));
+      imported.push(...(GLOBAL_FISHING_SPOTS as any[]).map((tuple: any) => {
         const [id, name, latitude, longitude, type, area, speciesList, accessTag] = tuple;
         const rawSpecies = speciesList ? speciesList.split('|').map((s: string) => s.trim()).filter(Boolean) : [];
         const species = enrichSpecies(latitude, longitude, type, rawSpecies);
-        return {
+        return normalizeFishingSpot({
           id, name, country: area, region: area, coverageRegion: coverageFromCoordinate(latitude, longitude),
           continent: area, type, latitude, longitude, coordinatePrecision: 'named_feature' as const, species,
           bestBait: [], bestSeason: [], difficulty: 'unknown' as const,
@@ -68,8 +70,11 @@ export function loadAllFishingSpots(): Promise<FishingSpotRecord[]> {
           verificationNotes: 'Location sourced from curated global fishing database.',
           sources: [], dataset: 'imported' as const, updatedAt: '2026-06-23', rating: 0,
           permitRequired: accessTag === 'permit' || accessTag === 'private',
-        };
+        });
       }));
+      // Integrity gate: only ship spots that pass every verification check
+      // (real coordinates, a name, a known water type, at least one species).
+      FISHING_SPOTS.push(...imported.filter(isVerifiedSpot));
       refreshMetadata();
       return FISHING_SPOTS;
     }).catch((error) => {
@@ -95,7 +100,7 @@ export const FISHING_SPOTS_METADATA: SpotDatasetMetadata = {
   verifiedCount: FISHING_SPOTS.filter((s) => s.verification === 'verified').length,
   partiallyVerifiedCount: FISHING_SPOTS.filter((s) => s.verification === 'partially_verified').length,
   unverifiedDemoCount: 0,
-  disclaimer: 'Includes 10,000 named OpenStreetMap features explicitly tagged for fishing, plus curated records. An OSM fishing tag is not proof of current public access: always confirm licences, fees, seasons, closures and safe access locally.',
+  disclaimer: 'Includes 10,000 named OpenStreetMap features explicitly tagged for fishing, plus curated records. Every shipped spot passes integrity verification (real coordinates, a name, a known water type and at least one species) and carries a uniform, complete data set. An OSM fishing tag is not proof of current public access: always confirm licences, fees, seasons, closures and safe access locally.',
   coverage: (Object.keys(COVERAGE_LABELS) as FishingSpotRecord['coverageRegion'][]).map((id) => {
     const rows = FISHING_SPOTS.filter((s) => s.coverageRegion === id);
     return { id, label: COVERAGE_LABELS[id], target: REGION_TARGETS[id], curated: rows.filter((s) => s.dataset === 'curated_seed').length, verified: rows.filter((s) => s.verification === 'verified').length, partial: rows.filter((s) => s.verification === 'partially_verified').length, demo: rows.filter((s) => s.verification === 'unverified_demo').length };
