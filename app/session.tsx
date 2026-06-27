@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Dimensions,
@@ -46,10 +45,41 @@ function getBarColor(v: number): string {
   return '#4B5566';
 }
 
+function ConfirmModal({ confirm, onClose }: {
+  confirm: { title: string; message: string; action: () => void } | null;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={!!confirm} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={s.delBackdrop}>
+        <View style={s.delCard}>
+          <Text style={s.delTitle}>{confirm?.title}</Text>
+          <Text style={s.delMsg}>{confirm?.message}</Text>
+          <View style={s.delRow}>
+            <TouchableOpacity style={s.delCancel} onPress={onClose} activeOpacity={0.75}>
+              <Text style={s.delCancelText}>CANCEL</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.delDelete}
+              onPress={() => { confirm?.action(); onClose(); }}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Confirm delete"
+            >
+              <Text style={s.delDeleteText}>DELETE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function SessionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { activeSession, addCatchToSession, endSession, sessionHistory } = useSessionStore();
+  const { activeSession, addCatchToSession, endSession, sessionHistory, deleteSession, clearHistory } = useSessionStore();
+  const [confirm, setConfirm] = useState<{ title: string; message: string; action: () => void } | null>(null);
   const { addCatch, catches } = useCatchStore();
   const { weather } = useWeather(activeSession?.latitude, activeSession?.longitude);
   const tides = useTides(activeSession?.latitude, activeSession?.longitude);
@@ -160,7 +190,19 @@ export default function SessionScreen() {
 
           {sessionHistory.length > 0 && (
             <View style={s.historySection}>
-              <Text style={s.historyTitle}>PAST SESSIONS</Text>
+              <View style={s.historyHeaderRow}>
+                <Text style={s.historyTitle}>PAST SESSIONS</Text>
+                <TouchableOpacity
+                  onPress={() => setConfirm({
+                    title: 'Clear all sessions?',
+                    message: 'This permanently removes every past session from this device.',
+                    action: () => clearHistory(),
+                  })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={s.historyClear}>CLEAR ALL</Text>
+                </TouchableOpacity>
+              </View>
               {sessionHistory.map((sess, i) => {
                 const start = new Date(sess.startTime);
                 const end = new Date(sess.endTime);
@@ -169,8 +211,14 @@ export default function SessionScreen() {
                 const durM = Math.floor((durMs % 3600000) / 60000);
                 const durStr = durH > 0 ? `${durH}h ${durM}m` : `${durM}m`;
                 const dateStr = start.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+                const sessKey = sess.id ?? sess.startTime;
+                const onDelete = () => setConfirm({
+                  title: 'Delete session?',
+                  message: `Remove your ${sess.spotName} session from ${dateStr}? This can’t be undone.`,
+                  action: () => deleteSession(sessKey),
+                });
                 return (
-                  <View key={i} style={[s.historyRow, i > 0 && s.historyRowBorder]}>
+                  <View key={sessKey} style={[s.historyRow, i > 0 && s.historyRowBorder]}>
                     <View style={s.historyIcon}>
                       <MaterialCommunityIcons name="map-marker-outline" size={18} color={colors.primary} />
                     </View>
@@ -182,12 +230,22 @@ export default function SessionScreen() {
                       <MaterialCommunityIcons name="fish" size={12} color={colors.textSecondary} />
                       <Text style={s.historyCatchCount}>{sess.catchIds.length}</Text>
                     </View>
+                    <TouchableOpacity
+                      style={s.historyDeleteBtn}
+                      onPress={onDelete}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete ${sess.spotName} session`}
+                    >
+                      <MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.danger} />
+                    </TouchableOpacity>
                   </View>
                 );
               })}
             </View>
           )}
         </ScrollView>
+        <ConfirmModal confirm={confirm} onClose={() => setConfirm(null)} />
       </SafeAreaView>
     );
   }
@@ -632,14 +690,41 @@ const s = StyleSheet.create({
     borderColor: colors.border,
     overflow: 'hidden',
   },
+  historyHeaderRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.md, paddingTop: 14, paddingBottom: 10,
+  },
   historyTitle: {
-    fontSize: 10, fontWeight: '800', color: colors.textTertiary,
-    letterSpacing: 0.8, paddingHorizontal: spacing.md, paddingTop: 14, paddingBottom: 10,
+    fontSize: 10, fontWeight: '800', color: colors.textTertiary, letterSpacing: 0.8,
+  },
+  historyClear: {
+    fontSize: 10, fontWeight: '800', color: colors.danger, letterSpacing: 0.8,
   },
   historyRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: spacing.md, paddingVertical: 14,
   },
+  historyDeleteBtn: {
+    width: 32, height: 32, borderRadius: radius.sm,
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  // Delete-confirm modal
+  delBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  delCard: {
+    width: '100%', maxWidth: 340, backgroundColor: colors.surface, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.border, padding: spacing.lg,
+  },
+  delTitle: { fontSize: 17, fontWeight: '800', color: colors.textPrimary },
+  delMsg: { fontSize: 14, color: colors.textSecondary, marginTop: 8, lineHeight: 20 },
+  delRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  delCancel: {
+    flex: 1, height: 46, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  delCancelText: { fontSize: 12, fontWeight: '800', letterSpacing: 1, color: colors.textSecondary },
+  delDelete: { flex: 1, height: 46, borderRadius: radius.sm, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center' },
+  delDeleteText: { fontSize: 12, fontWeight: '800', letterSpacing: 1, color: '#fff' },
   historyRowBorder: { borderTopWidth: 1, borderTopColor: colors.border },
   historyIcon: {
     width: 36, height: 36, borderRadius: radius.sm,

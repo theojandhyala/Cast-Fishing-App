@@ -18,6 +18,7 @@ export interface ActiveSession {
 }
 
 export interface SessionSummary {
+  id: string;
   spotName: string;
   startTime: string;
   endTime: string;
@@ -36,6 +37,8 @@ interface SessionState {
   endSession: () => void;
   discardSession: () => void;
   clearSummary: () => void;
+  deleteSession: (id: string) => void;
+  clearHistory: () => void;
   // Live session (invite friends to fish together).
   goLive: () => Promise<string | null>;
   inviteFriend: (friendId: string) => Promise<boolean>;
@@ -87,6 +90,7 @@ export const useSessionStore = create<SessionState>()(
           liveSessions.end(session.liveId).catch(() => {});
         }
         const summary: SessionSummary = {
+          id: `sess_${Date.now()}_${Math.round(Math.random() * 1e6)}`,
           spotName: session.spotName,
           startTime: session.startTime,
           endTime: new Date().toISOString(),
@@ -101,6 +105,8 @@ export const useSessionStore = create<SessionState>()(
 
       discardSession: () => set({ activeSession: null }),
       clearSummary: () => set({ lastSummary: null }),
+      deleteSession: (id) => set({ sessionHistory: get().sessionHistory.filter((s) => (s.id ?? s.startTime) !== id) }),
+      clearHistory: () => set({ sessionHistory: [] }),
 
       // Promote the current local session to a live one others can join.
       goLive: async () => {

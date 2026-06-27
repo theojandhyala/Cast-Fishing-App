@@ -168,7 +168,7 @@ export default function SessionTab() {
             <Text style={s.timerText}>{formatElapsed(elapsedMs)}</Text>
             <TouchableOpacity
               style={s.endBtn}
-              onPress={endSession}
+              onPress={() => { endSession(); router.push('/session-summary' as any); }}
               activeOpacity={0.75}
             >
               <Text style={s.endBtnText}>END</Text>
