@@ -55,7 +55,7 @@ function adaptOvertureSpot(tuple: readonly [string, string, number, number, stri
     description: `A named ${type} in ${area}.`,
     tips: 'Conditions are fetched live from this feature’s coordinates. Treat the pin as a named-feature location, not guaranteed legal access.',
     facilities: [], verification: 'partially_verified',
-    verificationNotes: 'Overture Maps confirms the name, water type and coordinate. Species are inferred from region and water type; access, regulations and difficulty are not independently verified.',
+    verificationNotes: 'Overture Maps confirms the name, water type and coordinate; the country is verified by point-in-polygon against official boundaries. Species are inferred from region and water type; access, regulations and difficulty are not independently verified.',
     sources: [{ title: `Overture Maps base/water ${id}`, url: 'https://overturemaps.org/', publisher: 'Overture Maps Foundation (ODbL / CDLA, OpenStreetMap-derived)', checkedAt: '2026-06-27', supports: ['identity', 'coordinates'] }],
     dataset: 'imported', updatedAt: '2026-06-27', rating: 0, permitRequired: isPrivate,
   });
@@ -123,7 +123,7 @@ export const FISHING_SPOTS_METADATA: SpotDatasetMetadata = {
   verifiedCount: FISHING_SPOTS.filter((s) => s.verification === 'verified').length,
   partiallyVerifiedCount: FISHING_SPOTS.filter((s) => s.verification === 'partially_verified').length,
   unverifiedDemoCount: 0,
-  disclaimer: 'Includes 100,000 named water features (lakes, rivers, reservoirs) across the UK & Ireland, Europe, the United States and Canada from Overture Maps (OpenStreetMap-derived, ODbL / CDLA), 10,000 named OpenStreetMap fishing features, plus curated records. Every shipped spot passes integrity verification (real coordinates, a name, a known water type and at least one species) and carries a uniform, complete data set. A named water feature is not proof of current public fishing access: always confirm licences, fees, seasons, closures and safe access locally.',
+  disclaimer: 'Includes 100,000 named water features (lakes, rivers, reservoirs) from Overture Maps (OpenStreetMap-derived, ODbL / CDLA), each geolocated to its real country by point-in-polygon against official boundaries: 30,000 United States, 20,000 United Kingdom & Ireland, 15,000 Canada and 35,000 across Europe. Plus 10,000 named OpenStreetMap fishing features and curated records. Every shipped spot passes integrity verification (real coordinates, a name, a known water type and at least one species) and carries a uniform, complete data set. A named water feature is not proof of current public fishing access: always confirm licences, fees, seasons, closures and safe access locally.',
   coverage: (Object.keys(COVERAGE_LABELS) as FishingSpotRecord['coverageRegion'][]).map((id) => {
     const rows = FISHING_SPOTS.filter((s) => s.coverageRegion === id);
     return { id, label: COVERAGE_LABELS[id], target: REGION_TARGETS[id], curated: rows.filter((s) => s.dataset === 'curated_seed').length, verified: rows.filter((s) => s.verification === 'verified').length, partial: rows.filter((s) => s.verification === 'partially_verified').length, demo: rows.filter((s) => s.verification === 'unverified_demo').length };
