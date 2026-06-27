@@ -40,6 +40,27 @@ function adaptOsmFishingSpot(tuple: OsmFishingSpotTuple): FishingSpotRecord {
   });
 }
 
+function adaptOvertureSpot(tuple: readonly [string, string, number, number, string, string, string, string]): FishingSpotRecord {
+  const [id, name, latitude, longitude, type, area, , accessTag] = tuple;
+  const species = enrichSpecies(latitude, longitude, type, []);
+  const isPrivate = accessTag === 'private';
+  return normalizeFishingSpot({
+    id, name, country: area, region: area, coverageRegion: coverageFromCoordinate(latitude, longitude),
+    continent: area, type: type as FishingSpotRecord['type'], latitude, longitude,
+    coordinatePrecision: 'named_feature', species, bestBait: [], bestSeason: [], difficulty: 'unknown',
+    access: {
+      summary: 'Named water feature from Overture Maps (OpenStreetMap-derived). Confirm licences, fees, seasons and safe, legal bank access locally before visiting.',
+      permit: isPrivate ? 'required' : 'unknown',
+    },
+    description: `A named ${type} in ${area}.`,
+    tips: 'Conditions are fetched live from this feature’s coordinates. Treat the pin as a named-feature location, not guaranteed legal access.',
+    facilities: [], verification: 'partially_verified',
+    verificationNotes: 'Overture Maps confirms the name, water type and coordinate. Species are inferred from region and water type; access, regulations and difficulty are not independently verified.',
+    sources: [{ title: `Overture Maps base/water ${id}`, url: 'https://overturemaps.org/', publisher: 'Overture Maps Foundation (ODbL / CDLA, OpenStreetMap-derived)', checkedAt: '2026-06-27', supports: ['identity', 'coordinates'] }],
+    dataset: 'imported', updatedAt: '2026-06-27', rating: 0, permitRequired: isPrivate,
+  });
+}
+
 export const FISHING_SPOTS: FishingSpotRecord[] = [
   ...CURATED_FISHING_SPOTS.map(normalizeFishingSpot),
 ];
@@ -52,9 +73,11 @@ export function loadAllFishingSpots(): Promise<FishingSpotRecord[]> {
     allSpotsPromise = Promise.all([
       import('./osmFishingSpots.generated'),
       import('./globalFishingSpots'),
-    ]).then(([{ OSM_FISHING_SPOTS }, { GLOBAL_FISHING_SPOTS }]) => {
+      import('./overtureFishingSpots.generated'),
+    ]).then(([{ OSM_FISHING_SPOTS }, { GLOBAL_FISHING_SPOTS }, { OVERTURE_FISHING_SPOTS }]) => {
       const imported: FishingSpotRecord[] = [];
       imported.push(...OSM_FISHING_SPOTS.map(adaptOsmFishingSpot));
+      imported.push(...(OVERTURE_FISHING_SPOTS as readonly any[]).map(adaptOvertureSpot));
       imported.push(...(GLOBAL_FISHING_SPOTS as any[]).map((tuple: any) => {
         const [id, name, latitude, longitude, type, area, speciesList, accessTag] = tuple;
         const rawSpecies = speciesList ? speciesList.split('|').map((s: string) => s.trim()).filter(Boolean) : [];
@@ -94,13 +117,13 @@ const REGION_TARGETS: Record<FishingSpotRecord['coverageRegion'], number> = {
 };
 
 export const FISHING_SPOTS_METADATA: SpotDatasetMetadata = {
-  version: '1.0.0-osm', releasedAt: '2026-06-22', targetCount: 10000,
-  totalAvailable: 10000 + CURATED_FISHING_SPOTS.length,
+  version: '2.0.0-overture', releasedAt: '2026-06-27', targetCount: 110000,
+  totalAvailable: 110000 + CURATED_FISHING_SPOTS.length,
   curatedCount: CURATED_FISHING_SPOTS.length,
   verifiedCount: FISHING_SPOTS.filter((s) => s.verification === 'verified').length,
   partiallyVerifiedCount: FISHING_SPOTS.filter((s) => s.verification === 'partially_verified').length,
   unverifiedDemoCount: 0,
-  disclaimer: 'Includes 10,000 named OpenStreetMap features explicitly tagged for fishing, plus curated records. Every shipped spot passes integrity verification (real coordinates, a name, a known water type and at least one species) and carries a uniform, complete data set. An OSM fishing tag is not proof of current public access: always confirm licences, fees, seasons, closures and safe access locally.',
+  disclaimer: 'Includes 100,000 named water features (lakes, rivers, reservoirs) across the UK & Ireland, Europe, the United States and Canada from Overture Maps (OpenStreetMap-derived, ODbL / CDLA), 10,000 named OpenStreetMap fishing features, plus curated records. Every shipped spot passes integrity verification (real coordinates, a name, a known water type and at least one species) and carries a uniform, complete data set. A named water feature is not proof of current public fishing access: always confirm licences, fees, seasons, closures and safe access locally.',
   coverage: (Object.keys(COVERAGE_LABELS) as FishingSpotRecord['coverageRegion'][]).map((id) => {
     const rows = FISHING_SPOTS.filter((s) => s.coverageRegion === id);
     return { id, label: COVERAGE_LABELS[id], target: REGION_TARGETS[id], curated: rows.filter((s) => s.dataset === 'curated_seed').length, verified: rows.filter((s) => s.verification === 'verified').length, partial: rows.filter((s) => s.verification === 'partially_verified').length, demo: rows.filter((s) => s.verification === 'unverified_demo').length };
