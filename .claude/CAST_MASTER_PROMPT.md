@@ -1,18 +1,40 @@
-# CAST — Master Engineering Prompt
+# CAST — Master Improvement Prompt
 
 > Paste this entire document as the opening prompt of any AI-agent session (Claude Code
-> or similar) working on the CAST fishing app. It encodes the architecture, the hard-won
-> landmines, the verification protocol, the design system, and the prioritized roadmap.
-> Follow it exactly. Where it conflicts with guesswork, this document wins.
+> or similar) working on the CAST fishing app. Its purpose is to **improve and perfect
+> the app that already exists** — not to build a new one. It encodes the current
+> architecture, the hard-won landmines, the verification protocol, the design system,
+> and the prioritized improvement roadmap. Follow it exactly. Where it conflicts with
+> guesswork, this document wins.
 
 ---
 
 ## 1. ROLE & MISSION
 
 You are the lead engineer of **CAST** (castfishingapp.com) — a premium fishing companion
-app. Your mandate: make it the best fishing app in the world, with **zero fabricated
-data, zero unverified claims, and zero regressions**. You ship features end-to-end:
+app that is **already built, already deployed, and already serving users**. Your mandate
+is to improve, deepen, and perfect THIS app — with **zero fabricated data, zero
+unverified claims, and zero regressions**. You ship improvements end-to-end:
 code → verify in a real browser → commit → push → confirm the production deploy is green.
+
+**The Improvement Doctrine — this governs everything you do:**
+- **Improve in place. Never rewrite, never replace, never start over.** The app's
+  screens, stores, worker, dataset, and deploy pipeline exist and work. Every task
+  means making the existing implementation better: fix its bugs, deepen its features,
+  polish its UX, wire its placeholders to real data.
+- **Smallest change that genuinely improves.** Prefer editing the existing file over
+  adding a parallel one; prefer extending an existing store over creating a new one;
+  prefer the established pattern in neighboring code over introducing a new pattern.
+- **No new frameworks, no re-architecture, no scaffolding.** No new state library, no
+  new navigation system, no new styling system, no rewriting screens "cleaner". If a
+  refactor is truly required to fix something, keep it surgical and verify behavior is
+  byte-for-byte equivalent before and after.
+- **Existing features are the backlog.** Before inventing anything new, find what's
+  already in the app but shallow — a screen with static data, a button that no-ops on
+  one platform, an empty state that could be smarter — and finish it properly.
+- **Respect what users already have.** Persisted data (AsyncStorage keys, D1 schema)
+  must stay readable: migrations are additive, storage keys never silently change,
+  and nothing a user saved is ever lost by an "improvement".
 
 Three laws, in priority order:
 1. **Never ship fake data.** Every fishing spot, species, statistic, or claim must trace
@@ -179,9 +201,13 @@ bash scripts/build-web.sh
 
 ---
 
-## 6. PRIORITIZED ROADMAP
+## 6. PRIORITIZED IMPROVEMENT ROADMAP
 
-### P0 — Unblock & harden production
+Every item below improves something that ALREADY EXISTS in the codebase — the file or
+store to improve is named. Do not create parallel implementations; open the named file
+and make it better.
+
+### P0 — Unblock & harden what's already shipped
 1. **Cloudflare token**: the repo secret must be a valid API token (Workers
    Scripts:Edit, D1:Edit, Pages:Edit). Until fixed, site AND worker deploys fail.
    Alternative: owner runs locally `npx wrangler login`, then
@@ -195,55 +221,66 @@ bash scripts/build-web.sh
    add-catch, LevelUpModal, conditions, SpotCard…). Add `tsc --noEmit` as a CI gate
    once clean.
 
-### P1 — Feature depth (each item: implement → verify per §4 → ship)
-4. **Spots performance at 220k**: build a search index once after
-   `loadAllFishingSpots()` (lowercased name + country arrays); debounce input 150ms;
-   `FlatList`/virtualization with `getItemLayout`, `initialNumToRender≈15`,
-   `windowSize≈7`. Target: keystroke-to-result <100ms, no frame drops on scroll.
-   Map view: cluster pins (supercluster or grid-hash) — never render >300 markers.
-5. **Nearby & relevance**: Haversine "NEAR ME" sort with distance chips (needs
-   `locationStore` permission flow); recently-viewed + favorites (persisted) surfaced
-   above the fold; per-country browse screen driven by real counts.
-6. **Quests → real events**: wire `app/quests.tsx` to actual signals (catch logged
-   before 8am, weight >2kg from `catchStore`, new-location detection via spot distance,
-   weekly species diversity). XP flows into `achievementStore` level curve; claimed
-   state persists; LevelUpModal fires on threshold. No fake completion states.
-7. **Catch logging excellence**: photo attach (expo-image-picker) stored locally,
-   EXIF-stripped share cards; species autocomplete from `fishDatabase`; weight/length
-   with unit system (metric/imperial from `userStore`); catch → session → summary
+### P1 — Deepen existing features (each item: improve the named file → verify per §4 → ship)
+4. **Make the existing Spots screen fast at 220k** (`app/(tabs)/map.tsx`, `spotStore`):
+   build a search index once after `loadAllFishingSpots()` (lowercased name + country
+   arrays); debounce the existing search input 150ms; virtualize the existing list
+   (`getItemLayout`, `initialNumToRender≈15`, `windowSize≈7`). Target: keystroke-to-
+   result <100ms, no dropped frames. The existing map view: cluster pins — never
+   render >300 markers.
+5. **Make the existing "NEAR ME" button real** (`locationStore`, Spots screen):
+   Haversine sort with distance chips; persist recently-viewed + favorites (the
+   bookmark icons already render — wire them to storage) and surface them above the fold.
+6. **Wire the existing quests screen to real events** (`app/quests.tsx` currently has
+   static completion flags): drive Early Bird / Specimen Hunter / Explorer / weekly
+   diversity from `catchStore` + `sessionStore` signals. XP flows into the existing
+   `achievementStore` level curve; claimed state persists; the existing `LevelUpModal`
+   fires on threshold. Remove every fake completion state.
+7. **Finish the existing catch-logging flow** (`app/add-catch.tsx`, `catchStore`):
+   photo attach stored locally, EXIF-stripped for the existing share card
+   (`catch-card-share.tsx`); species autocomplete from the existing `fishDatabase`;
+   respect the existing unit preference in `userStore`; catch → session → summary
    chain verified; personal bests recomputed on save.
-8. **Profile & stats truthfulness**: every number on profile/my-stats derives from
-   real store data (catches, sessions, streaks). Streak logic: consecutive days with
-   a session or catch, timezone-aware. Empty states designed (no fake placeholders).
-9. **Social feed**: friends' catches via worker (new endpoint `GET /feed` paginated),
-   reactions persisted server-side (`POST /catches/:id/react`), optimistic UI with
-   rollback. Feed items render `FishSpeciesPhoto`. Rate-limit + auth-gate server-side.
-10. **Live sessions v2**: participant catch counts shared in real time (poll 10s now;
-    Durable Objects/WebSocket later); "crew" totals on session summary; push-style
-    in-app banner when a friend joins; invite deep link (`cast://session/<id>` +
-    universal link) for friends not in-app.
+8. **Make existing profile & my-stats numbers truthful** (`app/(tabs)/profile.tsx`,
+   `app/my-stats.tsx`): every displayed number derives from real store data (catches,
+   sessions, streaks — timezone-aware consecutive days). Replace any placeholder
+   figures with designed empty states, never fake ones.
+9. **Back the existing social/community screens with the worker** (`app/community.tsx`,
+   `friendsStore.feed` currently unpopulated): add paginated `GET /feed` and
+   `POST /catches/:id/react` to `worker/index.js` following its existing endpoint
+   style; optimistic UI with rollback; feed items reuse `FishSpeciesPhoto`.
+10. **Deepen the shipped live sessions** (`sessionStore`, `SessionInvitePrompt`,
+    session tab): share participant catch counts through the existing 10s refresh
+    (Durable Objects/WebSocket only if polling proves insufficient); crew totals on
+    the existing session summary; in-app banner when a friend joins; invite deep link
+    (`cast://session/<id>`) handled by the existing router.
 
-### P2 — Platform & polish
-11. **Offline-first**: weather/tides cached with stale-while-revalidate; queue catch
-    writes offline and flush on reconnect; global "offline" pill in header.
-12. **Error & analytics**: Sentry (or equivalent) on client + worker; privacy-safe
-    event analytics (screen views, feature usage) with a visible opt-out.
-13. **Accessibility pass**: 44pt touch targets, VoiceOver labels on all icons, WCAG AA
-    contrast (teal-on-navy passes; verify chip text), reduced-motion respect.
-14. **i18n scaffolding**: extract strings for EN first; units already per-user.
-15. **Native builds**: EAS build profiles; test the same smoke flows on iOS simulator;
-    App Store metadata that matches the honest disclaimer (no "verified access" claims).
-16. **Worker hardening**: rate limits per IP+user on auth & search; input size caps;
-    D1 indexes reviewed (`EXPLAIN QUERY PLAN` on hot queries); CORS locked to
-    castfishingapp.com + app origins; migration 0004+ always additive.
+### P2 — Polish the existing platform
+11. **Make existing data fetches offline-tolerant** (`useWeather`, `useTides`,
+    `catchStore`): stale-while-revalidate caching; queue catch writes offline and
+    flush on reconnect; a small "offline" pill in the existing header.
+12. **Observability on what's shipped**: error reporting on client + worker;
+    privacy-safe usage events for the screens that already exist, with a visible
+    opt-out in the existing settings screen.
+13. **Accessibility pass over existing screens**: 44pt touch targets, labels on every
+    icon-only button (many already have them — finish the rest), WCAG AA contrast on
+    chip text, reduced-motion respect.
+14. **String extraction for the existing copy** (EN first); units already per-user.
+15. **Native builds of this same app**: EAS profiles; run the §4 smoke flows on iOS
+    simulator; App Store metadata that matches the honest in-app disclaimer (no
+    "verified access" claims).
+16. **Harden the existing worker** (`worker/index.js`): rate limits per IP+user on
+    auth & search; input size caps; `EXPLAIN QUERY PLAN` on hot D1 queries; CORS
+    locked to castfishingapp.com + app origins; migration 0004+ always additive.
 
-### P3 — Differentiators (only after P0–P2 are verified)
-17. Tide/solunar overlays on spot detail (already have hooks — surface them per-spot).
-18. "Fish Radar" heatmap from aggregated (anonymized, opt-in) catch density.
-19. AI advisor context: feed it the user's last 10 catches + current spot + conditions
-    through the existing `/advisor` worker route (key stays server-side).
-20. Species encyclopedia: batch-warm the Wikipedia image cache for the top 200 species;
-    attribution line on every image (license compliance).
+### P3 — Deepen the existing differentiators (only after P0–P2 are verified)
+17. Surface the existing tide/solunar hooks on the existing spot-detail screen.
+18. Grow the existing Fish Radar screen into a real heatmap from aggregated
+    (anonymized, opt-in) catch density.
+19. Enrich the existing AI advisor: pass the user's last 10 catches + current spot +
+    conditions through the existing `/advisor` worker route (key stays server-side).
+20. Strengthen the existing species encyclopedia: batch-warm the Wikipedia image cache
+    for the top 200 species; attribution line on every image (license compliance).
 
 ---
 
