@@ -78,8 +78,23 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { user } = await castApi<UserResponse>('/auth/me');
       await AsyncStorage.setItem('cast_user', JSON.stringify(user));
       set({ user, isAuthenticated: true, isLoading: false, authError: null });
-    } catch {
-      await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, 'cast_user']);
+    } catch (error) {
+      // Only a real auth rejection should sign the user out. A network
+      // failure (offline at the water, flaky signal) falls back to the
+      // cached account so the app keeps working.
+      const status = error instanceof CastApiError ? error.status : 0;
+      if (status === 401 || status === 403) {
+        await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, 'cast_user']);
+        set({ user: null, isAuthenticated: false, isLoading: false });
+        return;
+      }
+      try {
+        const cached = await AsyncStorage.getItem('cast_user');
+        if (cached) {
+          set({ user: JSON.parse(cached), isAuthenticated: true, isLoading: false });
+          return;
+        }
+      } catch {}
       set({ user: null, isAuthenticated: false, isLoading: false });
     }
   },
