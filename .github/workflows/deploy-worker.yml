@@ -20,6 +20,16 @@ jobs:
         with:
           node-version: 20
 
+      - name: Verify API token (prints status only, never the token)
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "SECRET IS EMPTY"; exit 1; fi
+          echo "token length: ${#CLOUDFLARE_API_TOKEN}"
+          curl -s "https://api.cloudflare.com/client/v4/user/tokens/verify" \
+            -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); print('valid:', d.get('success'), '| status:', (d.get('result') or {}).get('status'), '| errors:', d.get('errors'))"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
       - name: Apply D1 migrations
         run: npx wrangler d1 migrations apply cast-app --remote
         env:
