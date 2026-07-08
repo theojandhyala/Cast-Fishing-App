@@ -33,9 +33,22 @@ jobs:
           echo "--- HTML check ---"
           HTML=$(curl -s --max-time 15 https://castfishingapp.com/)
           echo "HTTP: $(curl -o /dev/null -s -w '%{http_code}' https://castfishingapp.com/)"
-          echo "$HTML" | grep -c "0A0E1A" && echo "dark bg in HTML: YES" || echo "dark bg in HTML: NO"
+          echo "$HTML" | grep -q "0A0E1A" && echo "dark bg in HTML: YES" || { echo "dark bg in HTML: NO"; exit 1; }
+
+          echo "--- Deployed bundle matches this commit's build? ---"
+          LOCAL_BUNDLE=$(grep -o '/_expo/static/js/web/entry-[a-f0-9]*\.js' dist/index.html | head -1)
+          LIVE_BUNDLE=$(echo "$HTML" | grep -o '/_expo/static/js/web/entry-[a-f0-9]*\.js' | head -1)
+          echo "local:  $LOCAL_BUNDLE"
+          echo "live:   $LIVE_BUNDLE"
+          [ -n "$LIVE_BUNDLE" ] && [ "$LOCAL_BUNDLE" = "$LIVE_BUNDLE" ] && echo "bundle match: YES" || { echo "bundle match: NO (live site is serving a different build)"; exit 1; }
+
+          echo "--- New-app marker in live bundle ---"
+          curl -s --max-time 30 "https://castfishingapp.com$LIVE_BUNDLE" | grep -q "INVITE FRIEND" \
+            && echo "live bundle contains new app code: YES" \
+            || { echo "live bundle missing new app code"; exit 1; }
 
           echo "--- Playwright browser render test ---"
+          npm install --no-save playwright >/dev/null 2>&1
           npx playwright install chromium --with-deps 2>/dev/null || true
           node - <<'JSEOF'
           const { chromium } = require('playwright');
@@ -66,8 +79,11 @@ jobs:
               console.log('cast-loader visible:', loaderVisible);
               await page.screenshot({ path: 'render-test.png', fullPage: false });
               console.log('Screenshot saved as render-test.png');
+              if (rootChildren <= 0) { console.error('FAIL: React did not mount'); process.exitCode = 1; }
+              if (bg !== 'rgb(10, 14, 26)') { console.error('FAIL: body background is not dark'); process.exitCode = 1; }
             } catch (e) {
               console.error('Browser test error:', e.message);
+              process.exitCode = 1;
             } finally {
               if (browser) await browser.close();
             }
