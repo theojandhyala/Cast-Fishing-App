@@ -74,10 +74,14 @@ export function loadAllFishingSpots(): Promise<FishingSpotRecord[]> {
       import('./osmFishingSpots.generated'),
       import('./globalFishingSpots'),
       import('./overtureFishingSpots.generated'),
-    ]).then(([{ OSM_FISHING_SPOTS }, { GLOBAL_FISHING_SPOTS }, { OVERTURE_FISHING_SPOTS }]) => {
+      import('./overtureFishingSpotsEurope.generated'),
+    ]).then(([{ OSM_FISHING_SPOTS }, { GLOBAL_FISHING_SPOTS }, { OVERTURE_FISHING_SPOTS }, { OVERTURE_FISHING_SPOTS_EUROPE }]) => {
+      // NOTE: no spread-push for the big arrays — spreading >100k items
+      // overflows the JS call stack. Loop-push instead.
       const imported: FishingSpotRecord[] = [];
-      imported.push(...OSM_FISHING_SPOTS.map(adaptOsmFishingSpot));
-      imported.push(...(OVERTURE_FISHING_SPOTS as readonly any[]).map(adaptOvertureSpot));
+      for (const t of OSM_FISHING_SPOTS) imported.push(adaptOsmFishingSpot(t));
+      for (const t of OVERTURE_FISHING_SPOTS as readonly any[]) imported.push(adaptOvertureSpot(t));
+      for (const t of OVERTURE_FISHING_SPOTS_EUROPE as readonly any[]) imported.push(adaptOvertureSpot(t));
       imported.push(...(GLOBAL_FISHING_SPOTS as any[]).map((tuple: any) => {
         const [id, name, latitude, longitude, type, area, speciesList, accessTag] = tuple;
         const rawSpecies = speciesList ? speciesList.split('|').map((s: string) => s.trim()).filter(Boolean) : [];
@@ -97,7 +101,9 @@ export function loadAllFishingSpots(): Promise<FishingSpotRecord[]> {
       }));
       // Integrity gate: only ship spots that pass every verification check
       // (real coordinates, a name, a known water type, at least one species).
-      FISHING_SPOTS.push(...imported.filter(isVerifiedSpot));
+      for (const spot of imported) {
+        if (isVerifiedSpot(spot)) FISHING_SPOTS.push(spot);
+      }
       refreshMetadata();
       return FISHING_SPOTS;
     }).catch((error) => {
@@ -123,7 +129,7 @@ export const FISHING_SPOTS_METADATA: SpotDatasetMetadata = {
   verifiedCount: FISHING_SPOTS.filter((s) => s.verification === 'verified').length,
   partiallyVerifiedCount: FISHING_SPOTS.filter((s) => s.verification === 'partially_verified').length,
   unverifiedDemoCount: 0,
-  disclaimer: 'Includes 100,000 named water features (lakes, rivers, reservoirs) from Overture Maps (OpenStreetMap-derived, ODbL / CDLA), each geolocated to its real country by point-in-polygon against official boundaries: 30,000 United States, 20,000 United Kingdom & Ireland, 15,000 Canada and 35,000 across Europe. Plus 10,000 named OpenStreetMap fishing features and curated records. Every shipped spot passes integrity verification (real coordinates, a name, a known water type and at least one species) and carries a uniform, complete data set. A named water feature is not proof of current public fishing access: always confirm licences, fees, seasons, closures and safe access locally.',
+  disclaimer: 'Includes 210,000 named water features (lakes, rivers, reservoirs) from Overture Maps (OpenStreetMap-derived, ODbL / CDLA), each geolocated to its real country by point-in-polygon against official boundaries: 60,000 United States, 40,000 United Kingdom & Ireland, 35,000 Canada and 75,000 across Europe. Plus 10,000 named OpenStreetMap fishing features and curated records. Every shipped spot passes integrity verification (real coordinates, a name, a known water type and at least one species) and carries a uniform, complete data set. A named water feature is not proof of current public fishing access: always confirm licences, fees, seasons, closures and safe access locally.',
   coverage: (Object.keys(COVERAGE_LABELS) as FishingSpotRecord['coverageRegion'][]).map((id) => {
     const rows = FISHING_SPOTS.filter((s) => s.coverageRegion === id);
     return { id, label: COVERAGE_LABELS[id], target: REGION_TARGETS[id], curated: rows.filter((s) => s.dataset === 'curated_seed').length, verified: rows.filter((s) => s.verification === 'verified').length, partial: rows.filter((s) => s.verification === 'partially_verified').length, demo: rows.filter((s) => s.verification === 'unverified_demo').length };

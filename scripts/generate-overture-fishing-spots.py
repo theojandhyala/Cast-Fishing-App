@@ -12,10 +12,10 @@ and each feature is geolocated to its REAL country by point-in-polygon against
 official country boundaries. Features are then bucketed by country with quotas so
 the requested regions are represented exactly:
 
-    United States              30,000
-    United Kingdom & Ireland   20,000
-    Canada                     15,000
-    Europe                     35,000   (real European countries incl. Iceland/Faroe)
+    United States              60,000
+    United Kingdom & Ireland   40,000
+    Canada                     35,000
+    Europe                     75,000   (real European countries incl. Iceland/Faroe)
 
 Species are intentionally blank here; they are inferred at runtime by region in
 data/speciesEnrichment.ts, and every record flows through normalizeFishingSpot +
@@ -38,7 +38,7 @@ PREFIX = f"release/{RELEASE}/theme=base/type=water/"
 COUNTRIES_URL = "https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson"
 OUT_TS = "data/overtureFishingSpots.generated.ts"
 
-QUOTA = {"usa": 30000, "uk": 20000, "canada": 15000, "europe": 35000}
+QUOTA = {"usa": 60000, "uk": 40000, "canada": 35000, "europe": 75000}
 AREA_LABEL = {"United States of America": "United States"}  # friendlier display names
 UK_SET = {"United Kingdom", "Ireland", "Isle of Man", "Guernsey", "Jersey"}
 EUROPE_SET = {
