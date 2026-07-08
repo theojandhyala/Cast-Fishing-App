@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { colors, radius, spacing } from '../constants/theme';
 
 interface Quest {

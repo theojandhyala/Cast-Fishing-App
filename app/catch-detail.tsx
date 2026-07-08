@@ -4,14 +4,16 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   TouchableOpacity,
   Alert,
+  Share,
+  Image,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCatchStore } from '../store/catchStore';
 import { colors, radius, spacing } from '../constants/theme';
+import { FishSpeciesPhoto } from '../components/fish/FishSpeciesPhoto';
 
 export default function CatchDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -61,19 +63,46 @@ export default function CatchDetailScreen() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Photo or emoji hero */}
-      {catchItem.photo ? (
-        <Image source={{ uri: catchItem.photo }} style={styles.photo} />
-      ) : (
-        <View style={styles.emojiHero}>
-          <MaterialCommunityIcons name="fish" size={80} color={colors.primary} />
-        </View>
-      )}
+      <FishSpeciesPhoto species={catchItem.species} photo={catchItem.photo} style={styles.photo} />
 
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.species}>{catchItem.species}</Text>
         <View style={styles.headerRight}>
           <Text style={styles.weight}>{catchItem.weight}kg</Text>
+        </View>
+      </View>
+
+      {/* Photo section */}
+      {catchItem.photo ? (
+        <View style={styles.photoCard}>
+          <Image source={{ uri: catchItem.photo }} style={styles.catchPhoto} resizeMode="cover" />
+          <View style={styles.photoOverlay}>
+            <View style={styles.locationChip}>
+              <MaterialCommunityIcons name="map-marker" size={12} color="#fff" />
+              <Text style={styles.locationChipText}>{catchItem.location || 'Unknown spot'}</Text>
+            </View>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.noPhotoCard}>
+          <MaterialCommunityIcons name="fish" size={32} color="rgba(0,212,170,0.3)" />
+          <Text style={styles.noPhotoText}>No photo — scan your next catch to auto-capture</Text>
+        </View>
+      )}
+
+      {/* Caption / share */}
+      <View style={styles.shareRow}>
+        <TouchableOpacity style={styles.shareBtn} onPress={() => {
+          const msg = `Just caught a ${catchItem.species}${catchItem.weight ? ` (${catchItem.weight}kg)` : ''} at ${catchItem.location || 'a secret spot'} 🎣`;
+          Share.share({ message: msg });
+        }}>
+          <MaterialCommunityIcons name="share-outline" size={16} color={colors.primary} />
+          <Text style={styles.shareBtnText}>Share catch</Text>
+        </TouchableOpacity>
+        <View style={styles.catchMeta}>
+          <MaterialCommunityIcons name="map-marker-outline" size={12} color={colors.textSecondary} />
+          <Text style={styles.catchMetaText}>{catchItem.location || 'Location not recorded'}</Text>
         </View>
       </View>
 
@@ -116,11 +145,11 @@ export default function CatchDetailScreen() {
 
       {/* Share Card */}
       <TouchableOpacity
-        style={styles.shareBtn}
+        style={styles.shareCatchCardBtn}
         onPress={() => router.push({ pathname: '/catch-card-share' as any, params: { id: catchItem.id } })}
       >
         <MaterialCommunityIcons name="share-variant" size={18} color={colors.primary} />
-        <Text style={styles.shareBtnText}>Share Catch Card</Text>
+        <Text style={styles.shareCatchCardBtnText}>Share Catch Card</Text>
       </TouchableOpacity>
 
       {/* Delete */}
@@ -162,13 +191,6 @@ const styles = StyleSheet.create({
   photo: {
     width: '100%',
     height: 280,
-  },
-  emojiHero: {
-    width: '100%',
-    height: 200,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -269,7 +291,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.textSecondary,
   },
-  shareBtn: {
+  shareCatchCardBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -282,11 +304,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0,212,170,0.25)',
   },
-  shareBtnText: {
+  shareCatchCardBtnText: {
     fontSize: 15,
     fontWeight: '600',
     color: colors.primary,
   },
+  photoCard: { marginHorizontal: spacing.lg, marginBottom: 16, borderRadius: radius.md, overflow: 'hidden', height: 220, position: 'relative' },
+  catchPhoto: { width: '100%', height: '100%' },
+  photoOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 10, backgroundColor: 'rgba(0,0,0,0.4)' },
+  locationChip: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  locationChipText: { fontSize: 12, fontWeight: '600', color: '#fff' },
+  noPhotoCard: { marginHorizontal: spacing.lg, marginBottom: 16, height: 100, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', gap: 8 },
+  noPhotoText: { fontSize: 12, color: colors.textSecondary },
+  shareRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: spacing.lg, marginBottom: 16 },
+  shareBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: radius.sm, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)' },
+  shareBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  catchMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  catchMetaText: { fontSize: 11, color: colors.textSecondary },
   deleteBtn: {
     flexDirection: 'row',
     alignItems: 'center',

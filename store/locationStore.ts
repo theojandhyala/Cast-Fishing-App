@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export interface ManualLocation {
   name: string;        // display name e.g. "Port de Sóller, Mallorca"
   query: string;       // query for weather API e.g. "Soller"
+  latitude?: number;
+  longitude?: number;
 }
 
 interface LocationStore {

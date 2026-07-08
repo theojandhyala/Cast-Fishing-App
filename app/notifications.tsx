@@ -10,7 +10,7 @@ import {
   SafeAreaView,
   Platform,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { colors, radius, spacing } from '../constants/theme';
 
 const SPECIES_SEASONS = [

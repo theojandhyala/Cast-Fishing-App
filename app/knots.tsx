@@ -7,7 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { knots } from '../data/knots';
 import { KnotCard } from '../components/knots/KnotCard';

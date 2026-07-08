@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 #
-# Reproducible web build for Cloudflare Pages.
+# Reproducible web build for Cloudflare Pages (castfishingapp.com).
 #
-# Architecture (simplified):
-#   castfishingapp.com/          -> the Expo web app  (dist/index.html)
+# Layout:
+#   castfishingapp.com/          -> the Expo web app (dist/index.html)
 #   castfishingapp.com/_expo/... -> JS bundle
-#   castfishingapp.com/marketing/-> marketing landing page
+#   castfishingapp.com/fonts/... -> icon + Inter fonts (required: the app
+#                                   registers @font-face for these at runtime)
+#   castfishingapp.com/marketing -> marketing landing page (if present)
 #   dist/_redirects              -> SPA fallback for all unknown paths
-#
-# The Expo app lives at the ROOT (no baseUrl prefix) which eliminates
-# the dual-site /app/ routing complexity that was causing blank screens.
+#   dist/_headers                -> no-cache for HTML so deploys show instantly
 #
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -21,14 +21,20 @@ mkdir -p dist
 echo "==> Exporting Expo web app into dist/ (root, no baseUrl)"
 npx expo export --platform web --output-dir dist
 
-echo "==> Copying marketing assets into dist/marketing/"
-mkdir -p dist/marketing
+echo "==> Copying fonts (icons render as squares without these)"
+mkdir -p dist/fonts
+cp node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf dist/fonts/material-community.ttf
+cp node_modules/@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf dist/fonts/inter-400.ttf
+cp node_modules/@expo-google-fonts/inter/600SemiBold/Inter_600SemiBold.ttf dist/fonts/inter-600.ttf
+cp node_modules/@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf dist/fonts/inter-700.ttf
+
+echo "==> Copying marketing + root assets (when present)"
 [ -f marketing-style.css ] && cp marketing-style.css dist/marketing-style.css || true
 [ -f favicon.ico ]         && cp favicon.ico         dist/favicon.ico          || true
 [ -f robots.txt ]          && cp robots.txt          dist/robots.txt           || true
 [ -f sitemap.xml ]         && cp sitemap.xml         dist/sitemap.xml          || true
 for f in google*.html; do [ -e "$f" ] && cp "$f" dist/ || true; done
-cp -r marketing dist/marketing
+[ -d marketing ] && cp -r marketing dist/marketing || true
 
 echo "==> Writing dist/_redirects (SPA fallback)"
 cat > dist/_redirects <<'EOF'
@@ -52,16 +58,14 @@ import pathlib
 p = pathlib.Path('dist/index.html')
 html = p.read_text()
 
-# 1. Inject dark background into <head> so it appears BEFORE any JS executes.
-#    This fixes "white flash" on slow connections and ensures iOS Safari sees
-#    the dark theme immediately from raw HTML.
+# 1. Dark background in <head>, before any JS executes — fixes the white
+#    flash on slow connections and on iOS Safari.
 head_css = '''<style>
   html,body,#root{background:#0A0E1A!important}
   html{min-height:-webkit-fill-available;min-height:100%}
   body{min-height:-webkit-fill-available;min-height:100%}
 </style>
 <script>
-  /* Synchronous: run before any JS library loads to lock dark background */
   document.documentElement.style.setProperty('background','#0A0E1A','important');
   document.addEventListener('DOMContentLoaded',function(){
     document.body.style.setProperty('background','#0A0E1A','important');
@@ -69,10 +73,9 @@ head_css = '''<style>
   });
 </script>'''
 html = html.replace('</head>', head_css + '\n</head>', 1)
-# Add inline style to body tag so even JS overrides can't remove it without effort
 html = html.replace('<body>', '<body style="background:#0A0E1A">', 1)
 
-# 2. Inject full-featured loading spinner + error recovery before </body>
+# 2. Loading spinner + error recovery before </body>.
 spinner = '''<style>
   #cast-loader{position:fixed;inset:0;background:#0A0E1A;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .5s}
   #cast-loader.hidden{opacity:0;pointer-events:none}
@@ -111,13 +114,13 @@ spinner = '''<style>
   document.addEventListener('DOMContentLoaded',function(){setTimeout(checkMounted,200);});
   setTimeout(function(){
     var root=document.getElementById('root');
-    if(!root||root.children.length===0){showRetry('App took too long — tap to reload');}
+    if(!root||root.children.length===0){showRetry('App took too long \\u2014 tap to reload');}
   },12000);
 </script>'''
 html = html.replace('</body>', spinner + '\n</body>', 1)
 p.write_text(html)
-print('  Dark background + spinner injected into head and body.')
+print('  Dark background + spinner injected.')
 PYEOF
 
-echo "==> Done. dist/ contents:"
+echo "==> Done. dist/ top-level:"
 find dist -maxdepth 2 -type f | grep -v "_expo/static" | sort

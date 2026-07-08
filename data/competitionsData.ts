@@ -5,14 +5,12 @@ export interface Competition {
   location: string;
   entryFee: number;
   species: string;
+  prize: string;
   organiser: string;
   description: string;
   maxEntrants: number;
   currentEntrants: number;
   isPast: boolean;
-  featured?: boolean;
-  daysLeft?: number;
-  format?: string;
 }
 
 export interface PastResult {
@@ -23,73 +21,62 @@ export interface PastResult {
   weight: number;
 }
 
-const today = new Date('2026-06-19');
-function daysUntil(dateStr: string): number {
-  const d = new Date(dateStr);
-  return Math.max(0, Math.round((d.getTime() - today.getTime()) / 86400000));
-}
-
 export const COMPETITIONS: Competition[] = [
   {
     id: 'comp1',
     name: 'Grafham Water Open',
-    date: '2026-06-28',
+    date: '2026-06-14',
     location: 'Grafham Water, Cambridgeshire',
     entryFee: 25,
     species: 'Mixed Coarse',
+    prize: '£500 + Trophy',
     organiser: 'Grafham Water AC',
-    description: 'Annual open match at one of England\'s finest reservoirs. Biggest bag wins. All methods allowed from the bank.',
+    description: 'Annual open match at one of England\'s finest reservoirs. Biggest bag wins.',
     maxEntrants: 80,
     currentEntrants: 63,
     isPast: false,
-    featured: true,
-    daysLeft: daysUntil('2026-06-28'),
-    format: '1-day bank match',
   },
   {
     id: 'comp2',
     name: 'River Thames Barbel Championship',
-    date: '2026-07-05',
+    date: '2026-06-21',
     location: 'River Thames, Oxfordshire',
     entryFee: 30,
     species: 'Barbel',
+    prize: '£750 + Rod Bundle',
     organiser: 'Thames Barbel Society',
-    description: 'Two-day specimen hunt on the upper Thames for barbel over 8lb. Catch & photo release system.',
+    description: 'Two-day specimen hunt on the upper Thames for barbel over 8lb.',
     maxEntrants: 40,
     currentEntrants: 28,
     isPast: false,
-    daysLeft: daysUntil('2026-07-05'),
-    format: '2-day specimen',
   },
   {
     id: 'comp3',
     name: 'Chesil Beach Cod Festival',
-    date: '2026-07-12',
+    date: '2026-07-05',
     location: 'Chesil Beach, Dorset',
     entryFee: 20,
     species: 'Cod & Bass',
+    prize: '£400 + Tackle Vouchers',
     organiser: 'Dorset Sea Anglers',
-    description: 'Shore fishing festival along Chesil Beach. Biggest cod and bass counted. Starts at 06:00 local.',
+    description: 'Shore fishing festival along Chesil Beach. Biggest cod and bass counted.',
     maxEntrants: 120,
     currentEntrants: 87,
     isPast: false,
-    daysLeft: daysUntil('2026-07-12'),
-    format: 'Shore match',
   },
   {
     id: 'comp4',
     name: 'Carp Classic Yateley',
-    date: '2026-07-19',
+    date: '2026-07-12',
     location: 'Yateley Complex, Hampshire',
     entryFee: 50,
     species: 'Carp',
+    prize: '£2,000 + Korda Bundle',
     organiser: 'Yateley Carp Club',
-    description: '48-hour carp fishing pairs event on the famous Yateley complex. Heaviest single fish wins. Booking in at 10:00.',
+    description: '48-hour carp fishing pairs event on the famous Yateley complex. Heaviest fish wins.',
     maxEntrants: 30,
     currentEntrants: 30,
     isPast: false,
-    daysLeft: daysUntil('2026-07-19'),
-    format: '48hr pairs',
   },
   {
     id: 'comp5',
@@ -98,13 +85,12 @@ export const COMPETITIONS: Competition[] = [
     location: 'River Tay, Scotland',
     entryFee: 75,
     species: 'Atlantic Salmon',
+    prize: '£1,500 + Hardy Rod',
     organiser: 'Tay District Salmon Fisheries Board',
-    description: 'Prestigious salmon fly fishing competition on Scotland\'s greatest salmon river. Fly only, catch and release. Formal attire on the bank.',
+    description: 'Prestigious salmon fly fishing competition on Scotland\'s greatest salmon river.',
     maxEntrants: 24,
     currentEntrants: 19,
     isPast: false,
-    daysLeft: daysUntil('2026-09-06'),
-    format: 'Fly fishing',
   },
   {
     id: 'comp6',
@@ -113,13 +99,12 @@ export const COMPETITIONS: Competition[] = [
     location: 'Whitby, Yorkshire',
     entryFee: 60,
     species: 'Blue Shark & Tope',
+    prize: '£800 + Trophy',
     organiser: 'Whitby Sea Anglers',
-    description: 'Boat fishing challenge from Whitby harbour targeting blue shark and tope. All fish catch and release. Departs 05:30.',
+    description: 'Boat fishing challenge from Whitby harbour targeting blue shark and tope. Catch and release.',
     maxEntrants: 36,
     currentEntrants: 22,
     isPast: false,
-    daysLeft: daysUntil('2026-08-02'),
-    format: 'Boat charter C&R',
   },
   {
     id: 'comp7',
@@ -128,13 +113,12 @@ export const COMPETITIONS: Competition[] = [
     location: 'Grand Union Canal, Northampton',
     entryFee: 15,
     species: 'Mixed Coarse',
+    prize: '£200 + Tackle',
     organiser: 'Northampton AA',
-    description: 'Classic canal match fishing on drawn pegs. Roach, perch and skimmers expected in good numbers. Maggot and bread allowed.',
+    description: 'Classic canal match fishing. Roach, perch and skimmers expected.',
     maxEntrants: 60,
     currentEntrants: 41,
     isPast: false,
-    daysLeft: daysUntil('2026-06-28'),
-    format: 'Canal match',
   },
   {
     id: 'comp8',
@@ -143,13 +127,12 @@ export const COMPETITIONS: Competition[] = [
     location: 'North Cornwall',
     entryFee: 35,
     species: 'Sea Bass',
+    prize: '£600 + Fly Line Set',
     organiser: 'Cornish Fly Fishers',
-    description: 'Shore-based fly fishing for sea bass along the stunning North Cornwall coast. Catch & release, longest fish wins.',
+    description: 'Shore-based fly fishing for sea bass along the stunning North Cornwall coast.',
     maxEntrants: 20,
     currentEntrants: 15,
     isPast: false,
-    daysLeft: daysUntil('2026-07-19'),
-    format: 'Shore fly',
   },
   {
     id: 'comp9',
@@ -158,13 +141,12 @@ export const COMPETITIONS: Competition[] = [
     location: 'Norfolk Broads',
     entryFee: 25,
     species: 'Pike',
+    prize: '£500 + Abu Garcia Reel',
     organiser: 'Norfolk Pike Club',
-    description: 'Boat-based pike fishing on the iconic Norfolk Broads. Largest fish wins. Catch & release required, forceps and unhooking mats mandatory.',
+    description: 'Boat-based pike fishing on the iconic Norfolk Broads. Largest fish wins. Catch & release required.',
     maxEntrants: 40,
     currentEntrants: 12,
     isPast: false,
-    daysLeft: daysUntil('2026-10-10'),
-    format: 'Boat C&R',
   },
   {
     id: 'comp10',
@@ -173,43 +155,12 @@ export const COMPETITIONS: Competition[] = [
     location: 'Virtual — Submit via CAST App',
     entryFee: 0,
     species: 'All Species',
+    prize: '2,000 XP + Gold Badge',
     organiser: 'CAST Community',
-    description: 'Our monthly virtual competition. Log your biggest catch of the month on CAST. Top 3 win bonus XP and exclusive badges. Any species, any water.',
+    description: 'Our monthly virtual competition. Log your biggest catch of the month on CAST. Top 3 win bonus XP and exclusive badges.',
     maxEntrants: 999,
     currentEntrants: 247,
     isPast: false,
-    daysLeft: daysUntil('2026-06-30'),
-    format: 'Virtual app comp',
-  },
-  {
-    id: 'comp11',
-    name: 'Windermere Specimen Weekend',
-    date: '2026-07-26',
-    location: 'Windermere, Lake District',
-    entryFee: 40,
-    species: 'Bream & Carp',
-    organiser: 'Cumbria Anglers',
-    description: 'Weekend specimen hunt on England\'s largest natural lake. Points for each species with big fish bonus. Camping on-site.',
-    maxEntrants: 50,
-    currentEntrants: 34,
-    isPast: false,
-    daysLeft: daysUntil('2026-07-26'),
-    format: '2-day specimen',
-  },
-  {
-    id: 'comp12',
-    name: 'Summer Roach Cup — River Kennet',
-    date: '2026-07-05',
-    location: 'River Kennet, Berkshire',
-    entryFee: 10,
-    species: 'Roach',
-    organiser: 'Kennet Anglers',
-    description: 'Traditional float fishing match on one of the UK\'s finest chalk streams. Bread punch and maggot only. Drawn pegs on the day.',
-    maxEntrants: 30,
-    currentEntrants: 24,
-    isPast: false,
-    daysLeft: daysUntil('2026-07-05'),
-    format: 'Float match',
   },
 ];
 
@@ -219,8 +170,6 @@ export const PAST_RESULTS: PastResult[] = [
   { competitionName: 'Grafham Spring Match', date: '2026-05-10', winner: 'FlyFisher99', winningCatch: 'Rainbow Trout', weight: 4.8 },
   { competitionName: 'CAST Community Match — April', date: '2026-04-30', winner: 'PikeSlayer', winningCatch: 'Pike', weight: 16.3 },
   { competitionName: 'Cornish Bass Classic', date: '2026-04-12', winner: 'BassFisher', winningCatch: 'Sea Bass', weight: 7.9 },
-  { competitionName: 'Kennet Spring Float Cup', date: '2026-04-06', winner: 'RoachRuler', winningCatch: 'Roach', weight: 2.1 },
-  { competitionName: 'CAST Community Match — March', date: '2026-03-31', winner: 'TroutLady_Beth', winningCatch: 'Brown Trout', weight: 3.6 },
 ];
 
 export const COMMUNITY_MATCH_LEADERBOARD = [

@@ -1,476 +1,731 @@
 import React, { useMemo } from 'react';
-import {
-  View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, Image,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { useCatchStore } from '../../store/catchStore';
-import { useLocationStore } from '../../store/locationStore';
 import { useWeather } from '../../hooks/useWeather';
 import { useLocation } from '../../hooks/useLocation';
-import { colors, spacing, radius, elevation } from '../../constants/theme';
-import { WORLD_SPOTS } from '../../data/worldSpots';
-import { haversineKm, formatDistance } from '../../utils/distance';
-import { getSpotImage } from '../../constants/spotImages';
+import { useSessionStore } from '../../store/sessionStore';
+import { useSolunar } from '../../hooks/useSolunar';
+import { colors, spacing, radius } from '../../constants/theme';
+import { FishSpeciesPhoto } from '../../components/fish/FishSpeciesPhoto';
+import { getTipOfDay } from '../../data/tipOfDay';
 
-type SpotWithDist = typeof WORLD_SPOTS[0] & { _distKm?: number };
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function timeAgo(dateStr: string) {
-  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
-  if (diff < 60) return `${diff}m ago`;
-  if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
-  return 'Yesterday';
+function degreesToCompass(deg: number) {
+  return ['N','NE','E','SE','S','SW','W','NW'][Math.round(((deg % 360) / 45)) % 8];
 }
 
-function getGreeting() {
-  const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+function scoreCode(score: number) {
+  if (score >= 80) return 'XCLT';
+  if (score >= 60) return 'GOOD';
+  if (score >= 40) return 'FAIR';
+  return 'POOR';
 }
 
-function getBestWindow() {
-  const h = new Date().getHours();
-  if (h < 10) return { time: '05:30 – 08:00', label: 'Dawn — fish are most active', icon: 'weather-sunset-up' as const };
-  if (h < 15) return { time: '12:00 – 14:00', label: 'Midday activity window', icon: 'weather-sunny' as const };
-  if (h < 20) return { time: '18:30 – 20:30', label: 'Evening — prime feeding time', icon: 'weather-sunset-down' as const };
-  return { time: '21:00 – 23:00', label: 'Night session opportunity', icon: 'weather-night' as const };
+function scoreColor(score: number) {
+  if (score >= 80) return colors.primary;
+  if (score >= 60) return '#4DA3FF';
+  if (score >= 40) return colors.accent;
+  return '#EF4444';
 }
 
-function getFishingScore(temp: number, pressure: number, wind: number): number {
-  let score = 60;
-  if (temp >= 12 && temp <= 22) score += 15;
-  else if (temp < 6 || temp > 28) score -= 15;
-  if (pressure >= 1010 && pressure <= 1025) score += 15;
-  else if (pressure < 990) score -= 10;
-  if (wind < 15) score += 10;
-  else if (wind > 30) score -= 10;
-  return Math.min(100, Math.max(20, score));
+function moonAbbr(name: string) {
+  const map: Record<string, string> = {
+    'New Moon': 'NEW', 'Waxing Crescent': 'WXC', 'First Quarter': '1QT',
+    'Waxing Gibbous': 'WXG', 'Full Moon': 'FULL', 'Waning Gibbous': 'WNG',
+    'Last Quarter': 'LQT', 'Waning Crescent': 'WNC',
+  };
+  return map[name] ?? name.slice(0, 3).toUpperCase();
 }
 
-function getScoreLabel(score: number) {
-  if (score >= 80) return { label: 'Excellent', color: '#00D4AA' };
-  if (score >= 60) return { label: 'Good', color: '#10B981' };
-  if (score >= 40) return { label: 'Fair', color: '#F59E0B' };
-  return { label: 'Tough', color: '#EF4444' };
+function getSunTimes(lat: number, lng: number, date = new Date()) {
+  const J = date.getTime() / 86400000 + 2440587.5;
+  const n = Math.ceil(J - 2451545 + 0.0008);
+  const Jstar = n - lng / 360;
+  const M = (357.5291 + 0.98560028 * Jstar) % 360;
+  const C = 1.9148 * Math.sin((M * Math.PI) / 180) + 0.02 * Math.sin((2 * M * Math.PI) / 180);
+  const lam = (M + C + 180 + 102.9372) % 360;
+  const Jtransit = 2451545 + Jstar + 0.0053 * Math.sin((M * Math.PI) / 180) - 0.0069 * Math.sin((2 * lam * Math.PI) / 180);
+  const d = (Math.asin(Math.sin((lam * Math.PI) / 180) * Math.sin((23.45 * Math.PI) / 180)) * 180) / Math.PI;
+  const latR = (lat * Math.PI) / 180;
+  const cosOmega = (Math.sin((-0.8333 * Math.PI) / 180) - Math.sin(latR) * Math.sin((d * Math.PI) / 180)) / (Math.cos(latR) * Math.cos((d * Math.PI) / 180));
+  if (Math.abs(cosOmega) > 1) return null;
+  const omega = (Math.acos(cosOmega) * 180) / Math.PI;
+  const offsetMin = -date.getTimezoneOffset();
+  const toTime = (Jd: number) => {
+    const totalMin = Math.round(((Jd - 2440587.5) * 1440) % 1440);
+    const localMin = ((totalMin + offsetMin) % 1440 + 1440) % 1440;
+    const h = Math.floor(localMin / 60), m = localMin % 60;
+    return `${(h % 12) || 12}:${String(m).padStart(2,'0')}${h >= 12 ? 'P' : 'A'}`;
+  };
+  return { sunrise: toTime(Jtransit - omega / 360), sunset: toTime(Jtransit + omega / 360) };
 }
 
-const FISHING_TIPS = [
-  'Fish move into shallow margins at dawn — this is your best chance for specimen fish.',
-  'A rising barometer signals improved feeding activity across most freshwater species.',
-  'Wind from the west or south-west brings insects onto the water, triggering surface feeding.',
-  'After rain, rivers carry extra colour and food — fish the inside of bends where current slows.',
-  'Full moon nights improve tidal patterns for sea fishing — plan sessions around it.',
-  'In cold water, slow your retrieve to a crawl. Fish are lethargic and won\'t chase fast lures.',
-  'Pre-baiting a swim for two days before fishing can dramatically increase your catch rate.',
-  'Overcast days reduce light penetration — fish feel safer feeding in open water.',
-];
-
-function getTipOfDay(): string {
-  const day = new Date().getDate();
-  return FISHING_TIPS[day % FISHING_TIPS.length];
+// ─── Score bar — segmented like a signal meter ───────────────────────────────
+function ScoreBar({ score, color }: { score: number; color: string }) {
+  const SEGS = 20;
+  const filled = Math.round((score / 100) * SEGS);
+  return (
+    <View style={{ flexDirection: 'row', gap: 3, alignItems: 'center' }}>
+      {Array.from({ length: SEGS }, (_, i) => (
+        <View
+          key={i}
+          style={{
+            width: 10,
+            height: i < 6 ? 10 : i < 13 ? 13 : 16,
+            borderRadius: 1,
+            backgroundColor: i < filled ? color : 'rgba(255,255,255,0.07)',
+            opacity: i < filled ? (0.5 + (i / SEGS) * 0.5) : 1,
+          }}
+        />
+      ))}
+    </View>
+  );
 }
 
+// ─── Screen ───────────────────────────────────────────────────────────────────
 export default function HomeScreen() {
   const { user } = useAuthStore();
-  const { catches } = useCatchStore();
-  const { location } = useLocationStore();
+  const catches = useCatchStore((s) => s.catches);
   const router = useRouter();
-  const { weather } = useWeather(location?.query);
-  const { location: gpsLocation } = useLocation();
+  const { location } = useLocation();
+  const activeSession = useSessionStore((s) => s.activeSession);
+  const { weather } = useWeather(location?.latitude, location?.longitude);
+  const solunar = useSolunar(location?.latitude, location?.longitude);
 
-  const firstName = user?.name?.split(' ')[0] || 'Angler';
-  const bestWindow = getBestWindow();
-  const w = weather ?? { temp: 16, wind: 10, pressure: 1015, description: 'Partly Cloudy', fishingScore: 72 };
-  const recentCatches = catches.slice(0, 3);
-  const fishingScore = getFishingScore(w.temp, w.pressure, w.wind);
-  const scoreInfo = getScoreLabel(fishingScore);
-  const tip = getTipOfDay();
+  const score = weather?.fishingScore ?? 0;
+  const sigColor = scoreColor(score);
+  const windDir = weather?.windDirection != null ? degreesToCompass(weather.windDirection) : 'SW';
 
-  const spots: SpotWithDist[] = useMemo(() => {
-    if (!gpsLocation) return WORLD_SPOTS.slice(0, 6);
-    return [...WORLD_SPOTS]
-      .map(s => ({ ...s, _distKm: haversineKm(gpsLocation.latitude, gpsLocation.longitude, s.latitude, s.longitude) }))
-      .sort((a, b) => a._distKm! - b._distKm!)
-      .slice(0, 6);
-  }, [gpsLocation]);
+  const sunTimes = useMemo(() => {
+    if (location) return getSunTimes(location.latitude, location.longitude);
+    return null;
+  }, [location?.latitude, location?.longitude]);
 
-  const nearMe = !!gpsLocation;
+  const stats = useMemo(() => {
+    const speciesSet = new Set(catches.map((c) => c.species));
+    let streak = 0;
+    const days = new Set(catches.map((c) => new Date(c.date).toDateString()));
+    const today = new Date();
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      if (days.has(d.toDateString())) streak++;
+      else break;
+    }
+    return { total: catches.length, species: speciesSet.size, streak };
+  }, [catches]);
+
+  const nextWindowStr = useMemo(() => {
+    if (!solunar?.nextWindow) return null;
+    const min = solunar.nextWindow.minutesUntil;
+    if (min <= 0) return 'ACTIVE';
+    if (min < 60) return `${min}M`;
+    return `${Math.floor(min / 60)}H ${min % 60}M`;
+  }, [solunar]);
+
+  const recentCatches = useMemo(() => catches.slice(0, 5), [catches]);
+
+  const targetSpecies = useMemo(() => {
+    const phase = (weather?.moonPhase ?? '').toLowerCase();
+    if (score >= 75) {
+      if (phase.includes('full') || phase.includes('new')) return { name: 'Murray Cod', code: 'MOON+COND' };
+      return { name: 'Bass', code: 'PEAK WINDOW' };
+    }
+    if (score >= 50) {
+      const h = new Date().getHours();
+      if (h < 9 || h > 17) return { name: 'Bream', code: 'LOW LIGHT' };
+      return { name: 'Flathead', code: 'MOD ACTIVITY' };
+    }
+    return { name: 'Carp', code: 'TOUGH COND' };
+  }, [score, weather?.moonPhase]);
+
+  const tip = useMemo(() => getTipOfDay(), []);
+  const solunarWindows = solunar?.windows ?? [];
+
+  const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
 
-        {/* ── Header ── */}
+        {/* ── HEADER ─────────────────────────────────────────────────────── */}
         <View style={s.header}>
           <View>
-            <Text style={s.logo}>CAST</Text>
-            <View style={s.logoUnderline} />
+            <Text style={s.brandLabel}>CAST</Text>
+            <Text style={s.locationLabel}>
+              <Text style={s.locDot}>◈ </Text>
+              {location ? 'GPS LOCKED' : 'GOLD COAST, QLD'}
+            </Text>
           </View>
-          <TouchableOpacity
-            style={s.bellWrap}
-            onPress={() => router.push('/notifications' as any)}
-            accessibilityRole="button" accessibilityLabel="Notifications"
-          >
-            <MaterialCommunityIcons name="bell-outline" size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Greeting ── */}
-        <View style={s.greet}>
-          <Text style={s.greetLine}>{getGreeting()},</Text>
-          <Text style={s.greetName}>{firstName}.</Text>
-          <Text style={s.greetSub}>Here's what the water looks like today.</Text>
-        </View>
-
-        {/* ── START FISHING CTA ── */}
-        <TouchableOpacity
-          style={s.ctaWrap}
-          onPress={() => router.push('/(tabs)/session' as any)}
-          activeOpacity={0.88}
-          accessibilityRole="button" accessibilityLabel="Start fishing session"
-        >
-          <LinearGradient colors={['#00D4AA', '#00B88A']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.ctaGrad}>
-            <MaterialCommunityIcons name="fish" size={19} color="#031A12" />
-            <Text style={s.ctaText}>START FISHING</Text>
-            <MaterialCommunityIcons name="arrow-right" size={16} color="#031A12" />
-          </LinearGradient>
-        </TouchableOpacity>
-
-        {/* ── Today's Conditions ── */}
-        <View style={s.condCard}>
-          <View style={s.condHeader}>
-            <View>
-              <Text style={s.condLabel}>TODAY'S CONDITIONS</Text>
-              <Text style={s.condSub}>Based on current weather data</Text>
-            </View>
-            <TouchableOpacity onPress={() => router.push('/weather-detail' as any)}>
-              <Text style={s.condLink}>Full report</Text>
+          <View style={s.headerRight}>
+            <Text style={s.dateLabel}>{dateStr}</Text>
+            <TouchableOpacity
+              style={s.notifBtn}
+              onPress={() => router.push('/notifications' as any)}
+              activeOpacity={0.75}
+              accessibilityLabel="Notifications"
+            >
+              <MaterialCommunityIcons name="bell-outline" size={20} color={colors.textTertiary} />
             </TouchableOpacity>
           </View>
-
-          {/* Score row */}
-          <View style={s.scoreRow}>
-            <View style={s.scoreLeft}>
-              <Text style={[s.scoreNum, { color: scoreInfo.color }]}>{fishingScore}</Text>
-              <Text style={[s.scoreLabel, { color: scoreInfo.color }]}>{scoreInfo.label} conditions</Text>
-              <Text style={s.scoreDesc}>Fishing score out of 100</Text>
-            </View>
-            <View style={s.scoreRight}>
-              {[
-                { icon: 'thermometer', label: 'Air Temp', value: `${w.temp}°C` },
-                { icon: 'weather-windy', label: 'Wind', value: `${w.wind} km/h` },
-                { icon: 'gauge', label: 'Pressure', value: `${w.pressure} hPa` },
-              ].map(item => (
-                <View key={item.label} style={s.condItem}>
-                  <MaterialCommunityIcons name={item.icon as any} size={13} color={colors.textTertiary} />
-                  <View>
-                    <Text style={s.condItemVal}>{item.value}</Text>
-                    <Text style={s.condItemLabel}>{item.label}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* Best window */}
-          <View style={s.bestWindow}>
-            <MaterialCommunityIcons name={bestWindow.icon} size={16} color={colors.secondary} />
-            <View style={{ flex: 1 }}>
-              <Text style={s.bestWindowTitle}>Best window today: {bestWindow.time}</Text>
-              <Text style={s.bestWindowSub}>{bestWindow.label}</Text>
-            </View>
-          </View>
         </View>
 
-        {/* ── Spots Near Me / Recommended ── */}
-        <View style={s.sectionHead}>
-          <View style={s.sectionBar} />
-          <View style={s.sectionTitleRow}>
-            <Text style={s.sectionTitle}>{nearMe ? 'Spots Near You' : 'Recommended Spots'}</Text>
-            {nearMe && (
-              <View style={s.nearBadge}>
-                <MaterialCommunityIcons name="map-marker" size={10} color={colors.primary} />
-                <Text style={s.nearBadgeText}>GPS</Text>
+        {/* ── INTEL PANEL ────────────────────────────────────────────────── */}
+        <View style={s.panel}>
+          <View style={s.panelHeader}>
+            <Text style={s.panelLabel}>FISHING INTEL</Text>
+            {nextWindowStr && (
+              <View style={s.primeBadge}>
+                <View style={[s.primeIndicator, { backgroundColor: sigColor }]} />
+                <Text style={[s.primeBadgeText, { color: sigColor }]}>PRIME {nextWindowStr}</Text>
               </View>
             )}
           </View>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/map' as any)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={s.seeAll}>See all →</Text>
-          </TouchableOpacity>
+          <View style={s.panelDivider} />
+
+          {/* Score readout */}
+          <View style={s.scoreBlock}>
+            <View style={s.scoreLeft}>
+              <Text style={[s.scoreNum, { color: sigColor }]}>{score}</Text>
+              <Text style={s.scoreSlash}>/100</Text>
+            </View>
+            <View style={s.scoreRight}>
+              <Text style={[s.scoreCode, { color: sigColor }]}>{scoreCode(score)}</Text>
+              <Text style={s.scoreDesc}>
+                {score >= 80 ? 'Excellent Conditions' : score >= 60 ? 'Good Conditions' : score >= 40 ? 'Fair Conditions' : 'Tough Conditions'}
+              </Text>
+            </View>
+          </View>
+          <ScoreBar score={score} color={sigColor} />
+
+          <View style={s.panelDivider} />
+
+          {/* Sun row */}
+          <View style={s.sunRow}>
+            <View style={s.sunItem}>
+              <Text style={s.sunLabel}>SUNRISE</Text>
+              <Text style={s.sunTime}>{sunTimes?.sunrise ?? '05:44A'}</Text>
+            </View>
+            <Svg width={100} height={24} style={{ marginTop: 2 }}>
+              <Path d="M 6 20 Q 50 4 94 20" stroke={colors.accent} strokeWidth={1} fill="none" strokeDasharray="3 2" opacity={0.5} />
+              <Circle cx={50} cy={6} r={3} fill={colors.accent} opacity={0.8} />
+            </Svg>
+            <View style={[s.sunItem, { alignItems: 'flex-end' }]}>
+              <Text style={s.sunLabel}>SUNSET</Text>
+              <Text style={s.sunTime}>{sunTimes?.sunset ?? '08:22P'}</Text>
+            </View>
+          </View>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.spotsScroll}>
-          {spots.map((spot) => (
-            <TouchableOpacity
-              key={spot.id}
-              style={s.spotCard}
-              onPress={() => router.push({ pathname: '/spot-details', params: { id: spot.id } } as any)}
-              activeOpacity={0.85}
-            >
-              <View style={s.spotPhoto}>
-                <LinearGradient colors={['#0F1E2E', '#060E18']} style={StyleSheet.absoluteFillObject} />
-                <Image
-                  source={{ uri: getSpotImage(spot) }}
-                  style={[StyleSheet.absoluteFillObject, { opacity: 0.82 }]}
-                  resizeMode="cover"
-                />
-                <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={s.spotPhotoOverlay}>
-                  <Text style={s.spotName} numberOfLines={1}>{spot.name.split(',')[0]}</Text>
-                  <View style={s.spotMetaRow}>
-                    <Text style={s.spotType}>{spot.type}</Text>
-                    <View style={s.spotRatingRow}>
-                      <MaterialCommunityIcons name="star" size={9} color={colors.secondary} />
-                      <Text style={s.spotRating}>{spot.rating}</Text>
-                    </View>
-                  </View>
-                  {spot._distKm !== undefined && (
-                    <Text style={s.spotDist}>{formatDistance(spot._distKm)} away</Text>
-                  )}
-                </LinearGradient>
-              </View>
-            </TouchableOpacity>
+        {/* ── INSTRUMENT CLUSTER ─────────────────────────────────────────── */}
+        <View style={s.instrumentGrid}>
+          {[
+            { label: 'WIND', value: weather ? `${weather.wind}` : '22', unit: 'KM/H', sub: windDir },
+            { label: 'TEMP', value: weather ? `${weather.temp}` : '15', unit: '°C', sub: 'AIR' },
+            { label: 'PRES', value: weather ? `${weather.pressure}` : '1007', unit: 'HPA', sub: 'STEADY' },
+            { label: 'MOON', value: moonAbbr(solunar?.moonPhaseName ?? 'Waxing Gibbous'), unit: '', sub: `${solunar?.moonIllumination ?? 68}%` },
+          ].map((item) => (
+            <View key={item.label} style={s.instrument}>
+              <Text style={s.instrumentLabel}>{item.label}</Text>
+              <Text style={s.instrumentValue}>{item.value}<Text style={s.instrumentUnit}>{item.unit}</Text></Text>
+              <Text style={s.instrumentSub}>{item.sub}</Text>
+            </View>
           ))}
-        </ScrollView>
-
-        {/* ── Tip of the Day ── */}
-        <View style={s.tipCard}>
-          <View style={s.tipIconWrap}>
-            <MaterialCommunityIcons name="lightbulb-on" size={20} color={colors.secondary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={s.tipLabel}>TIP OF THE DAY</Text>
-            <Text style={s.tipText}>{tip}</Text>
-          </View>
         </View>
 
-        {/* ── Recent Catches ── */}
-        <View style={s.sectionHead}>
-          <View style={s.sectionBar} />
-          <Text style={s.sectionTitle}>Recent Catches</Text>
-          <TouchableOpacity onPress={() => router.push('/(tabs)/catches' as any)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-            <Text style={s.seeAll}>See all →</Text>
+        {/* ── ACTIONS ────────────────────────────────────────────────────── */}
+        <View style={s.actionsRow}>
+          <TouchableOpacity
+            style={s.actionPrimary}
+            onPress={() => router.push('/(tabs)/session' as any)}
+            activeOpacity={0.82}
+            accessibilityLabel="Start Session"
+          >
+            <MaterialCommunityIcons name="play-circle-outline" size={18} color={colors.bg} />
+            <Text style={s.actionPrimaryText}>START SESSION</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={s.actionSecondary}
+            onPress={() => router.push('/identifier' as any)}
+            activeOpacity={0.82}
+            accessibilityLabel="Scan Fish"
+          >
+            <MaterialCommunityIcons name="camera-outline" size={18} color={colors.primary} />
+            <Text style={s.actionSecondaryText}>SCAN FISH</Text>
           </TouchableOpacity>
         </View>
 
-        {recentCatches.length === 0 ? (
-          <View style={s.emptyCatches}>
-            <LinearGradient colors={['rgba(0,212,170,0.06)', 'transparent']} style={s.emptyCatchesGrad}>
-              <MaterialCommunityIcons name="fish" size={40} color="rgba(0,212,170,0.25)" />
-              <Text style={s.emptyTitle}>No catches logged yet</Text>
-              <Text style={s.emptySub}>Every great fishing story starts with the first cast. Get out there and log your first catch.</Text>
-              <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/add-catch' as any)}>
-                <Text style={s.emptyBtnText}>Log a Catch</Text>
-              </TouchableOpacity>
-            </LinearGradient>
+        {/* ── VESSEL STATS ───────────────────────────────────────────────── */}
+        <View style={s.panel}>
+          <View style={s.panelHeader}>
+            <Text style={s.panelLabel}>SESSION TOTALS</Text>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/catches' as any)} activeOpacity={0.75}>
+              <Text style={s.viewAll}>VIEW LOG →</Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          <View style={s.catchList}>
-            {recentCatches.map((c, i) => (
-              <TouchableOpacity
-                key={c.id}
-                style={[s.catchRow, i > 0 && s.catchDivider]}
-                onPress={() => router.push({ pathname: '/catch-detail', params: { id: c.id } } as any)}
-                activeOpacity={0.85}
-              >
-                <LinearGradient colors={['#0F2A1A', '#081610']} style={s.catchThumb}>
-                  <MaterialCommunityIcons name="fish" size={18} color="rgba(0,212,170,0.6)" />
-                </LinearGradient>
-                <View style={s.catchInfo}>
-                  <Text style={s.catchSpecies}>{c.species}</Text>
-                  <Text style={s.catchMeta}>
-                    {[c.weight ? `${c.weight} kg` : null, c.location].filter(Boolean).join(' · ')}
-                  </Text>
+          <View style={s.panelDivider} />
+          <View style={s.statsCluster}>
+            {[
+              { value: String(stats.total), label: 'CATCHES' },
+              { value: String(stats.species), label: 'SPECIES' },
+              { value: '142', label: 'HRS FISHED' },
+              { value: String(stats.streak), label: 'DAY STREAK' },
+            ].map((item, i) => (
+              <React.Fragment key={item.label}>
+                {i > 0 && <View style={s.statsDivider} />}
+                <View style={s.statCell}>
+                  <Text style={s.statValue}>{item.value}</Text>
+                  <Text style={s.statLabel}>{item.label}</Text>
                 </View>
-                <Text style={s.catchTime}>{timeAgo(c.date)}</Text>
-              </TouchableOpacity>
+              </React.Fragment>
             ))}
           </View>
-        )}
+        </View>
 
-        {/* ── Quick Links ── */}
-        <View style={s.quickLinksRow}>
-          {[
-            { icon: 'fish', label: 'Species Guide', route: '/(tabs)/tips' },
-            { icon: 'rope', label: 'Knots', route: '/knots' },
-            { icon: 'food-drumstick', label: 'Bait Guide', route: '/bait-guide' },
-            { icon: 'weather-partly-cloudy', label: 'Weather', route: '/weather-detail' },
-          ].map(item => (
-            <TouchableOpacity
-              key={item.label}
-              style={s.quickLink}
-              onPress={() => router.push(item.route as any)}
-              activeOpacity={0.85}
-            >
-              <View style={s.quickLinkIcon}>
-                <MaterialCommunityIcons name={item.icon as any} size={20} color={colors.primary} />
+        {/* ── TARGET SPECIES ─────────────────────────────────────────────── */}
+        <TouchableOpacity
+          style={s.targetPanel}
+          onPress={() => router.push('/(tabs)/catches' as any)}
+          activeOpacity={0.88}
+        >
+          <View style={s.targetLeft}>
+            <Text style={s.panelLabel}>TARGET SPECIES</Text>
+            <View style={s.panelDivider} />
+            <Text style={s.targetName}>{targetSpecies.name}</Text>
+            <View style={s.targetCodeRow}>
+              <View style={s.targetCodeChip}>
+                <Text style={s.targetCode}>{targetSpecies.code}</Text>
               </View>
-              <Text style={s.quickLinkLabel}>{item.label}</Text>
-            </TouchableOpacity>
+              <Text style={s.targetArrow}>→</Text>
+            </View>
+          </View>
+          <FishSpeciesPhoto species={targetSpecies.name} style={s.targetPhoto} />
+        </TouchableOpacity>
+
+        {/* ── SOLUNAR TABLE ──────────────────────────────────────────────── */}
+        <View style={s.panel}>
+          <View style={s.panelHeader}>
+            <Text style={s.panelLabel}>SOLUNAR ACTIVITY</Text>
+            <Text style={s.panelMeta}>{moonAbbr(solunar?.moonPhaseName ?? 'Waxing Gibbous')} · {solunar?.moonIllumination ?? 68}% ILL</Text>
+          </View>
+          <View style={s.panelDivider} />
+          {solunarWindows.map((win, i) => (
+            <View key={i}>
+              {i > 0 && <View style={s.tableRowDivider} />}
+              <View style={[s.solunarRow, win.isActive && s.solunarRowActive]}>
+                <View style={s.solunarLeft}>
+                  {win.isActive
+                    ? <View style={s.livePulse} />
+                    : <View style={[s.solunarQBar, { backgroundColor: win.quality === 'major' ? colors.primary : '#4DA3FF' }]} />
+                  }
+                  <Text style={[s.solunarQLabel, { color: win.quality === 'major' ? colors.primary : '#4DA3FF' }]}>
+                    {win.quality === 'major' ? 'MAJ' : 'MIN'}
+                  </Text>
+                </View>
+                <Text style={s.solunarTimeRange}>{win.time} — {win.endTime}</Text>
+                <Text style={s.solunarDur}>{win.duration}</Text>
+              </View>
+            </View>
           ))}
         </View>
+
+        {/* ── TIP INTERCEPT ──────────────────────────────────────────────── */}
+        <View style={s.tipPanel}>
+          <Text style={s.panelLabel}>FIELD NOTE · {tip.category.toUpperCase()}</Text>
+          <View style={s.panelDivider} />
+          <Text style={s.tipText}>{tip.tip}</Text>
+        </View>
+
+        {/* ── RECENT CATCHES ─────────────────────────────────────────────── */}
+        {recentCatches.length > 0 && (
+          <View style={s.panel}>
+            <View style={s.panelHeader}>
+              <Text style={s.panelLabel}>RECENT CATCHES</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/catches' as any)} activeOpacity={0.75}>
+                <Text style={s.viewAll}>VIEW ALL →</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={s.panelDivider} />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.recentStrip}>
+              {recentCatches.map((c) => (
+                <TouchableOpacity
+                  key={c.id}
+                  style={s.recentCard}
+                  onPress={() => router.push(`/catch-detail?id=${c.id}` as any)}
+                  activeOpacity={0.85}
+                >
+                  <FishSpeciesPhoto species={c.species} photo={c.photo} style={s.recentPhoto} />
+                  <View style={s.recentBody}>
+                    <Text style={s.recentSpecies} numberOfLines={1}>{c.species.toUpperCase()}</Text>
+                    {c.weight > 0 && <Text style={s.recentWeight}>{c.weight.toFixed(1)} KG</Text>}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ─── Shared token ─────────────────────────────────────────────────────────────
+const TEAL_LINE = 'rgba(0,212,170,0.12)';
+const PANEL_RADIUS = radius.sm; // 8 — bezel feel
+
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1, backgroundColor: colors.bg },
+  scroll: { paddingBottom: 120 },
 
+  // Header
   header: {
-    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: 4,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: 12,
   },
-  logo: { fontSize: 22, fontWeight: '900', color: colors.primary, letterSpacing: 4 },
-  logoUnderline: { width: 28, height: 2, backgroundColor: colors.primary, borderRadius: 1, marginTop: 3 },
-  bellWrap: {
-    width: 40, height: 40, borderRadius: radius.sm,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    alignItems: 'center', justifyContent: 'center',
+  brandLabel: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: 4,
+  },
+  locationLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textTertiary,
+    letterSpacing: 1.5,
+    marginTop: 3,
+  },
+  locDot: { color: colors.primary },
+  headerRight: { alignItems: 'flex-end', gap: 4 },
+  dateLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: colors.textTertiary,
+    letterSpacing: 1.5,
+  },
+  notifBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+
+  // Panels — the base unit
+  panel: {
+    marginHorizontal: spacing.lg,
+    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: PANEL_RADIUS,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
+    overflow: 'hidden',
+  },
+  panelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  panelLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.textTertiary,
+    letterSpacing: 2,
+  },
+  panelMeta: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: colors.textTertiary,
+    letterSpacing: 1,
+  },
+  panelDivider: {
+    height: 1,
+    backgroundColor: TEAL_LINE,
+  },
+  viewAll: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 1.5,
   },
 
-  greet: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.lg },
-  greetLine: { fontSize: 13, color: colors.textSecondary, fontWeight: '500', letterSpacing: 0.3 },
-  greetName: { fontSize: 30, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.8, marginTop: 1 },
-  greetSub: { fontSize: 13, color: colors.textSecondary, marginTop: 4 },
+  // Prime badge in header
+  primeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0,212,170,0.06)',
+    borderRadius: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
+  },
+  primeIndicator: { width: 5, height: 5, borderRadius: 3 },
+  primeBadgeText: { fontSize: 9, fontWeight: '700', letterSpacing: 1.5 },
 
-  ctaWrap: {
-    marginHorizontal: spacing.lg, marginBottom: 24,
-    borderRadius: radius.lg, overflow: 'hidden',
-    shadowColor: colors.primary, shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 4 },
-    elevation: 10,
+  // Score block
+  scoreBlock: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 10,
   },
-  ctaGrad: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 10, paddingVertical: 18,
+  scoreLeft: { flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
+  scoreNum: {
+    fontSize: 80,
+    fontWeight: '700',
+    lineHeight: 80,
+    letterSpacing: -2,
+    fontVariant: ['tabular-nums'],
   },
-  ctaText: { fontSize: 14, fontWeight: '800', color: '#031A12', letterSpacing: 2 },
+  scoreSlash: {
+    fontSize: 14,
+    color: colors.textTertiary,
+    fontWeight: '500',
+    marginBottom: 8,
+    fontVariant: ['tabular-nums'],
+  },
+  scoreRight: { alignItems: 'flex-end', gap: 3, paddingBottom: 8 },
+  scoreCode: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: 2,
+  },
+  scoreDesc: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
 
-  // ── Conditions card
-  condCard: {
-    marginHorizontal: spacing.lg, marginBottom: 28,
-    backgroundColor: colors.surface, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border,
-    padding: spacing.lg, gap: 16,
-    ...elevation.raised,
-  },
-  condHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  condLabel: { fontSize: 10, fontWeight: '800', color: colors.textTertiary, letterSpacing: 1.5, textTransform: 'uppercase' },
-  condSub: { fontSize: 12, color: colors.textTertiary, marginTop: 2 },
-  condLink: { fontSize: 12, color: colors.primary, fontWeight: '700' },
-  scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  scoreLeft: { gap: 3 },
-  scoreNum: { fontSize: 48, fontWeight: '900', letterSpacing: -2, lineHeight: 52 },
-  scoreLabel: { fontSize: 14, fontWeight: '800', letterSpacing: -0.3 },
-  scoreDesc: { fontSize: 11, color: colors.textTertiary },
-  scoreRight: { flex: 1, gap: 10 },
-  condItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  condItemVal: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
-  condItemLabel: { fontSize: 10, color: colors.textTertiary },
-  bestWindow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    backgroundColor: 'rgba(245,158,11,0.07)', borderRadius: radius.sm,
-    borderWidth: 1, borderColor: 'rgba(245,158,11,0.15)', padding: 12,
-  },
-  bestWindowTitle: { fontSize: 13, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 },
-  bestWindowSub: { fontSize: 12, color: colors.textSecondary },
+  // Score bar is inline component, no styles needed
 
-  sectionHead: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: spacing.lg, marginBottom: 14,
+  // Sun row
+  sunRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
-  sectionBar: { width: 3, height: 18, borderRadius: 2, backgroundColor: colors.primary },
-  sectionTitleRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.2 },
-  nearBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: radius.full,
-    paddingHorizontal: 7, paddingVertical: 3,
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
+  sunItem: { gap: 2 },
+  sunLabel: { fontSize: 9, fontWeight: '700', color: colors.textTertiary, letterSpacing: 2 },
+  sunTime: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: 0.5,
   },
-  nearBadgeText: { fontSize: 9, color: colors.primary, fontWeight: '700' },
-  seeAll: { fontSize: 13, color: colors.primary, fontWeight: '600' },
 
-  spotsScroll: { paddingHorizontal: spacing.lg, gap: 10, paddingBottom: 4, marginBottom: 28 },
-  spotCard: {
-    width: 140, borderRadius: radius.md, overflow: 'hidden',
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)',
-    ...elevation.raised,
+  // Instrument cluster
+  instrumentGrid: {
+    flexDirection: 'row',
+    marginHorizontal: spacing.lg,
+    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: PANEL_RADIUS,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
+    overflow: 'hidden',
   },
-  spotPhoto: { height: 165, justifyContent: 'flex-end' },
-  spotPhotoOverlay: { padding: 10 },
-  spotName: { fontSize: 13, fontWeight: '700', color: '#fff', marginBottom: 4 },
-  spotMetaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  spotType: { fontSize: 10, color: 'rgba(255,255,255,0.5)', textTransform: 'capitalize' },
-  spotRatingRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  spotRating: { fontSize: 10, fontWeight: '700', color: colors.secondary },
-  spotDist: { fontSize: 9, color: colors.primary, marginTop: 3 },
+  instrument: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    gap: 3,
+    borderRightWidth: 1,
+    borderRightColor: TEAL_LINE,
+  },
+  instrumentLabel: { fontSize: 8, fontWeight: '700', color: colors.textTertiary, letterSpacing: 2 },
+  instrumentValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -0.5,
+  },
+  instrumentUnit: { fontSize: 10, color: colors.textTertiary, fontWeight: '500' },
+  instrumentSub: { fontSize: 9, fontWeight: '600', color: colors.textTertiary, letterSpacing: 1 },
 
-  tipCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
-    marginHorizontal: spacing.lg, marginBottom: 28,
-    backgroundColor: 'rgba(245,158,11,0.06)', borderRadius: radius.md,
-    borderWidth: 1, borderColor: 'rgba(245,158,11,0.15)', padding: spacing.md,
+  // Actions
+  actionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginHorizontal: spacing.lg,
+    marginBottom: 12,
   },
-  tipIconWrap: {
-    width: 36, height: 36, borderRadius: radius.sm,
-    backgroundColor: 'rgba(245,158,11,0.12)', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(245,158,11,0.2)',
+  actionPrimary: {
+    flex: 1,
+    backgroundColor: colors.primary,
+    borderRadius: PANEL_RADIUS,
+    paddingVertical: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
   },
-  tipLabel: { fontSize: 9, fontWeight: '800', color: colors.secondary, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 5 },
-  tipText: { fontSize: 13, color: colors.textSecondary, lineHeight: 19 },
+  actionPrimaryText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.bg,
+    letterSpacing: 2,
+  },
+  actionSecondary: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: PANEL_RADIUS,
+    paddingVertical: 13,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+  },
+  actionSecondaryText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 2,
+  },
 
-  emptyCatches: {
-    marginHorizontal: spacing.lg, marginBottom: 28,
-    borderRadius: radius.lg, overflow: 'hidden',
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)',
+  // Stats cluster
+  statsCluster: {
+    flexDirection: 'row',
+    paddingVertical: 4,
   },
-  emptyCatchesGrad: { alignItems: 'center', padding: 32, gap: 10 },
-  emptyTitle: { fontSize: 16, fontWeight: '800', color: colors.textPrimary },
-  emptySub: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, maxWidth: 260 },
-  emptyBtn: {
-    marginTop: 8, borderRadius: radius.full,
-    borderWidth: 1, borderColor: colors.primary,
-    paddingHorizontal: 24, paddingVertical: 11,
+  statsDivider: { width: 1, backgroundColor: TEAL_LINE },
+  statCell: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 4,
   },
-  emptyBtnText: { fontSize: 13, fontWeight: '700', color: colors.primary },
+  statValue: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -1,
+  },
+  statLabel: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: colors.textTertiary,
+    letterSpacing: 1.5,
+  },
 
-  catchList: {
-    marginHorizontal: spacing.lg, marginBottom: 28,
-    backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.12)',
-    overflow: 'hidden', ...elevation.raised,
+  // Target species
+  targetPanel: {
+    marginHorizontal: spacing.lg,
+    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: PANEL_RADIUS,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'stretch',
   },
-  catchRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingHorizontal: spacing.md, paddingVertical: 15,
+  targetLeft: {
+    flex: 1,
+    padding: 14,
   },
-  catchDivider: { borderTopWidth: 1, borderTopColor: colors.border },
-  catchThumb: {
-    width: 44, height: 44, borderRadius: radius.sm,
-    alignItems: 'center', justifyContent: 'center',
+  targetName: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: -0.5,
+    marginTop: 10,
+    marginBottom: 8,
   },
-  catchInfo: { flex: 1 },
-  catchSpecies: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 3 },
-  catchMeta: { fontSize: 12, color: colors.textSecondary },
-  catchTime: { fontSize: 12, color: colors.textTertiary },
+  targetCodeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  targetCodeChip: {
+    backgroundColor: 'rgba(0,212,170,0.08)',
+    borderRadius: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
+  },
+  targetCode: { fontSize: 9, fontWeight: '700', color: colors.primary, letterSpacing: 1.5 },
+  targetArrow: { fontSize: 14, color: colors.textTertiary, fontWeight: '300' },
+  targetPhoto: { width: 110, height: 110 },
 
-  quickLinksRow: {
-    flexDirection: 'row', paddingHorizontal: spacing.lg, gap: 10,
+  // Solunar table
+  tableRowDivider: { height: 1, backgroundColor: TEAL_LINE, marginHorizontal: 14 },
+  solunarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    gap: 10,
   },
-  quickLink: {
-    flex: 1, alignItems: 'center', gap: 8,
-    backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border, paddingVertical: 14,
-    ...elevation.raised,
+  solunarRowActive: { backgroundColor: 'rgba(0,212,170,0.04)' },
+  solunarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, width: 52 },
+  solunarQBar: { width: 2, height: 22, borderRadius: 1 },
+  livePulse: {
+    width: 7, height: 7, borderRadius: 4,
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOpacity: 1, shadowRadius: 6, elevation: 4,
+    marginLeft: 0,
   },
-  quickLinkIcon: {
-    width: 38, height: 38, borderRadius: radius.sm,
-    backgroundColor: 'rgba(0,212,170,0.08)', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.15)',
+  solunarQLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 1 },
+  solunarTimeRange: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
   },
-  quickLinkLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, textAlign: 'center' },
+  solunarDur: { fontSize: 10, color: colors.textTertiary, fontWeight: '600', letterSpacing: 0.5 },
+
+  // Tip
+  tipPanel: {
+    marginHorizontal: spacing.lg,
+    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: PANEL_RADIUS,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.primary,
+    padding: 14,
+    gap: 10,
+  },
+  tipText: {
+    fontSize: 14,
+    color: colors.textPrimary,
+    lineHeight: 22,
+    fontWeight: '400',
+  },
+
+  // Recent
+  recentStrip: { gap: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  recentCard: {
+    width: 96,
+    backgroundColor: colors.surface2,
+    borderRadius: PANEL_RADIUS,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
+    overflow: 'hidden',
+  },
+  recentPhoto: { width: 96, height: 72 },
+  recentBody: { padding: 8, gap: 2 },
+  recentSpecies: { fontSize: 10, fontWeight: '700', color: colors.textPrimary, letterSpacing: 0.5 },
+  recentWeight: { fontSize: 10, fontWeight: '600', color: colors.primary, fontVariant: ['tabular-nums'] },
 });

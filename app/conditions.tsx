@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,36 +7,38 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocationStore } from '../store/locationStore';
+import { useLocation } from '../hooks/useLocation';
 import { useWeather } from '../hooks/useWeather';
+import { useMarineConditions } from '../hooks/useMarineConditions';
+import { useAuthStore } from '../store/authStore';
 import { colors, radius, spacing, typography, fonts } from '../constants/theme';
 
-const SOLUNAR_WINDOWS = [
-  { time: '05:30', duration: '1h 40m', quality: 'major', label: 'Major Feeding' },
-  { time: '11:45', duration: '45m', quality: 'minor', label: 'Minor Feeding' },
-  { time: '18:00', duration: '1h 50m', quality: 'major', label: 'Major Feeding' },
-  { time: '23:15', duration: '40m', quality: 'minor', label: 'Minor Feeding' },
-];
+function formatMarineTime(value?: string) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value.slice(-5) : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
 
-const FORECAST = [
-  { day: 'Today', icon: 'weather-partly-cloudy', high: 14, low: 8, score: 7 },
-  { day: 'Tomorrow', icon: 'weather-rainy', high: 12, low: 7, score: 5 },
-  { day: 'Wed', icon: 'weather-pouring', high: 11, low: 6, score: 4 },
-  { day: 'Thu', icon: 'weather-sunny', high: 15, low: 9, score: 8 },
-  { day: 'Fri', icon: 'weather-sunny', high: 17, low: 10, score: 9 },
-  { day: 'Sat', icon: 'weather-sunny', high: 16, low: 9, score: 8 },
-  { day: 'Sun', icon: 'weather-partly-cloudy', high: 14, low: 8, score: 6 },
-];
-
-const TIDE_CURVE = [0.4, 0.55, 0.75, 0.95, 1.0, 0.85, 0.6, 0.4];
-const SOLUNAR_BARS = [25, 40, 55, 70, 85, 100, 90, 65];
+function formatWindow(isoTime: string) {
+  const d = new Date(isoTime);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return isToday ? time : `Tomorrow ${time}`;
+}
 
 export default function ConditionsScreen() {
   const router = useRouter();
+  const { user } = useAuthStore();
   const { location } = useLocationStore();
-  const { weather } = useWeather(location?.query);
+  const { location: gpsLocation } = useLocation();
+  const latitude = location?.latitude ?? gpsLocation?.latitude;
+  const longitude = location?.longitude ?? gpsLocation?.longitude;
+  const { weather, loading, refresh: refreshWeather, updatedAt } = useWeather(latitude, longitude);
+  const { marine, loading: marineLoading, error: marineError, refresh: refreshMarine } = useMarineConditions(latitude, longitude);
 
   const w = weather || {
     temp: 18,
@@ -47,10 +49,25 @@ export default function ConditionsScreen() {
     pressureTrend: 'rising' as const,
     moonPhase: 'Waxing Crescent',
     humidity: 72,
-    fishingScore: 7,
+    fishingScore: 70,
     city: 'Rocky Point',
     description: 'Partly Cloudy',
   };
+  const activityBars = useMemo(() => {
+    const hourly = weather?.hourlyToday ?? [];
+    return Array.from({ length: 8 }, (_, index) => hourly[index * 3]?.fishingScore ?? w.fishingScore);
+  }, [weather?.hourlyToday, w.fishingScore]);
+  const tideBars = useMemo(() => {
+    const series = marine?.tideSeries ?? [];
+    if (!series.length) return [];
+    const sampled = Array.from({ length: 8 }, (_, index) => series[Math.min(series.length - 1, index * 3)]?.heightM ?? 0);
+    const min = Math.min(...sampled);
+    const max = Math.max(...sampled);
+    return sampled.map((height) => max === min ? 50 : 12 + ((height - min) / (max - min)) * 88);
+  }, [marine?.tideSeries]);
+  const feedingWindows = weather?.solunarTimes ?? [];
+  const forecast = weather?.forecast7day ?? [];
+  const refreshAll = () => { refreshWeather(); refreshMarine(); };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -60,14 +77,27 @@ export default function ConditionsScreen() {
         </TouchableOpacity>
         <View style={styles.headerLocation}>
           <MaterialCommunityIcons name="map-marker" size={15} color={colors.primary} />
-          <Text style={styles.headerLocationText}>{location?.name || w.city}</Text>
+          <Text style={styles.headerLocationText}>{location?.name || (gpsLocation ? 'Current location' : w.city)}</Text>
         </View>
-        <TouchableOpacity hitSlop={10}>
-          <MaterialCommunityIcons name="bookmark-outline" size={22} color={colors.textSecondary} />
+        <TouchableOpacity hitSlop={10} onPress={refreshAll} disabled={loading || marineLoading} accessibilityRole="button" accessibilityLabel="Refresh live fishing conditions">
+          <MaterialCommunityIcons name={loading || marineLoading ? 'progress-clock' : 'refresh'} size={22} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+
+        {/* Best Time Today */}
+        {weather?.solunarTimes?.find(t => t.type === 'major') && (() => {
+          const major = weather.solunarTimes.find(t => t.type === 'major')!;
+          return (
+            <View style={styles.bestTimeCard}>
+              <Text style={styles.bestTimeLabel}>BEST TIME TODAY</Text>
+              <Text style={styles.bestTimeVal}>{major.start}</Text>
+              <Text style={styles.bestTimeSub}>Major feeding window · {w.fishingScore >= 7 ? 'Excellent' : w.fishingScore >= 5 ? 'Good' : 'Fair'} conditions</Text>
+            </View>
+          );
+        })()}
+
         {/* Current conditions hero */}
         <View style={styles.heroCard}>
           <View style={styles.heroTop}>
@@ -75,13 +105,13 @@ export default function ConditionsScreen() {
               <Text style={styles.heroTemp}>{Math.round(w.temp)}<Text style={styles.heroTempUnit}>°C</Text></Text>
               <Text style={styles.heroDesc}>{w.description}</Text>
             </View>
-            <MaterialCommunityIcons name="weather-partly-cloudy" size={48} color={colors.secondary} />
+            <MaterialCommunityIcons name={(weather?.icon || 'weather-partly-cloudy') as any} size={48} color={colors.secondary} />
           </View>
           <View style={styles.heroStatsRow}>
             <View style={styles.heroStat}>
               <Text style={styles.heroStatLabel}>Wind</Text>
               <Text style={styles.heroStatValue}>{w.wind} km/h</Text>
-              <Text style={styles.heroStatSub}>NW</Text>
+              <Text style={styles.heroStatSub}>{Math.round(w.windDirection)}°</Text>
             </View>
             <View style={styles.heroStat}>
               <Text style={styles.heroStatLabel}>Feels Like</Text>
@@ -94,20 +124,27 @@ export default function ConditionsScreen() {
           </View>
         </View>
 
+        {/* UV Index */}
+        {(w as any)?.uvIndex !== undefined && (
+          <View style={styles.uvRow}>
+            <MaterialCommunityIcons name="white-balance-sunny" size={16} color={colors.secondary} />
+            <Text style={styles.condRowLabel}>UV Index</Text>
+            <Text style={styles.condRowVal}>{Math.round((w as any).uvIndex)} {(w as any).uvIndex >= 8 ? '— Very High' : (w as any).uvIndex >= 6 ? '— High' : (w as any).uvIndex >= 3 ? '— Moderate' : '— Low'}</Text>
+          </View>
+        )}
+
         {/* Tide */}
         <View style={styles.card}>
           <Text style={styles.cardLabel}>Tide</Text>
           <View style={styles.tideRow}>
-            <Text style={styles.tideValue}>1.2<Text style={styles.tideUnit}>m</Text></Text>
+            <Text style={styles.tideValue}>{marine?.seaLevelM?.toFixed(2) ?? '—'}<Text style={styles.tideUnit}>m</Text></Text>
             <View>
-              <Text style={styles.tideTrend}>Rising</Text>
-              <Text style={styles.tideSub}>High 18:42</Text>
+              <Text style={styles.tideTrend}>{marine?.tideTrend ? marine.tideTrend[0].toUpperCase() + marine.tideTrend.slice(1) : 'Loading'}</Text>
+              <Text style={styles.tideSub}>High {formatMarineTime(marine?.nextHigh?.time)} · Low {formatMarineTime(marine?.nextLow?.time)}</Text>
             </View>
           </View>
           <View style={styles.curveWrap}>
-            {TIDE_CURVE.map((v, i) => (
-              <View key={i} style={[styles.curveBar, { height: `${v * 100}%` }]} />
-            ))}
+            {(tideBars.length ? tideBars : [8, 8, 8, 8, 8, 8, 8, 8]).map((height, i) => <View key={i} style={[styles.curveBar, { height: `${height}%`, opacity: tideBars.length ? 1 : 0.25 }]} />)}
           </View>
           <View style={styles.curveLabels}>
             <Text style={styles.curveLabel}>00:00</Text>
@@ -121,12 +158,16 @@ export default function ConditionsScreen() {
         {/* Solunar */}
         <View style={styles.card}>
           <Text style={styles.cardLabel}>Solunar Activity</Text>
-          <Text style={styles.solunarValue}>{Math.round(w.fishingScore * 10) >= 70 ? Math.round(w.fishingScore * 10) : 85}<Text style={styles.tideUnit}>%</Text></Text>
-          <Text style={styles.solunarSub}>High Activity</Text>
+          <Text style={styles.solunarValue}>{Math.round(w.fishingScore)}<Text style={styles.tideUnit}>%</Text></Text>
+          <Text style={styles.solunarSub}>{w.fishingScore >= 75 ? 'High' : w.fishingScore >= 50 ? 'Moderate' : 'Low'} Activity · changes through the day</Text>
           <View style={styles.barsWrap}>
-            {SOLUNAR_BARS.map((h, i) => (
-              <View key={i} style={[styles.bar, { height: `${h}%` }]} />
-            ))}
+            {activityBars.map((h, i) => {
+              const currentHourIndex = Math.floor(new Date().getHours() / 3);
+              const isCurrentHour = i === currentHourIndex;
+              const isActive = h >= 60;
+              const barColor = isCurrentHour ? '#F59E0B' : isActive ? '#00D4AA' : '#1A2535';
+              return <View key={i} style={[styles.bar, { height: `${h}%`, backgroundColor: barColor }]} />;
+            })}
           </View>
           <View style={styles.curveLabels}>
             <Text style={styles.curveLabel}>00:00</Text>
@@ -140,18 +181,18 @@ export default function ConditionsScreen() {
         {/* Solunar feeding windows */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Feeding Windows</Text>
-          {SOLUNAR_WINDOWS.map((win) => (
-            <View key={win.time} style={[styles.windowCard, win.quality === 'major' && styles.windowCardMajor]}>
-              <View style={[styles.windowDot, { backgroundColor: win.quality === 'major' ? colors.primary : colors.secondary }]} />
+          {feedingWindows.map((win) => (
+            <View key={`${win.type}-${win.start}`} style={[styles.windowCard, win.type === 'major' && styles.windowCardMajor]}>
+              <View style={[styles.windowDot, { backgroundColor: win.type === 'major' ? colors.primary : colors.secondary }]} />
               <View style={styles.windowInfo}>
-                <Text style={styles.windowTime}>{win.time}</Text>
-                <Text style={styles.windowLabel}>{win.label}</Text>
+                <Text style={styles.windowTime}>{win.start}–{win.end}</Text>
+                <Text style={styles.windowLabel}>{win.type === 'major' ? 'Major Feeding' : 'Minor Feeding'}</Text>
               </View>
               <View style={styles.windowRight}>
-                <Text style={styles.windowDuration}>{win.duration}</Text>
-                <View style={[styles.windowBadge, win.quality === 'major' && styles.windowBadgeMajor]}>
-                  <Text style={[styles.windowBadgeText, win.quality === 'major' && { color: colors.primary }]}>
-                    {win.quality.toUpperCase()}
+                <Text style={styles.windowDuration}>{win.rating}/5</Text>
+                <View style={[styles.windowBadge, win.type === 'major' && styles.windowBadgeMajor]}>
+                  <Text style={[styles.windowBadgeText, win.type === 'major' && { color: colors.primary }]}>
+                    {win.type.toUpperCase()}
                   </Text>
                 </View>
               </View>
@@ -159,28 +200,52 @@ export default function ConditionsScreen() {
           ))}
         </View>
 
-        {/* 7-day forecast */}
-        <View style={styles.section}>
+        {/* 7-day forecast — Pro feature */}
+        {!user?.isPro && (
+          <TouchableOpacity onPress={() => router.push('/pro' as any)} style={styles.forecastProBanner} activeOpacity={0.85}>
+            <View style={styles.forecastProBannerInner}>
+              <MaterialCommunityIcons name="lock-outline" size={20} color="#00D4AA" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.forecastProTitle}>7-Day Forecast & Tidal Alerts — Pro Feature</Text>
+                <Text style={styles.forecastProSub}>Extended outlook with fishing scores for every day</Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push('/pro' as any)} style={styles.forecastProBtn}>
+                <Text style={styles.forecastProBtnText}>Unlock with Pro →</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        )}
+
+        <View style={[styles.section, !user?.isPro && styles.forecastBlurred]}>
           <Text style={styles.sectionTitle}>7-Day Forecast</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.forecastRow}>
-              {FORECAST.map((day) => {
-                const scoreColor = day.score >= 7 ? colors.primary : day.score >= 5 ? colors.secondary : colors.danger;
+              {forecast.map((day) => {
+                const scoreColor = day.fishingScore >= 70 ? colors.primary : day.fishingScore >= 50 ? colors.secondary : colors.danger;
                 return (
-                  <View key={day.day} style={styles.forecastCard}>
-                    <Text style={styles.forecastDay}>{day.day}</Text>
+                  <View key={day.date} style={styles.forecastCard}>
+                    <Text style={styles.forecastDay}>{day.dayName}</Text>
                     <MaterialCommunityIcons name={day.icon as any} size={22} color={colors.textSecondary} />
                     <Text style={styles.forecastHigh}>{day.high}°</Text>
                     <Text style={styles.forecastLow}>{day.low}°</Text>
                     <View style={[styles.forecastScore, { backgroundColor: scoreColor + '22' }]}>
-                      <Text style={[styles.forecastScoreText, { color: scoreColor }]}>{day.score}</Text>
+                      <Text style={[styles.forecastScoreText, { color: scoreColor }]}>{day.fishingScore}</Text>
                     </View>
                   </View>
                 );
               })}
             </View>
           </ScrollView>
+          {!user?.isPro && (
+            <View style={styles.forecastLockOverlay}>
+              <MaterialCommunityIcons name="lock" size={32} color="#00D4AA" />
+            </View>
+          )}
         </View>
+
+        <Text style={styles.liveNote}>
+          {marineError ? `${marineError}. Weather remains live.` : `Live weather and marine forecast · updated ${updatedAt?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) ?? 'now'}`}
+        </Text>
 
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
@@ -213,7 +278,7 @@ const styles = StyleSheet.create({
   heroTemp: { ...typography.monoLarge, fontSize: 40 },
   heroTempUnit: { fontSize: 18, color: colors.textSecondary, fontFamily: fonts.mono },
   heroDesc: { ...typography.bodySmall, marginTop: 2 },
-  heroStatsRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.md },
+  heroStatsRow: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', paddingTop: spacing.md },
   heroStat: { flex: 1, gap: 3 },
   heroStatLabel: { ...typography.caption, fontSize: 10 },
   heroStatValue: { ...typography.label, fontSize: 14 },
@@ -234,14 +299,15 @@ const styles = StyleSheet.create({
   tideTrend: { ...typography.label, color: colors.primary, textAlign: 'right' },
   tideSub: { ...typography.caption, fontSize: 10, textTransform: 'none', textAlign: 'right', marginTop: 2 },
   curveWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 56, gap: 4 },
-  curveBar: { flex: 1, backgroundColor: 'rgba(0,212,170,0.35)', borderRadius: radius.xs, minHeight: 4 },
+  curveBar: { flex: 1, backgroundColor: '#00D4AA', borderRadius: 2, minHeight: 4 },
   curveLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   curveLabel: { fontSize: 9, color: colors.textTertiary, fontFamily: fonts.mono },
 
-  solunarValue: { ...typography.monoLarge, fontSize: 32 },
+  solunarValue: { fontSize: 56, fontWeight: '800' },
+  solunarLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 2 },
   solunarSub: { ...typography.bodySmall, marginBottom: spacing.md },
   barsWrap: { flexDirection: 'row', alignItems: 'flex-end', height: 48, gap: 5 },
-  bar: { flex: 1, backgroundColor: colors.primary, borderRadius: radius.xs, minHeight: 4 },
+  bar: { flex: 1, backgroundColor: '#1A2535', borderRadius: 2, minHeight: 4 },
 
   section: { marginBottom: spacing.md },
   sectionTitle: { ...typography.caption, marginBottom: spacing.sm },
@@ -250,7 +316,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md, padding: spacing.md, marginBottom: spacing.sm,
     borderWidth: 1, borderColor: colors.border, gap: spacing.md,
   },
-  windowCardMajor: { borderColor: 'rgba(0,212,170,0.3)', backgroundColor: 'rgba(0,212,170,0.06)' },
+  windowCardMajor: { borderLeftWidth: 3, borderLeftColor: colors.primary },
   windowDot: { width: 8, height: 8, borderRadius: 4 },
   windowInfo: { flex: 1 },
   windowTime: { ...typography.mono, fontSize: 15 },
@@ -271,4 +337,34 @@ const styles = StyleSheet.create({
   forecastLow: { fontSize: 12, color: colors.textTertiary, fontFamily: fonts.mono },
   forecastScore: { borderRadius: radius.full, paddingHorizontal: 6, paddingVertical: 2, marginTop: 2 },
   forecastScoreText: { fontSize: 11, fontWeight: '800' },
+  liveNote: { color: colors.textTertiary, fontSize: 10, lineHeight: 15, textAlign: 'center', marginTop: spacing.sm },
+  sourceLabel: { fontSize: 9, color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' },
+  forecastProBanner: { marginBottom: spacing.sm },
+  forecastProBannerInner: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)', backgroundColor: colors.surface },
+  forecastProTitle: { fontSize: 13, fontWeight: '800', color: '#fff', marginBottom: 2 },
+  forecastProSub: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
+  forecastProBtn: { backgroundColor: '#00D4AA', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  forecastProBtnText: { fontSize: 11, fontWeight: '800', color: '#050A12' },
+  forecastBlurred: { opacity: 0.3, pointerEvents: 'none' },
+  forecastLockOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+
+  // Best Time Today card
+  bestTimeCard: {
+    marginBottom: 16,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border, padding: 16,
+  },
+  bestTimeLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.8 },
+  bestTimeVal: { fontSize: 32, fontWeight: '800', color: colors.primary, marginVertical: 4 },
+  bestTimeSub: { fontSize: 12, color: colors.textSecondary },
+
+  // UV index row
+  uvRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: colors.surface, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: spacing.md,
+  },
+  condRowLabel: { flex: 1, fontSize: 13, color: colors.textSecondary },
+  condRowVal: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
 });

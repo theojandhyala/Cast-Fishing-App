@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Animated, Easing, SafeAreaView, ScrollView, Dimensions
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { species as allSpecies } from '../data/species';
 import { RarityBadge } from '../components/catches/RarityBadge';
 import { colors, radius, spacing } from '../constants/theme';

@@ -17,6 +17,12 @@ export interface Catch {
     description: string;
     wind: number;
   };
+  // Conditions auto-captured at time of logging
+  pressure?: number;            // hPa
+  pressureTrend?: 'rising' | 'falling' | 'steady';
+  tideHeight?: number;          // metres
+  moonPhase?: number;           // 0–1 (0=new, 0.5=full)
+  hourOfDay?: number;           // 0–23
   date: string;
   emoji?: string;
 }
@@ -39,9 +45,17 @@ interface CatchState {
   updateCatch: (id: string, updates: Partial<Catch>) => void;
   loadCatches: () => Promise<void>;
   getStats: () => CatchStats;
+  clearMemory: () => void;
 }
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
+
+const catchesKey = async () => {
+  try {
+    const user = JSON.parse(await AsyncStorage.getItem('cast_user') || '{}');
+    return `cast_catches:${user.id || 'signed-out'}`;
+  } catch { return 'cast_catches:signed-out'; }
+};
 
 export const useCatchStore = create<CatchState>((set, get) => ({
   catches: [],
@@ -49,15 +63,19 @@ export const useCatchStore = create<CatchState>((set, get) => ({
 
   loadCatches: async () => {
     try {
-      const stored = await AsyncStorage.getItem('cast_catches');
+      const stored = await AsyncStorage.getItem(await catchesKey());
       if (stored) {
-        const parsed: Catch[] = JSON.parse(stored);
-        set({ catches: parsed });
+        const parsed = JSON.parse(stored);
+        const catches = Array.isArray(parsed)
+          ? parsed.filter((item) => item && !String(item.id).startsWith('sample'))
+          : [];
+        set({ catches });
+        await AsyncStorage.setItem(await catchesKey(), JSON.stringify(catches));
       } else {
         set({ catches: [] });
       }
     } catch {
-      set({ catches: [] });
+      // use defaults
     }
   },
 
@@ -69,20 +87,20 @@ export const useCatchStore = create<CatchState>((set, get) => ({
     };
     const updated = [newCatch, ...get().catches];
     set({ catches: updated });
-    await AsyncStorage.setItem('cast_catches', JSON.stringify(updated));
+    await AsyncStorage.setItem(await catchesKey(), JSON.stringify(updated));
     return newCatch;
   },
 
   removeCatch: async (id) => {
     const updated = get().catches.filter((c) => c.id !== id);
     set({ catches: updated });
-    await AsyncStorage.setItem('cast_catches', JSON.stringify(updated));
+    await AsyncStorage.setItem(await catchesKey(), JSON.stringify(updated));
   },
 
   updateCatch: async (id, updates) => {
     const updated = get().catches.map((c) => (c.id === id ? { ...c, ...updates } : c));
     set({ catches: updated });
-    await AsyncStorage.setItem('cast_catches', JSON.stringify(updated));
+    await AsyncStorage.setItem(await catchesKey(), JSON.stringify(updated));
   },
 
   getStats: () => {
@@ -115,4 +133,6 @@ export const useCatchStore = create<CatchState>((set, get) => ({
       longestStreak: 0,
     };
   },
+
+  clearMemory: () => set({ catches: [], isLoading: false }),
 }));

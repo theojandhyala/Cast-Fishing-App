@@ -1,186 +1,272 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView,
-  FlatList, TouchableOpacity, TextInput, Dimensions, Image,
+  SectionList, TouchableOpacity,
 } from 'react-native';
+import { FishSpeciesPhoto } from '../../components/fish/FishSpeciesPhoto';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { useCatchStore } from '../../store/catchStore';
-import { colors, radius, spacing, elevation } from '../../constants/theme';
-import { getSpeciesImage } from '../../constants/spotImages';
+import { colors, spacing, radius } from '../../constants/theme';
 
-const { width } = Dimensions.get('window');
-const CARD_W = (width - spacing.lg * 2 - 12) / 2;
+const TEAL_LINE = 'rgba(0,212,170,0.12)';
+const PANEL_RADIUS = radius.sm;
 
-const FILTERS = ['All', 'Species', 'Date', 'Spot'];
+type TimeFilter = 'all' | 'week' | 'month';
 
-const CATCH_GRADS: [string, string][] = [
-  ['#0F2A1C', '#061510'], ['#0F1E2E', '#060E18'],
-  ['#221010', '#110808'], ['#0F1C0F', '#070D07'],
-  ['#201A08', '#100D04'], ['#0F0F24', '#070710'],
-];
+const SPECIES_COLORS: Record<string, string> = {
+  default: '#00D4AA',
+  Salmon: '#FF6B35',
+  Trout: '#4ECDC4',
+  Bass: '#45B7D1',
+  Pike: '#96CEB4',
+  Carp: '#FFEAA7',
+  Tuna: '#6C5CE7',
+  Barramundi: '#00B4D8',
+  'Murray Cod': '#06D6A0',
+};
 
-function timeAgo(dateStr: string) {
-  const d = new Date(dateStr);
-  const now = new Date();
-  if (d.toDateString() === now.toDateString()) {
-    return `Today, ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+function getSpeciesColor(species: string): string {
+  for (const key of Object.keys(SPECIES_COLORS)) {
+    if (species.toLowerCase().includes(key.toLowerCase())) return SPECIES_COLORS[key];
   }
-  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+  return SPECIES_COLORS.default;
+}
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function getSectionTitle(dateStr: string): string {
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Today';
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-  return `${Math.floor((now.getTime() - d.getTime()) / 86400000)}d ago`;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 export default function CatchesScreen() {
   const { catches, getStats } = useCatchStore();
   const router = useRouter();
-  const [filter, setFilter] = useState('All');
-  const [search, setSearch] = useState('');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const stats = getStats();
-  const pbMap = stats.personalBests || {};
 
-  const totalWeight = catches.reduce((sum, c) => sum + (c.weight || 0), 0);
-  const speciesCount = Object.keys(stats.speciesCounts || {}).length;
-  const topSpecies = Object.entries(stats.speciesCounts || {})
-    .sort((a, b) => b[1] - a[1])[0]?.[0];
+  const totalWeight = catches.reduce((sum, c) => sum + (c.weight ?? 0), 0);
+  const biggestCatch = catches.reduce(
+    (best, c) => (!best || (c.weight ?? 0) > (best.weight ?? 0) ? c : best),
+    null as typeof catches[number] | null,
+  );
+  const speciesCount = Object.keys(stats.speciesCounts ?? {}).length;
 
-  const filtered = useMemo(() => catches.filter(c =>
-    !search || c.species.toLowerCase().includes(search.toLowerCase()) ||
-    (c.location || '').toLowerCase().includes(search.toLowerCase())
-  ), [catches, search]);
+  const personalBests = useMemo(() => {
+    return Object.entries(stats.personalBests ?? {})
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 6);
+  }, [stats.personalBests]);
+
+  const filteredCatches = useMemo(() => {
+    if (timeFilter === 'all') return catches;
+    const now = new Date();
+    const cutoff = new Date(now);
+    if (timeFilter === 'week') cutoff.setDate(now.getDate() - 7);
+    else cutoff.setMonth(now.getMonth() - 1);
+    return catches.filter((c) => new Date(c.date) >= cutoff);
+  }, [catches, timeFilter]);
+
+  // Group catches by date for SectionList
+  const sections = useMemo(() => {
+    const groups: Record<string, typeof catches> = {};
+    for (const c of filteredCatches) {
+      const key = new Date(c.date).toDateString();
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(c);
+    }
+    return Object.entries(groups).map(([, data]) => ({
+      title: getSectionTitle(data[0].date),
+      data,
+    }));
+  }, [filteredCatches]);
+
+  const FILTER_LABELS: { key: TimeFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'week', label: 'This Week' },
+    { key: 'month', label: 'This Month' },
+  ];
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
-
       {/* Header */}
       <View style={s.header}>
-        <View>
-          <Text style={s.title}>Catch Log</Text>
-          <Text style={s.subtitle}>
-            {catches.length > 0 ? `${catches.length} catch${catches.length !== 1 ? 'es' : ''} recorded` : 'Start your fishing story'}
-          </Text>
+        <View style={s.headerLeft}>
+          <Text style={s.brand}>LOGBOOK</Text>
+          <View style={s.countBadge}>
+            <Text style={s.countBadgeText}>{catches.length}</Text>
+          </View>
         </View>
         <TouchableOpacity
           style={s.addBtn}
-          onPress={() => router.push('/add-catch' as any)}
-          accessibilityRole="button"
-          accessibilityLabel="Log a catch"
+          onPress={() => router.push('/identifier' as any)}
+          activeOpacity={0.75}
         >
-          <MaterialCommunityIcons name="plus" size={22} color={colors.primary} />
+          <MaterialCommunityIcons name="plus" size={20} color={colors.bg} />
         </TouchableOpacity>
       </View>
 
-      {/* Stats banner */}
-      {catches.length > 0 && (
-        <View style={s.statsBanner}>
-          <View style={s.statBItem}>
-            <Text style={s.statBVal}>{totalWeight > 0 ? totalWeight.toFixed(1) : '0'}<Text style={s.statBUnit}> kg</Text></Text>
-            <Text style={s.statBLabel}>Total weight</Text>
-          </View>
-          <View style={s.statBDiv} />
-          <View style={s.statBItem}>
-            <Text style={s.statBVal}>{speciesCount}</Text>
-            <Text style={s.statBLabel}>Species</Text>
-          </View>
-          <View style={s.statBDiv} />
-          <View style={s.statBItem}>
-            <Text style={s.statBVal} numberOfLines={1}>{stats.heaviest ? `${stats.heaviest.weight}kg` : '—'}</Text>
-            <Text style={s.statBLabel}>Personal best</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Search */}
-      <View style={s.searchWrap}>
-        <MaterialCommunityIcons name="magnify" size={18} color={colors.textSecondary} />
-        <TextInput
-          style={s.searchInput}
-          placeholder="Search species or location…"
-          placeholderTextColor={colors.textTertiary}
-          value={search} onChangeText={setSearch}
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <MaterialCommunityIcons name="close" size={15} color={colors.textSecondary} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Filters */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.pillsRow}>
-        {FILTERS.map(f => (
-          <TouchableOpacity key={f} style={[s.pill, filter === f && s.pillActive]} onPress={() => setFilter(f)}>
-            <Text style={[s.pillText, filter === f && s.pillTextActive]}>{f}</Text>
+      {/* Filter Pills */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={s.filterScroll}
+        contentContainerStyle={s.filterPills}
+      >
+        {FILTER_LABELS.map((f) => (
+          <TouchableOpacity
+            key={f.key}
+            style={[s.filterPill, timeFilter === f.key && s.filterPillActive]}
+            onPress={() => setTimeFilter(f.key)}
+            activeOpacity={0.75}
+          >
+            <Text style={[s.filterPillText, timeFilter === f.key && s.filterPillTextActive]}>
+              {f.label}
+            </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* Grid */}
-      {filtered.length === 0 ? (
-        <View style={s.empty}>
-          <LinearGradient colors={['rgba(0,212,170,0.08)', 'transparent']} style={s.emptyGrad}>
-            <MaterialCommunityIcons name="fish-off" size={40} color={colors.textTertiary} />
-          </LinearGradient>
-          <Text style={s.emptyTitle}>{search ? 'No results found' : 'No catches yet'}</Text>
-          <Text style={s.emptySub}>
-            {search ? 'Try a different species or location' : 'Every angler starts somewhere.\nLog your first catch today.'}
+      {/* Stats Bar */}
+      <View style={s.statsBar}>
+        <View style={s.statItem}>
+          <Text style={s.statValue}>{totalWeight.toFixed(1)} kg</Text>
+          <Text style={s.statLabel}>Weight Hauled</Text>
+        </View>
+        <View style={s.statDivider} />
+        <View style={s.statItem}>
+          <Text style={s.statValue}>
+            {biggestCatch?.weight ? `${biggestCatch.weight} kg` : '—'}
           </Text>
-          {!search && (
-            <TouchableOpacity style={s.emptyBtn} onPress={() => router.push('/add-catch' as any)}>
-              <MaterialCommunityIcons name="plus" size={16} color={colors.background} />
-              <Text style={s.emptyBtnText}>Log First Catch</Text>
-            </TouchableOpacity>
-          )}
+          <Text style={s.statLabel}>Biggest</Text>
+        </View>
+        <View style={s.statDivider} />
+        <View style={s.statItem}>
+          <Text style={s.statValue}>{speciesCount}</Text>
+          <Text style={s.statLabel}>Species</Text>
+        </View>
+      </View>
+
+      {/* Personal Bests */}
+      {personalBests.length > 0 && (
+        <View style={s.pbSection}>
+          <Text style={s.pbHeader}>PERSONAL BESTS</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.pbStrip}
+          >
+            {personalBests.map(([species, weight]) => (
+              <View key={species} style={s.pbCard}>
+                <Text style={s.pbWeight}>{weight.toFixed(1)}<Text style={s.pbUnit}> kg</Text></Text>
+                <Text style={s.pbSpecies} numberOfLines={1}>{species}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      {filteredCatches.length === 0 ? (
+        <View style={s.empty}>
+          <View style={s.emptyIconCircle}>
+            <MaterialCommunityIcons name="fish" size={32} color={colors.primary} />
+          </View>
+          <Text style={s.emptyTitle}>No catches yet</Text>
+          <Text style={s.emptySub}>Cast your line and log your first fish.</Text>
+          <TouchableOpacity
+            style={s.emptyBtn}
+            onPress={() => router.push('/identifier' as any)}
+            activeOpacity={0.75}
+          >
+            <Text style={s.emptyBtnText}>Log a Catch</Text>
+          </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={item => item.id}
-          numColumns={2}
-          contentContainerStyle={s.grid}
-          columnWrapperStyle={{ gap: 12 }}
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item, index }) => {
-            const grad = CATCH_GRADS[index % CATCH_GRADS.length];
-            const isPB = item.weight && pbMap[item.species] && item.weight >= pbMap[item.species];
+          contentContainerStyle={s.feedContent}
+          stickySectionHeadersEnabled={false}
+          renderSectionHeader={({ section }) => (
+            <Text style={s.dateHeader}>{section.title}</Text>
+          )}
+          renderSectionFooter={() => <View style={{ height: spacing.sm }} />}
+          renderItem={({ item, index, section }) => {
+            const accentColor = getSpeciesColor(item.species);
+            const isFirst = index === 0;
+            const isLast = index === section.data.length - 1;
             return (
               <TouchableOpacity
-                style={s.card}
-                onPress={() => router.push({ pathname: '/catch-detail', params: { id: item.id } } as any)}
-                activeOpacity={0.85}
+                style={[
+                  s.catchRow,
+                  isFirst && s.catchRowFirst,
+                  isLast && s.catchRowLast,
+                  !isFirst && s.catchRowBorder,
+                ]}
+                onPress={() =>
+                  router.push({ pathname: '/catch-detail', params: { id: item.id } } as any)
+                }
+                activeOpacity={0.75}
               >
-                <View style={s.cardPhoto}>
-                  <LinearGradient colors={grad} style={StyleSheet.absoluteFillObject} />
-                  <Image
-                    source={{ uri: getSpeciesImage(item.species) }}
-                    style={[StyleSheet.absoluteFillObject, { opacity: 0.65 }]}
-                    resizeMode="cover"
-                  />
-                  <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.55)']}
-                    style={StyleSheet.absoluteFillObject}
-                  />
-                  {isPB && (
-                    <View style={s.pbBadge}>
-                      <Text style={s.pbText}>PB</Text>
-                    </View>
-                  )}
-                  {item.weight && (
-                    <View style={s.weightOverlay}>
-                      <Text style={s.weightOverlayText}>{item.weight} kg</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={s.cardBody}>
-                  <Text style={s.cardSpecies} numberOfLines={1}>{item.species}</Text>
-                  <View style={s.cardMetaRow}>
-                    <MaterialCommunityIcons name="map-marker-outline" size={11} color={colors.textTertiary} />
-                    <Text style={s.cardLocation} numberOfLines={1}>{item.location || 'Unknown spot'}</Text>
+                {/* Thumbnail */}
+                <FishSpeciesPhoto
+                  species={item.species}
+                  photo={item.photo}
+                  style={s.catchThumb}
+                />
+
+                {/* Text stack */}
+                <View style={s.catchInfo}>
+                  <Text style={s.catchSpecies} numberOfLines={1}>{item.species}</Text>
+                  <View style={s.catchMetaRow}>
+                    <Text style={s.catchMeta}>{formatDate(item.date)}</Text>
+                    {item.location ? (
+                      <>
+                        <Text style={s.catchMetaDot}>·</Text>
+                        <MaterialCommunityIcons
+                          name="map-marker-outline"
+                          size={11}
+                          color={colors.textTertiary}
+                        />
+                        <Text style={s.catchMeta} numberOfLines={1}>{item.location}</Text>
+                      </>
+                    ) : null}
                   </View>
-                  <Text style={s.cardTime}>{timeAgo(item.date)}</Text>
+                  {(item.bait || item.length) ? (
+                    <View style={s.catchChipRow}>
+                      {item.length ? (
+                        <View style={s.condChip}>
+                          <Text style={s.condChipText}>{item.length} cm</Text>
+                        </View>
+                      ) : null}
+                      {item.bait ? (
+                        <View style={s.condChip}>
+                          <Text style={s.condChipText}>{item.bait}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
                 </View>
+
+                {/* Weight badge */}
+                {item.weight ? (
+                  <View style={[s.weightBadge, { backgroundColor: accentColor + '22' }]}>
+                    <Text style={[s.weightBadgeText, { color: accentColor }]}>
+                      {item.weight} kg
+                    </Text>
+                  </View>
+                ) : null}
               </TouchableOpacity>
             );
           }}
@@ -191,91 +277,308 @@ export default function CatchesScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
+  safe: { flex: 1, backgroundColor: colors.bg },
 
   header: {
-    flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
-  title: { fontSize: 26, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.5 },
-  subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  brand: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: 4,
+  },
+  countBadge: {
+    backgroundColor: 'rgba(0,212,170,0.1)',
+    borderRadius: radius.xs,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
+  },
+  countBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+    fontVariant: ['tabular-nums'],
+  },
   addBtn: {
-    width: 44, height: 44, borderRadius: radius.sm,
-    backgroundColor: 'rgba(0,212,170,0.1)', borderWidth: 1, borderColor: 'rgba(0,212,170,0.25)',
-    alignItems: 'center', justifyContent: 'center', marginTop: 2,
+    width: 40,
+    height: 40,
+    borderRadius: PANEL_RADIUS,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
-  statsBanner: {
-    flexDirection: 'row', alignItems: 'center',
-    marginHorizontal: spacing.lg, marginBottom: spacing.sm,
-    backgroundColor: colors.surface, borderRadius: radius.lg,
-    borderWidth: 1, borderColor: colors.border,
+  filterScroll: { flexGrow: 0 },
+  filterPills: {
+    paddingHorizontal: spacing.lg,
+    gap: 8,
+    paddingBottom: spacing.sm,
+  },
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: PANEL_RADIUS,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
+  },
+  filterPillActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  filterPillTextActive: {
+    color: colors.bg,
+  },
+
+  // Stats bar
+  statsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: PANEL_RADIUS,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
     paddingVertical: 14,
   },
-  statBItem: { flex: 1, alignItems: 'center' },
-  statBVal: { fontSize: 17, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.3 },
-  statBUnit: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
-  statBLabel: { fontSize: 10, color: colors.textSecondary, marginTop: 2 },
-  statBDiv: { width: 1, height: 28, backgroundColor: colors.border },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 4,
+  },
+  statDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: TEAL_LINE,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    fontVariant: ['tabular-nums'],
+  },
+  statLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.textTertiary,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
 
-  searchWrap: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    marginHorizontal: spacing.lg, marginBottom: spacing.sm,
-    backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: spacing.md, paddingVertical: 11,
+  // Feed
+  feedContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: 120,
   },
-  searchInput: { flex: 1, fontSize: 14, color: colors.textPrimary },
 
-  pillsRow: { paddingHorizontal: spacing.lg, gap: 8, paddingBottom: spacing.sm },
-  pill: {
-    paddingHorizontal: 16, paddingVertical: 9, minHeight: 44, borderRadius: radius.full,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    alignItems: 'center', justifyContent: 'center',
+  // Date section header
+  dateHeader: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.textTertiary,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    paddingVertical: 8,
+    paddingTop: 12,
   },
-  pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  pillText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
-  pillTextActive: { color: colors.background, fontWeight: '700' },
 
-  grid: { paddingHorizontal: spacing.lg, paddingBottom: 110, gap: 12 },
-  card: {
-    width: CARD_W, backgroundColor: colors.surface,
-    borderRadius: radius.md, overflow: 'hidden',
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.1)',
-    ...elevation.raised,
+  // Compact list rows grouped into a surface card
+  catchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: colors.surface,
+    gap: 12,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderLeftColor: TEAL_LINE,
+    borderRightColor: TEAL_LINE,
   },
-  cardPhoto: { height: 120, position: 'relative' },
-  pbBadge: {
-    position: 'absolute', top: 8, left: 8,
-    backgroundColor: colors.secondary, borderRadius: radius.xs,
-    paddingHorizontal: 7, paddingVertical: 3,
+  catchRowFirst: {
+    borderTopLeftRadius: PANEL_RADIUS,
+    borderTopRightRadius: PANEL_RADIUS,
+    borderTopWidth: 1,
+    borderTopColor: TEAL_LINE,
   },
-  pbText: { fontSize: 9, fontWeight: '900', color: '#0A0E1A', letterSpacing: 0.5 },
-  weightOverlay: {
-    position: 'absolute', bottom: 8, right: 8,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+  catchRowLast: {
+    borderBottomLeftRadius: PANEL_RADIUS,
+    borderBottomRightRadius: PANEL_RADIUS,
+    borderBottomWidth: 1,
+    borderBottomColor: TEAL_LINE,
+  },
+  catchRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: TEAL_LINE,
+  },
+  catchThumb: {
+    width: 60,
+    height: 60,
+    borderRadius: PANEL_RADIUS,
+  },
+  catchInfo: {
+    flex: 1,
+    gap: 3,
+  },
+  catchSpecies: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  catchMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  catchMeta: {
+    fontSize: 12,
+    color: colors.textSecondary,
+  },
+  catchMetaDot: {
+    fontSize: 12,
+    color: colors.textTertiary,
+  },
+  catchChipRow: {
+    flexDirection: 'row',
+    gap: 6,
+    flexWrap: 'wrap',
+    marginTop: 2,
+  },
+  condChip: {
+    backgroundColor: colors.surface2,
     borderRadius: radius.xs,
-    paddingHorizontal: 7, paddingVertical: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
   },
-  weightOverlayText: { fontSize: 12, fontWeight: '800', color: colors.primary },
-  cardBody: { padding: 11 },
-  cardSpecies: { fontSize: 14, fontWeight: '800', color: colors.textPrimary, marginBottom: 5, letterSpacing: -0.2 },
-  cardMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 3 },
-  cardLocation: { flex: 1, fontSize: 11, color: colors.textSecondary },
-  cardTime: { fontSize: 10, color: colors.textTertiary },
+  condChipText: {
+    fontSize: 11,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  weightBadge: {
+    borderRadius: radius.xs,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+  },
+  weightBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
 
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingTop: 60, paddingHorizontal: 40 },
-  emptyGrad: {
-    width: 84, height: 84, borderRadius: 42,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+  // Personal Bests
+  pbSection: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
   },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
-  emptySub: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  pbHeader: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.textTertiary,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+  },
+  pbStrip: {
+    gap: 8,
+    paddingRight: spacing.lg,
+  },
+  pbCard: {
+    backgroundColor: colors.surface,
+    borderRadius: PANEL_RADIUS,
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    minWidth: 90,
+    alignItems: 'center',
+    gap: 3,
+  },
+  pbWeight: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: colors.primary,
+    letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
+  },
+  pbUnit: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textTertiary,
+  },
+  pbSpecies: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+
+  // Empty state
+  empty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    gap: 10,
+  },
+  emptyIconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(0,212,170,0.08)',
+    borderWidth: 1,
+    borderColor: TEAL_LINE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.textPrimary,
+    letterSpacing: 3,
+    textTransform: 'uppercase',
+  },
+  emptySub: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
   emptyBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginTop: 8, borderRadius: radius.full,
+    marginTop: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 13,
+    borderRadius: PANEL_RADIUS,
     backgroundColor: colors.primary,
-    paddingHorizontal: 24, paddingVertical: 13,
   },
-  emptyBtnText: { fontSize: 14, fontWeight: '700', color: colors.background },
+  emptyBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.bg,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
 });

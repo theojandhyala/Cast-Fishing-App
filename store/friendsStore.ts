@@ -1,7 +1,16 @@
-import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create } from 'zustand';
+import { FriendSessionPin, ReactionType, SocialCatchPost } from '../data/socialData';
+import { CastApiError, castApi } from '../services/castApi';
 
-const FRIENDS_KEY = '@cast_friends';
+const FRIENDS_KEY = '@cast_friends_v4';
+
+const cacheKey = async () => {
+  try {
+    const user = JSON.parse(await AsyncStorage.getItem('cast_user') || '{}');
+    return `${FRIENDS_KEY}:${user.id || 'signed-out'}`;
+  } catch { return `${FRIENDS_KEY}:signed-out`; }
+};
 
 export interface Friend {
   id: string;
@@ -14,6 +23,9 @@ export interface Friend {
   isOnline: boolean;
   lastActive: string;
   mutualFriends: number;
+  handle?: string;
+  country?: string;
+  countryCode?: string;
 }
 
 export interface FriendRequest {
@@ -25,212 +37,137 @@ export interface FriendRequest {
   avatarColor: string;
   sentAt: string;
   type: 'incoming' | 'outgoing';
+  countryCode?: string;
 }
 
 interface FriendsState {
   friends: Friend[];
   requests: FriendRequest[];
   suggestedAnglers: Friend[];
+  feed: SocialCatchPost[];
+  sessionPins: FriendSessionPin[];
+  reactionsByPost: Record<string, ReactionType>;
+  isHydrated: boolean;
+  isSearching: boolean;
+  lastError: string | null;
   addFriend: (friend: Friend) => void;
-  removeFriend: (id: string) => void;
-  acceptRequest: (id: string) => void;
-  declineRequest: (id: string) => void;
-  sendRequest: (angler: Friend) => void;
+  removeFriend: (id: string) => Promise<void>;
+  acceptRequest: (id: string) => Promise<void>;
+  declineRequest: (id: string) => Promise<void>;
+  sendRequest: (angler: Friend) => Promise<boolean>;
+  searchAnglers: (query: string) => Promise<void>;
+  reactToCatch: (postId: string, reaction: ReactionType) => void;
+  getActiveSessionPins: (at?: Date) => FriendSessionPin[];
+  hydrate: () => Promise<void>;
   load: () => Promise<void>;
   save: () => Promise<void>;
+  reset: () => void;
 }
 
-const INITIAL_FRIENDS: Friend[] = [
-  {
-    id: 'f1',
-    name: 'Jake Morrison',
-    level: 8,
-    catchCount: 142,
-    topSpecies: 'Carp',
-    streak: 5,
-    avatarColor: '#F97316',
-    isOnline: true,
-    lastActive: 'Now',
-    mutualFriends: 3,
-  },
-  {
-    id: 'f2',
-    name: 'Emma Clarke',
-    level: 5,
-    catchCount: 67,
-    topSpecies: 'Perch',
-    streak: 2,
-    avatarColor: '#EC4899',
-    isOnline: false,
-    lastActive: '2h ago',
-    mutualFriends: 1,
-  },
-  {
-    id: 'f3',
-    name: 'Tom Fisher',
-    level: 12,
-    catchCount: 389,
-    topSpecies: 'Pike',
-    streak: 14,
-    avatarColor: '#8B5CF6',
-    isOnline: true,
-    lastActive: 'Now',
-    mutualFriends: 5,
-  },
-];
+const messageFor = (error: unknown) => error instanceof CastApiError ? error.message : 'Could not reach CAST right now.';
 
-const INITIAL_REQUESTS: FriendRequest[] = [
-  {
-    id: 'req1',
-    fromId: 'u10',
-    fromName: 'Ryan Hughes',
-    fromLevel: 6,
-    fromCatchCount: 88,
-    avatarColor: '#22C55E',
-    sentAt: '1d ago',
-    type: 'incoming',
-  },
-  {
-    id: 'req2',
-    fromId: 'u11',
-    fromName: 'Sophia Marsh',
-    fromLevel: 3,
-    fromCatchCount: 24,
-    avatarColor: '#3B82F6',
-    sentAt: '3d ago',
-    type: 'incoming',
-  },
-];
+const persist = async (state: FriendsState) => {
+  try {
+    await AsyncStorage.setItem(await cacheKey(), JSON.stringify({
+      friends: state.friends,
+      requests: state.requests,
+      reactionsByPost: state.reactionsByPost,
+    }));
+  } catch {}
+};
 
-const INITIAL_SUGGESTED: Friend[] = [
-  {
-    id: 's1',
-    name: 'Dan Brookes',
-    level: 7,
-    catchCount: 110,
-    topSpecies: 'Trout',
-    streak: 3,
-    avatarColor: '#3B82F6',
-    isOnline: false,
-    lastActive: '5h ago',
-    mutualFriends: 2,
-  },
-  {
-    id: 's2',
-    name: 'Lucy Wade',
-    level: 4,
-    catchCount: 45,
-    topSpecies: 'Bass',
-    streak: 1,
-    avatarColor: '#EC4899',
-    isOnline: true,
-    lastActive: 'Now',
-    mutualFriends: 1,
-  },
-  {
-    id: 's3',
-    name: 'Marcus Bell',
-    level: 10,
-    catchCount: 253,
-    topSpecies: 'Pike',
-    streak: 9,
-    avatarColor: '#F97316',
-    isOnline: false,
-    lastActive: '1h ago',
-    mutualFriends: 4,
-  },
-  {
-    id: 's4',
-    name: 'Chloe Davis',
-    level: 3,
-    catchCount: 18,
-    topSpecies: 'Perch',
-    streak: 0,
-    avatarColor: '#22C55E',
-    isOnline: false,
-    lastActive: '2d ago',
-    mutualFriends: 0,
-  },
-];
+export const selectActiveFriendSessionPins = (state: FriendsState): FriendSessionPin[] => {
+  const friendIds = new Set(state.friends.map((friend) => friend.id));
+  const now = Date.now();
+  return state.sessionPins.filter((pin) => friendIds.has(pin.friendId) && new Date(pin.expiresAt).getTime() > now);
+};
 
 export const useFriendsStore = create<FriendsState>((set, get) => ({
-  friends: INITIAL_FRIENDS,
-  requests: INITIAL_REQUESTS,
-  suggestedAnglers: INITIAL_SUGGESTED,
+  friends: [],
+  requests: [],
+  suggestedAnglers: [],
+  feed: [],
+  sessionPins: [],
+  reactionsByPost: {},
+  isHydrated: false,
+  isSearching: false,
+  lastError: null,
 
-  addFriend: (friend) => {
-    set((s) => ({ friends: [...s.friends, friend] }));
-    get().save();
-  },
+  addFriend: (friend) => set((state) => ({ friends: state.friends.some((item) => item.id === friend.id) ? state.friends : [...state.friends, friend] })),
 
-  removeFriend: (id) => {
-    set((s) => ({ friends: s.friends.filter((f) => f.id !== id) }));
-    get().save();
-  },
-
-  acceptRequest: (id) => {
-    const req = get().requests.find((r) => r.id === id);
-    if (!req) return;
-    const newFriend: Friend = {
-      id: req.fromId,
-      name: req.fromName,
-      level: req.fromLevel,
-      catchCount: req.fromCatchCount,
-      topSpecies: 'Carp',
-      streak: 0,
-      avatarColor: req.avatarColor,
-      isOnline: false,
-      lastActive: 'Just now',
-      mutualFriends: 0,
-    };
-    set((s) => ({
-      requests: s.requests.filter((r) => r.id !== id),
-      friends: [...s.friends, newFriend],
-    }));
-    get().save();
-  },
-
-  declineRequest: (id) => {
-    set((s) => ({ requests: s.requests.filter((r) => r.id !== id) }));
-    get().save();
-  },
-
-  sendRequest: (angler) => {
-    const outgoing: FriendRequest = {
-      id: `out_${angler.id}`,
-      fromId: angler.id,
-      fromName: angler.name,
-      fromLevel: angler.level,
-      fromCatchCount: angler.catchCount,
-      avatarColor: angler.avatarColor,
-      sentAt: 'Just now',
-      type: 'outgoing',
-    };
-    set((s) => ({
-      requests: [...s.requests, outgoing],
-      suggestedAnglers: s.suggestedAnglers.filter((a) => a.id !== angler.id),
-    }));
-    get().save();
-  },
-
-  load: async () => {
+  removeFriend: async (id) => {
     try {
-      const stored = await AsyncStorage.getItem(FRIENDS_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        set({
-          friends: parsed.friends ?? INITIAL_FRIENDS,
-          requests: parsed.requests ?? INITIAL_REQUESTS,
-          suggestedAnglers: parsed.suggestedAnglers ?? INITIAL_SUGGESTED,
-        });
-      }
-    } catch {}
+      await castApi(`/friends/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      set((state) => ({ friends: state.friends.filter((friend) => friend.id !== id), lastError: null }));
+      await persist(get());
+    } catch (error) { set({ lastError: messageFor(error) }); }
   },
 
-  save: async () => {
+  acceptRequest: async (id) => {
     try {
-      const { friends, requests, suggestedAnglers } = get();
-      await AsyncStorage.setItem(FRIENDS_KEY, JSON.stringify({ friends, requests, suggestedAnglers }));
-    } catch {}
+      await castApi(`/friends/requests/${encodeURIComponent(id)}/accept`, { method: 'POST' });
+      await get().hydrate();
+    } catch (error) { set({ lastError: messageFor(error) }); }
   },
+
+  declineRequest: async (id) => {
+    try {
+      await castApi(`/friends/requests/${encodeURIComponent(id)}/decline`, { method: 'POST' });
+      set((state) => ({ requests: state.requests.filter((request) => request.id !== id), lastError: null }));
+      await persist(get());
+    } catch (error) { set({ lastError: messageFor(error) }); }
+  },
+
+  sendRequest: async (angler) => {
+    try {
+      await castApi('/friends/request', { method: 'POST', body: JSON.stringify({ username: angler.name }) });
+      set((state) => ({ suggestedAnglers: state.suggestedAnglers.filter((item) => item.id !== angler.id), lastError: null }));
+      await get().hydrate();
+      return true;
+    } catch (error) {
+      set({ lastError: messageFor(error) });
+      return false;
+    }
+  },
+
+  searchAnglers: async (query) => {
+    const value = query.trim().replace(/^@/, '');
+    if (value.length < 2) { set({ suggestedAnglers: [], lastError: null }); return; }
+    set({ isSearching: true, lastError: null });
+    try {
+      const { users } = await castApi<{ users: Friend[] }>(`/friends/search?q=${encodeURIComponent(value)}`);
+      set({ suggestedAnglers: users, isSearching: false });
+    } catch (error) { set({ suggestedAnglers: [], isSearching: false, lastError: messageFor(error) }); }
+  },
+
+  reactToCatch: (postId, reaction) => set((state) => {
+    const next = { ...state.reactionsByPost };
+    if (next[postId] === reaction) delete next[postId]; else next[postId] = reaction;
+    return { reactionsByPost: next };
+  }),
+
+  getActiveSessionPins: (at = new Date()) => {
+    const friendIds = new Set(get().friends.map((friend) => friend.id));
+    return get().sessionPins.filter((pin) => friendIds.has(pin.friendId) && new Date(pin.expiresAt).getTime() > at.getTime());
+  },
+
+  hydrate: async () => {
+    try {
+      const [{ friends }, { requests }] = await Promise.all([
+        castApi<{ friends: Friend[] }>('/friends'),
+        castApi<{ requests: FriendRequest[] }>('/friends/requests'),
+      ]);
+      set({ friends, requests, isHydrated: true, lastError: null });
+      await persist(get());
+    } catch (error) {
+      try {
+        const cached = JSON.parse(await AsyncStorage.getItem(await cacheKey()) || '{}');
+        set({ friends: cached.friends || [], requests: cached.requests || [], isHydrated: true, lastError: messageFor(error) });
+      } catch { set({ friends: [], requests: [], isHydrated: true, lastError: messageFor(error) }); }
+    }
+  },
+
+  load: async () => get().hydrate(),
+  save: async () => persist(get()),
+  reset: () => set({ friends: [], requests: [], suggestedAnglers: [], feed: [], sessionPins: [], reactionsByPost: {}, isHydrated: false, isSearching: false, lastError: null }),
 }));

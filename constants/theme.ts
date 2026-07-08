@@ -1,48 +1,37 @@
 export const colors = {
+  // Backgrounds — deep navy, layered
+  bg: '#07111F',
+  surface: '#0D1A2D',
+  surface2: '#122036',
+  surface3: '#172845',
+  // Borders
+  border: 'rgba(255,255,255,0.07)',
+  borderMid: 'rgba(255,255,255,0.12)',
+  borderStrong: 'rgba(255,255,255,0.18)',
+  // Brand
   primary: '#00D4AA',
-  primaryDim: '#0B5F4F',
-  accentBlue: '#2DD4FF',
-  secondary: '#F59E0B',
-  background: '#0A0E1A',
-  surface: '#101827',
-  surface2: '#121C2D',
-  textPrimary: '#F9FAFB',
-  textSecondary: '#8B95A7',
-  textTertiary: '#4B5566',
+  primaryDim: 'rgba(0,212,170,0.12)',
+  secondary: '#4DA3FF',
+  secondaryDim: 'rgba(77,163,255,0.12)',
+  accent: '#F59E0B',
+  accentDim: 'rgba(245,158,11,0.12)',
+  // Text
+  textPrimary: '#EFF6FF',
+  textSecondary: '#7A9BB5',
+  textTertiary: '#4A6580',
+  // Status
   success: '#10B981',
-  warning: '#F59E0B',
   danger: '#EF4444',
-  border: 'rgba(255,255,255,0.08)',
-  borderStrong: 'rgba(255,255,255,0.16)',
-  line: 'rgba(0,212,170,0.35)',
+  warning: '#F59E0B',
+  // Compat aliases so existing screens don't break
+  background: '#07111F',
+  background2: '#0D1A2D',
+  primaryDimColor: 'rgba(0,212,170,0.12)',
+  accentBlue: '#4DA3FF',
+  line: 'rgba(0,212,170,0.2)',
 };
 
-// Soft, layered elevation for a premium "glass" surface feel — used on cards
-// that should sit above the background rather than blend flat into it.
-export const elevation = {
-  card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 6,
-  },
-  raised: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  glow: {
-    shadowColor: '#00D4AA',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-};
-
+// 8pt spacing system
 export const spacing = {
   xs: 4,
   sm: 8,
@@ -50,38 +39,65 @@ export const spacing = {
   lg: 24,
   xl: 32,
   xxl: 48,
+  '2': 2, '4': 4, '6': 6, '8': 8, '12': 12, '16': 16, '20': 20, '24': 24, '32': 32, '40': 40, '48': 48, '64': 64,
 };
 
-// Soft, rounded corner system for a premium, modern card-based feel.
 export const radius = {
-  xs: 6,
-  sm: 10,
-  md: 14,
-  lg: 18,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
   xl: 24,
   full: 9999,
 };
 
-export const fonts = {
-  body: 'Inter_400Regular',
-  bodySemi: 'Inter_600SemiBold',
-  bodyBold: 'Inter_700Bold',
-  display: 'Syne_700Bold',
-  displaySemi: 'Syne_600SemiBold',
-  mono: 'JetBrainsMono_500Medium',
-  monoBold: 'JetBrainsMono_700Bold',
+// Depth through shadow only — no gradients
+export const elevation = {
+  card: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  raised: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  glow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
+  },
 };
 
 export const typography = {
-  h1: { fontSize: 30, fontWeight: '700' as const, color: '#F9FAFB', fontFamily: fonts.display, letterSpacing: -0.5 },
-  h2: { fontSize: 22, fontWeight: '700' as const, color: '#F9FAFB', fontFamily: fonts.display, letterSpacing: -0.3 },
-  h3: { fontSize: 18, fontWeight: '600' as const, color: '#F9FAFB', fontFamily: fonts.bodySemi },
-  h4: { fontSize: 16, fontWeight: '600' as const, color: '#F9FAFB', fontFamily: fonts.bodySemi },
-  body: { fontSize: 15, fontWeight: '400' as const, color: '#F9FAFB', fontFamily: fonts.body },
-  bodySmall: { fontSize: 13, fontWeight: '400' as const, color: '#8B95A7', fontFamily: fonts.body },
-  caption: { fontSize: 11, fontWeight: '600' as const, color: '#8B95A7', fontFamily: fonts.bodySemi, letterSpacing: 1.2, textTransform: 'uppercase' as const },
-  label: { fontSize: 13, fontWeight: '600' as const, color: '#F9FAFB', fontFamily: fonts.bodySemi },
-  // Tabular/technical numerals for stats, timers, scores.
-  mono: { fontSize: 15, fontWeight: '500' as const, color: '#F9FAFB', fontFamily: fonts.mono },
-  monoLarge: { fontSize: 28, fontWeight: '700' as const, color: '#F9FAFB', fontFamily: fonts.monoBold },
+  display: { fontSize: 56, fontWeight: '800' as const, letterSpacing: -1.5 },
+  h1: { fontSize: 34, fontWeight: '700' as const, letterSpacing: -0.5 },
+  h2: { fontSize: 24, fontWeight: '700' as const, letterSpacing: -0.3 },
+  h3: { fontSize: 18, fontWeight: '600' as const, letterSpacing: -0.2 },
+  body: { fontSize: 15, fontWeight: '400' as const },
+  bodyMed: { fontSize: 15, fontWeight: '500' as const },
+  bodySemi: { fontSize: 15, fontWeight: '600' as const },
+  bodySmall: { fontSize: 13, fontWeight: '400' as const },
+  caption: { fontSize: 12, fontWeight: '500' as const },
+  label: { fontSize: 11, fontWeight: '700' as const, letterSpacing: 0.5 },
+  micro: { fontSize: 10, fontWeight: '600' as const, letterSpacing: 0.8 },
+  mono: { fontSize: 15, fontWeight: '500' as const },
+  monoLarge: { fontSize: 28, fontWeight: '700' as const, letterSpacing: -0.5 },
+  // Backwards compat aliases for screens not yet migrated
+  bodyBold: { fontSize: 15, fontWeight: '700' as const },
+  monoBold: { fontSize: 15, fontWeight: '700' as const },
+  displaySemi: { fontSize: 56, fontWeight: '700' as const, letterSpacing: -1.5 },
+  h4: { fontSize: 16, fontWeight: '600' as const },
+  bodySmall: { fontSize: 13, fontWeight: '400' as const },
+  label2: { fontSize: 11, fontWeight: '600' as const, letterSpacing: 0.5 },
 };
+
+// Backwards compat — some screens import `fonts` from theme
+export const fonts = typography;

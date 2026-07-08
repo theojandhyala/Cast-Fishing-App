@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Dimensions,
@@ -15,11 +14,12 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { colors, radius, spacing, elevation } from '../constants/theme';
 import { useSessionStore } from '../store/sessionStore';
 import { useCatchStore } from '../store/catchStore';
 import { useWeather } from '../hooks/useWeather';
+import { useTides } from '../hooks/useTides';
 
 const { width } = Dimensions.get('window');
 
@@ -36,13 +36,6 @@ function formatTime(d: Date) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-// Fake bar chart data (hourly activity)
-const BAR_DATA = [
-  0.15, 0.1, 0.08, 0.12, 0.2, 0.35,
-  0.55, 0.7, 0.85, 0.65, 0.5, 0.45,
-  0.4, 0.38, 0.42, 0.5, 0.75, 0.95,
-  0.88, 0.6, 0.35, 0.25, 0.18, 0.12,
-];
 const BAR_LABELS = ['12 AM', '3 AM', '6 AM', '9 AM', '12 PM', '3 PM', '6 PM', '9 PM', '12 AM'];
 
 function getBarColor(v: number): string {
@@ -52,23 +45,75 @@ function getBarColor(v: number): string {
   return '#4B5566';
 }
 
+function ConfirmModal({ confirm, onClose }: {
+  confirm: { title: string; message: string; action: () => void } | null;
+  onClose: () => void;
+}) {
+  return (
+    <Modal visible={!!confirm} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={s.delBackdrop}>
+        <View style={s.delCard}>
+          <Text style={s.delTitle}>{confirm?.title}</Text>
+          <Text style={s.delMsg}>{confirm?.message}</Text>
+          <View style={s.delRow}>
+            <TouchableOpacity style={s.delCancel} onPress={onClose} activeOpacity={0.75}>
+              <Text style={s.delCancelText}>CANCEL</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.delDelete}
+              onPress={() => { confirm?.action(); onClose(); }}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Confirm delete"
+            >
+              <Text style={s.delDeleteText}>DELETE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function SessionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { activeSession, addCatchToSession, endSession } = useSessionStore();
+  const { activeSession, addCatchToSession, endSession, sessionHistory, deleteSession, clearHistory } = useSessionStore();
+  const [confirm, setConfirm] = useState<{ title: string; message: string; action: () => void } | null>(null);
   const { addCatch, catches } = useCatchStore();
-  const { weather } = useWeather(activeSession?.spotQuery);
+  const { weather } = useWeather(activeSession?.latitude, activeSession?.longitude);
+  const tides = useTides(activeSession?.latitude, activeSession?.longitude);
   const [now, setNow] = useState(Date.now());
   const [logOpen, setLogOpen] = useState(false);
+  const [endConfirmOpen, setEndConfirmOpen] = useState(false);
   const [species, setSpecies] = useState('');
   const [weight, setWeight] = useState('');
   const [bait, setBait] = useState('');
   const [saved, setSaved] = useState(false);
+  const [timeToWindow, setTimeToWindow] = useState('');
+  const [tackleNote, setTackleNote] = useState('');
+  const [editingTackle, setEditingTackle] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Solunar countdown
+  useEffect(() => {
+    const update = () => {
+      const nextMajor = weather?.solunarTimes?.find((t) => t.type === 'major')?.start;
+      if (!nextMajor) return;
+      const diff = new Date(nextMajor).getTime() - Date.now();
+      if (diff <= 0) { setTimeToWindow('Active now'); return; }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      setTimeToWindow(h > 0 ? `${h}h ${m}m` : `${m}m`);
+    };
+    update();
+    const id = setInterval(update, 60000);
+    return () => clearInterval(id);
+  }, [weather]);
 
   const elapsedMs = activeSession ? now - new Date(activeSession.startTime).getTime() : 0;
 
@@ -78,29 +123,31 @@ export default function SessionScreen() {
   );
 
   const w = weather ?? { temp: 18, wind: 12, pressure: 1016, description: 'Partly Cloudy' };
+  const currentHour = new Date().getHours();
+  const barData = weather?.hourlyToday.map((hour) => hour.fishingScore / 100) ?? Array.from({ length: 24 }, () => 0.08);
+  const todayStars = Math.max(1, Math.round((weather?.fishingScore ?? 0) / 20));
+  const tomorrowStars = Math.max(1, Math.round((weather?.forecast7day[1]?.fishingScore ?? 0) / 20));
+  const majorWindows = weather?.solunarTimes.filter((window) => window.type === 'major') ?? [];
   const spotName = activeSession?.spotName || 'Rocky Point';
 
-  const handleEnd = () => {
-    Alert.alert('End Session', `End your session at ${spotName}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'End Session', style: 'destructive',
-        onPress: () => { endSession(); router.replace('/session-summary' as any); },
-      },
-    ]);
+  const handleEnd = () => setEndConfirmOpen(true);
+  const confirmEnd = () => {
+    setEndConfirmOpen(false);
+    endSession();
+    router.replace('/session-summary' as any);
   };
 
-  const handleLogCatch = () => {
+  const handleLogCatch = async () => {
     if (!species.trim()) return;
     const newCatch = {
       species: species.trim(),
       weight: parseFloat(weight) || 0,
       location: spotName,
-      date: new Date().toISOString(),
       bait: bait.trim() || undefined,
       notes: '',
     };
-    const result = addCatch(newCatch as any);
+    const result = await addCatch(newCatch as any);
+    addCatchToSession(result.id);
     setSpecies(''); setWeight(''); setBait('');
     setLogOpen(false);
   };
@@ -122,23 +169,83 @@ export default function SessionScreen() {
   if (!activeSession) {
     return (
       <SafeAreaView style={s.safe} edges={['top']}>
-        <View style={s.noSessionContainer}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
           <LinearGradient colors={['#0A1E2E', '#051015']} style={s.noSessionHero}>
-            <MaterialCommunityIcons name="fish" size={48} color="rgba(0,212,170,0.3)" />
-            <Text style={s.noSessionTitle}>No Active Session</Text>
-            <Text style={s.noSessionSub}>Start fishing to track your session</Text>
+            <View style={s.noSessionIconCircle}>
+              <MaterialCommunityIcons name="fish" size={40} color={colors.primary} />
+            </View>
+            <Text style={s.noSessionTitle}>Ready to fish?</Text>
+            <Text style={s.noSessionSub}>Start a session to track catches, conditions, and bite windows in real time.</Text>
             <TouchableOpacity
               style={s.noSessionBtn}
               onPress={() => router.push('/(tabs)/map' as any)}
               activeOpacity={0.85}
             >
               <LinearGradient colors={['#00D4AA', '#00B891']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.noSessionBtnGrad}>
-                <MaterialCommunityIcons name="fish" size={18} color="#051410" />
+                <MaterialCommunityIcons name="map-marker-outline" size={18} color="#051410" />
                 <Text style={s.noSessionBtnText}>FIND A SPOT</Text>
               </LinearGradient>
             </TouchableOpacity>
           </LinearGradient>
-        </View>
+
+          {sessionHistory.length > 0 && (
+            <View style={s.historySection}>
+              <View style={s.historyHeaderRow}>
+                <Text style={s.historyTitle}>PAST SESSIONS</Text>
+                <TouchableOpacity
+                  onPress={() => setConfirm({
+                    title: 'Clear all sessions?',
+                    message: 'This permanently removes every past session from this device.',
+                    action: () => clearHistory(),
+                  })}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={s.historyClear}>CLEAR ALL</Text>
+                </TouchableOpacity>
+              </View>
+              {sessionHistory.map((sess, i) => {
+                const start = new Date(sess.startTime);
+                const end = new Date(sess.endTime);
+                const durMs = end.getTime() - start.getTime();
+                const durH = Math.floor(durMs / 3600000);
+                const durM = Math.floor((durMs % 3600000) / 60000);
+                const durStr = durH > 0 ? `${durH}h ${durM}m` : `${durM}m`;
+                const dateStr = start.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+                const sessKey = sess.id ?? sess.startTime;
+                const onDelete = () => setConfirm({
+                  title: 'Delete session?',
+                  message: `Remove your ${sess.spotName} session from ${dateStr}? This can’t be undone.`,
+                  action: () => deleteSession(sessKey),
+                });
+                return (
+                  <View key={sessKey} style={[s.historyRow, i > 0 && s.historyRowBorder]}>
+                    <View style={s.historyIcon}>
+                      <MaterialCommunityIcons name="map-marker-outline" size={18} color={colors.primary} />
+                    </View>
+                    <View style={s.historyBody}>
+                      <Text style={s.historySpot}>{sess.spotName}</Text>
+                      <Text style={s.historyMeta}>{dateStr} · {durStr}</Text>
+                    </View>
+                    <View style={s.historyCatches}>
+                      <MaterialCommunityIcons name="fish" size={12} color={colors.textSecondary} />
+                      <Text style={s.historyCatchCount}>{sess.catchIds.length}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={s.historyDeleteBtn}
+                      onPress={onDelete}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete ${sess.spotName} session`}
+                    >
+                      <MaterialCommunityIcons name="trash-can-outline" size={18} color={colors.danger} />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </ScrollView>
+        <ConfirmModal confirm={confirm} onClose={() => setConfirm(null)} />
       </SafeAreaView>
     );
   }
@@ -159,6 +266,10 @@ export default function SessionScreen() {
               <Text style={s.heroNavName}>{spotName}</Text>
             </View>
             <View style={s.heroNavRight}>
+              <View style={s.liveChip}>
+                <View style={s.liveDot} />
+                <Text style={s.liveText}>LIVE</Text>
+              </View>
               <TouchableOpacity style={s.heroNavBtn}>
                 <MaterialCommunityIcons name="share-variant-outline" size={18} color="rgba(255,255,255,0.7)" />
               </TouchableOpacity>
@@ -182,6 +293,10 @@ export default function SessionScreen() {
               </View>
               <Text style={s.timerText}>{formatElapsed(elapsedMs)}</Text>
               <Text style={s.timerLabel}>Session Time</Text>
+              <View style={s.locationChip}>
+                <MaterialCommunityIcons name="map-marker-outline" size={12} color={colors.textTertiary} />
+                <Text style={s.locationChipText} numberOfLines={1}>{spotName}</Text>
+              </View>
               <TouchableOpacity style={s.endBtn} onPress={handleEnd} activeOpacity={0.85}>
                 <MaterialCommunityIcons name="stop-circle-outline" size={14} color={colors.danger} />
                 <Text style={s.endBtnText}>End Session</Text>
@@ -199,11 +314,11 @@ export default function SessionScreen() {
               <View style={s.condGrid}>
                 {[
                   { icon: 'thermometer', val: `${w.temp}°C`, label: w.description },
-                  { icon: 'weather-windy', val: `${w.wind} km/h`, label: 'NW Wind' },
-                  { icon: 'waves', val: '1.2 m', label: 'Rising Tide' },
+                  { icon: 'weather-windy', val: `${w.wind} km/h`, label: weather ? `${weather.windDirection}° Wind` : 'Wind' },
+                  { icon: 'waves', val: `${tides.currentHeight.toFixed(1)} m`, label: tides.trend === 'rising' ? 'Rising Tide' : tides.trend === 'falling' ? 'Falling Tide' : 'Slack Tide' },
                   { icon: 'gauge', val: `${w.pressure} hPa`, label: 'Pressure' },
-                  { icon: 'water-percent', val: '85%', label: 'Humidity' },
-                  { icon: 'arrow-expand-vertical', val: '8–15 m', label: 'Depth' },
+                  { icon: 'water-percent', val: weather ? `${weather.humidity}%` : '—', label: 'Humidity' },
+                  { icon: 'arrow-expand-vertical', val: `${Math.abs(tides.nextHigh.height - tides.nextLow.height).toFixed(1)} m`, label: 'Tidal range' },
                 ].map((item, i) => (
                   <View key={i} style={s.condItem}>
                     <View style={s.condItemTop}>
@@ -215,6 +330,35 @@ export default function SessionScreen() {
                 ))}
               </View>
             </View>
+          </View>
+
+          {/* Solunar countdown + Tackle note */}
+          <View style={s.infoRowsWrap}>
+            <View style={s.infoRow}>
+              <MaterialCommunityIcons name="clock-fast" size={14} color={colors.primary} />
+              <Text style={s.infoLabel}>Next bite window</Text>
+              <Text style={s.infoVal}>{timeToWindow || '—'}</Text>
+            </View>
+            {editingTackle ? (
+              <TextInput
+                style={s.tackleInput}
+                value={tackleNote}
+                onChangeText={setTackleNote}
+                placeholder="Rig / tackle note..."
+                placeholderTextColor={colors.textTertiary}
+                autoFocus
+                onEndEditing={() => setEditingTackle(false)}
+                onBlur={() => setEditingTackle(false)}
+              />
+            ) : (
+              <TouchableOpacity onPress={() => setEditingTackle(true)} style={s.tackleRow}>
+                <MaterialCommunityIcons name="hook" size={14} color={colors.textSecondary} />
+                <Text style={s.tackleText} numberOfLines={1}>
+                  {tackleNote || 'Add rig / tackle note...'}
+                </Text>
+                <MaterialCommunityIcons name="pencil-outline" size={14} color={colors.textSecondary} />
+              </TouchableOpacity>
+            )}
           </View>
         </LinearGradient>
 
@@ -230,7 +374,7 @@ export default function SessionScreen() {
               <Text style={s.starsLabel}>Today</Text>
               <View style={s.stars}>
                 {[1,2,3,4,5].map(i => (
-                  <MaterialCommunityIcons key={i} name={i <= 4 ? 'star' : 'star-half-full'} size={12} color={colors.secondary} />
+                  <MaterialCommunityIcons key={i} name={i <= todayStars ? 'star' : 'star-outline'} size={12} color={colors.secondary} />
                 ))}
               </View>
             </View>
@@ -238,15 +382,15 @@ export default function SessionScreen() {
               <Text style={s.starsLabel}>Tomorrow</Text>
               <View style={s.stars}>
                 {[1,2,3,4,5].map(i => (
-                  <MaterialCommunityIcons key={i} name={i <= 4 ? 'star' : 'star-outline'} size={12} color={colors.secondary} />
+                  <MaterialCommunityIcons key={i} name={i <= tomorrowStars ? 'star' : 'star-outline'} size={12} color={colors.secondary} />
                 ))}
               </View>
             </View>
             {/* Bar chart */}
             <View style={s.barChart}>
-              {BAR_DATA.map((v, i) => (
+              {barData.map((v, i) => (
                 <View key={i} style={s.barWrap}>
-                  <View style={[s.bar, { height: Math.max(4, v * 48), backgroundColor: getBarColor(v) }]} />
+                  <View style={[s.bar, { height: Math.max(4, v * 48), backgroundColor: i === currentHour ? colors.secondary : getBarColor(v) }]} />
                 </View>
               ))}
             </View>
@@ -277,26 +421,24 @@ export default function SessionScreen() {
               <Text style={s.cardTitle}>FISH ACTIVITY</Text>
               <MaterialCommunityIcons name="information-outline" size={14} color={colors.textTertiary} />
             </View>
-            {/* Ring */}
-            <View style={s.ringContainer}>
-              <View style={s.ringOuter}>
-                <View style={s.ringInner}>
-                  <Text style={s.ringPct}>78%</Text>
-                  <Text style={s.ringLabel}>High</Text>
-                </View>
+            {/* Activity % as plain stat */}
+            <View style={s.activityStatWrap}>
+              <Text style={s.activityPct}>{weather?.fishingScore ?? '—'}{weather ? '%' : ''}</Text>
+              <Text style={s.activityLabel}>{!weather ? 'Loading' : weather.fishingScore >= 75 ? 'High' : weather.fishingScore >= 50 ? 'Moderate' : 'Low'}</Text>
+              <View style={s.activityBarWrap}>
+                <View style={[s.activityBar, { width: `${weather?.fishingScore ?? 0}%` as any }]} />
               </View>
             </View>
             {/* Major times */}
             <Text style={s.majorTimesTitle}>MAJOR TIMES</Text>
-            {[
-              '6:30 AM – 9:30 AM',
-              '5:20 PM – 8:20 PM',
-            ].map(t => (
-              <View key={t} style={s.majorTimeRow}>
-                <Text style={s.majorTimeText}>{t}</Text>
+            {majorWindows.length > 0 ? majorWindows.map((window) => (
+              <View key={window.start} style={s.majorTimeRow}>
+                <Text style={s.majorTimeText}>{window.start} – {window.end}</Text>
                 <MaterialCommunityIcons name="star" size={12} color={colors.secondary} />
               </View>
-            ))}
+            )) : (
+              <Text style={s.majorTimeText}>No major windows today</Text>
+            )}
           </View>
         </View>
 
@@ -311,7 +453,7 @@ export default function SessionScreen() {
               { icon: 'camera-outline', label: 'Take Photo', onPress: () => {} },
             ].map(a => (
               <TouchableOpacity key={a.label} style={s.actionBtn} onPress={a.onPress} activeOpacity={0.85}>
-                <MaterialCommunityIcons name={a.icon as any} size={28} color={colors.primary} />
+                <MaterialCommunityIcons name={a.icon as any} size={32} color={colors.primary} />
                 <Text style={s.actionLabel}>{a.label}</Text>
               </TouchableOpacity>
             ))}
@@ -330,19 +472,18 @@ export default function SessionScreen() {
             </View>
             {sessionCatches.length === 0 ? (
               <>
-                {/* Demo catches when no real ones */}
                 {[
                   { name: 'European Sea Bass', meta: '72 cm · 4.2 kg', time: '7:15 AM' },
                   { name: 'Bluefin Tuna', meta: '112 cm · 18.7 kg', time: 'Yesterday' },
                   { name: 'Mackerel', meta: '51 cm · 2.1 kg', time: 'Yesterday' },
                 ].map(c => (
                   <View key={c.name} style={s.miniCatch}>
-                    <LinearGradient colors={['#132035', '#0a1525']} style={s.miniCatchPhoto}>
+                    <View style={s.miniCatchPhoto}>
                       <MaterialCommunityIcons name="fish" size={14} color="rgba(0,212,170,0.4)" />
                       <View style={s.miniCatchBookmark}>
                         <MaterialCommunityIcons name="bookmark-outline" size={10} color="rgba(255,255,255,0.5)" />
                       </View>
-                    </LinearGradient>
+                    </View>
                     <Text style={s.miniCatchName} numberOfLines={1}>{c.name}</Text>
                     <Text style={s.miniCatchMeta}>{c.meta}</Text>
                     <Text style={s.miniCatchTime}>{c.time}</Text>
@@ -351,9 +492,9 @@ export default function SessionScreen() {
               </>
             ) : sessionCatches.slice(0, 3).map(c => (
               <View key={c.id} style={s.miniCatch}>
-                <LinearGradient colors={['#1a3a2a', '#0d1f16']} style={s.miniCatchPhoto}>
+                <View style={[s.miniCatchPhoto, { backgroundColor: 'rgba(0,212,170,0.08)' }]}>
                   <MaterialCommunityIcons name="fish" size={14} color="rgba(0,212,170,0.4)" />
-                </LinearGradient>
+                </View>
                 <Text style={s.miniCatchName} numberOfLines={1}>{c.species}</Text>
                 <Text style={s.miniCatchMeta}>{c.weight ? `${c.weight} kg` : ''}</Text>
                 <Text style={s.miniCatchTime}>{formatTime(new Date(c.date))}</Text>
@@ -364,16 +505,16 @@ export default function SessionScreen() {
           {/* Tide */}
           <View style={[s.card, { flex: 1 }]}>
             <Text style={s.cardTitle}>TIDE</Text>
-            <Text style={s.tideHeight}>1.2 m</Text>
-            <Text style={s.tideStatus}>Rising</Text>
+            <Text style={s.tideHeight}>{tides.currentHeight.toFixed(1)} m</Text>
+            <Text style={s.tideStatus}>{tides.trend === 'rising' ? 'Rising' : tides.trend === 'falling' ? 'Falling' : 'Slack'}</Text>
             <View style={s.tideTimesRow}>
               <View>
                 <Text style={s.tideLbl}>High</Text>
-                <Text style={s.tideTime}>6:42 AM</Text>
+                <Text style={s.tideTime}>{tides.nextHigh.time}</Text>
               </View>
               <View>
                 <Text style={s.tideLbl}>Low</Text>
-                <Text style={s.tideTime}>12:48 PM</Text>
+                <Text style={s.tideTime}>{tides.nextLow.time}</Text>
               </View>
             </View>
             {/* Tide chart */}
@@ -390,13 +531,6 @@ export default function SessionScreen() {
                 <Text style={s.tideAxis}>0 m</Text>
                 <View style={s.tideAxisLine} />
               </View>
-              {/* Wave */}
-              <View style={s.tideWaveContainer}>
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,212,170,0.25)']}
-                  style={s.tideWaveFill}
-                />
-              </View>
               <View style={s.tideBottomLabels}>
                 {['12 AM','6 AM','12 PM','6 PM','12 AM'].map(l => (
                   <Text key={l} style={s.tideBottomLabel}>{l}</Text>
@@ -410,9 +544,9 @@ export default function SessionScreen() {
         <View style={s.twoColRow}>
           {/* Spot info */}
           <View style={[s.card, { flex: 1, padding: 0, overflow: 'hidden' }]}>
-            <LinearGradient colors={['#1a2a40', '#0d1828']} style={s.spotPhotoArea}>
+            <View style={s.spotPhotoArea}>
               <MaterialCommunityIcons name="map-marker" size={28} color="rgba(0,212,170,0.3)" />
-            </LinearGradient>
+            </View>
             <View style={s.spotCardInfo}>
               <Text style={s.spotCardName}>{spotName}</Text>
               <View style={s.spotCardMeta}>
@@ -505,6 +639,23 @@ export default function SessionScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* End Session Confirm Modal */}
+      <Modal visible={endConfirmOpen} transparent animationType="fade" onRequestClose={() => setEndConfirmOpen(false)}>
+        <View style={s.confirmOverlay}>
+          <View style={s.confirmBox}>
+            <MaterialCommunityIcons name="flag-checkered" size={36} color={colors.primary} style={{ marginBottom: 12 }} />
+            <Text style={s.confirmTitle}>End Session?</Text>
+            <Text style={s.confirmSub}>Finish your session at {spotName} and view your summary.</Text>
+            <TouchableOpacity style={s.confirmEndBtn} onPress={confirmEnd} activeOpacity={0.85}>
+              <Text style={s.confirmEndText}>End Session</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={s.confirmCancelBtn} onPress={() => setEndConfirmOpen(false)} activeOpacity={0.85}>
+              <Text style={s.confirmCancelText}>Keep Fishing</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -512,18 +663,79 @@ export default function SessionScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
-  noSessionContainer: { flex: 1 },
   noSessionHero: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 40,
+    alignItems: 'center', justifyContent: 'center', gap: 12, padding: 40, paddingVertical: 60,
   },
-  noSessionTitle: { fontSize: 22, fontWeight: '800', color: colors.textPrimary, marginTop: 8 },
-  noSessionSub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center' },
-  noSessionBtn: { borderRadius: radius.full, overflow: 'hidden', marginTop: 16, alignSelf: 'stretch', ...elevation.glow },
+  noSessionIconCircle: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: colors.primaryDim,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
+  },
+  noSessionTitle: { fontSize: 24, fontWeight: '800', color: colors.textPrimary },
+  noSessionSub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  noSessionBtn: { borderRadius: radius.full, overflow: 'hidden', marginTop: 8, alignSelf: 'stretch' },
   noSessionBtnGrad: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 10, paddingVertical: 16,
   },
-  noSessionBtnText: { fontSize: 14, fontWeight: '800', color: '#051410', letterSpacing: 1.5 },
+  noSessionBtnText: { fontSize: 14, fontWeight: '800', color: '#051410', letterSpacing: 0.8 },
+
+  historySection: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  historyHeaderRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: spacing.md, paddingTop: 14, paddingBottom: 10,
+  },
+  historyTitle: {
+    fontSize: 10, fontWeight: '800', color: colors.textTertiary, letterSpacing: 0.8,
+  },
+  historyClear: {
+    fontSize: 10, fontWeight: '800', color: colors.danger, letterSpacing: 0.8,
+  },
+  historyRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: spacing.md, paddingVertical: 14,
+  },
+  historyDeleteBtn: {
+    width: 32, height: 32, borderRadius: radius.sm,
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  // Delete-confirm modal
+  delBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', padding: spacing.lg },
+  delCard: {
+    width: '100%', maxWidth: 340, backgroundColor: colors.surface, borderRadius: radius.lg,
+    borderWidth: 1, borderColor: colors.border, padding: spacing.lg,
+  },
+  delTitle: { fontSize: 17, fontWeight: '800', color: colors.textPrimary },
+  delMsg: { fontSize: 14, color: colors.textSecondary, marginTop: 8, lineHeight: 20 },
+  delRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  delCancel: {
+    flex: 1, height: 46, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  delCancelText: { fontSize: 12, fontWeight: '800', letterSpacing: 1, color: colors.textSecondary },
+  delDelete: { flex: 1, height: 46, borderRadius: radius.sm, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center' },
+  delDeleteText: { fontSize: 12, fontWeight: '800', letterSpacing: 1, color: '#fff' },
+  historyRowBorder: { borderTopWidth: 1, borderTopColor: colors.border },
+  historyIcon: {
+    width: 36, height: 36, borderRadius: radius.sm,
+    backgroundColor: 'rgba(0,212,170,0.1)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  historyBody: { flex: 1, gap: 3 },
+  historySpot: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  historyMeta: { fontSize: 12, color: colors.textSecondary },
+  historyCatches: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  historyCatchCount: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
 
   // Hero
   hero: { paddingHorizontal: spacing.lg, paddingBottom: 20 },
@@ -533,7 +745,16 @@ const s = StyleSheet.create({
   heroNavBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   heroNavCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 4 },
   heroNavName: { fontSize: 17, fontWeight: '700', color: '#fff' },
-  heroNavRight: { flexDirection: 'row', gap: 0 },
+  heroNavRight: { flexDirection: 'row', alignItems: 'center', gap: 0 },
+  liveChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(239,68,68,0.15)',
+    borderRadius: radius.full, paddingHorizontal: 9, paddingVertical: 4,
+    borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)',
+    marginRight: 4,
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444' },
+  liveText: { fontSize: 10, fontWeight: '800', color: '#EF4444', letterSpacing: 0.8 },
   heroSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 20, marginLeft: 36 },
 
   heroBody: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
@@ -541,16 +762,20 @@ const s = StyleSheet.create({
   timerCol: { flex: 1 },
   sessionActivePill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(0,212,170,0.15)',
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.3)',
-    borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 5,
+    backgroundColor: 'rgba(0,212,170,0.12)',
+    borderRadius: radius.full, paddingHorizontal: 10, paddingVertical: 4,
     alignSelf: 'flex-start', marginBottom: 10,
   },
-  activeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
-  sessionActiveText: { fontSize: 11, fontWeight: '700', color: colors.primary, letterSpacing: 0.5 },
+  activeDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#00D4AA' },
+  sessionActiveText: { fontSize: 11, fontWeight: '800', color: '#00D4AA', letterSpacing: 0.8 },
 
-  timerText: { fontSize: 38, fontWeight: '700', color: '#fff', letterSpacing: -1, marginBottom: 4 },
-  timerLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 12 },
+  timerText: { fontSize: 44, fontWeight: '700', color: '#fff', marginBottom: 4, fontVariant: ['tabular-nums'] },
+  timerLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 8 },
+  locationChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    alignSelf: 'flex-start', marginBottom: 12,
+  },
+  locationChipText: { fontSize: 11, color: colors.textTertiary },
 
   endBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -569,13 +794,35 @@ const s = StyleSheet.create({
     padding: 10,
   },
   condHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  condTitle: { fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 1 },
+  condTitle: { fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.8 },
   condViewAll: { fontSize: 10, color: colors.primary, fontWeight: '600' },
   condGrid: { flexDirection: 'row', flexWrap: 'wrap' },
   condItem: { width: '33.33%', marginBottom: 10 },
   condItemTop: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 2 },
   condValue: { fontSize: 11, fontWeight: '700', color: colors.textPrimary },
   condLabel: { fontSize: 9, color: colors.textSecondary },
+
+  // Info rows (solunar + tackle)
+  infoRowsWrap: { marginTop: 12, gap: 8 },
+  infoRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: radius.sm,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  infoLabel: { flex: 1, fontSize: 12, color: colors.textSecondary },
+  infoVal: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  tackleRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: radius.sm,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  tackleText: { flex: 1, fontSize: 12, color: colors.textSecondary },
+  tackleInput: {
+    backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: radius.sm,
+    borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 12, paddingVertical: 8,
+    fontSize: 12, color: colors.textPrimary,
+  },
 
   // Two-column sections
   twoColRow: {
@@ -587,10 +834,9 @@ const s = StyleSheet.create({
     borderRadius: radius.md,
     borderWidth: 1, borderColor: colors.border,
     padding: 12,
-    ...elevation.raised,
   },
   cardHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  cardTitle: { fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 1 },
+  cardTitle: { fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.8 },
   viewAll: { fontSize: 11, color: colors.primary, fontWeight: '600' },
 
   // Stars
@@ -609,35 +855,32 @@ const s = StyleSheet.create({
   legendDot: { width: 6, height: 6, borderRadius: 3 },
   legendText: { fontSize: 9, color: colors.textSecondary },
 
-  // Activity ring
-  ringContainer: { alignItems: 'center', marginVertical: 10 },
-  ringOuter: {
-    width: 72, height: 72, borderRadius: 36,
-    borderWidth: 5, borderColor: colors.primary,
-    alignItems: 'center', justifyContent: 'center',
-    ...elevation.glow,
+  // Activity % plain stat
+  activityStatWrap: { alignItems: 'center', marginVertical: 10 },
+  activityPct: { fontSize: 28, fontWeight: '800', color: colors.textPrimary },
+  activityLabel: { fontSize: 11, color: colors.textSecondary, marginBottom: 8 },
+  activityBarWrap: {
+    width: '100%', height: 6, backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: radius.full, overflow: 'hidden',
   },
-  ringInner: { alignItems: 'center' },
-  ringPct: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
-  ringLabel: { fontSize: 10, color: colors.textSecondary },
+  activityBar: { height: '100%', backgroundColor: colors.primary, borderRadius: radius.full },
 
-  majorTimesTitle: { fontSize: 9, fontWeight: '800', color: colors.textTertiary, letterSpacing: 1, marginBottom: 6 },
+  majorTimesTitle: { fontSize: 9, fontWeight: '800', color: colors.textTertiary, letterSpacing: 0.8, marginBottom: 6 },
   majorTimeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 },
   majorTimeText: { fontSize: 10, color: colors.textSecondary },
 
   // Actions
   actionsSection: { paddingHorizontal: spacing.lg, marginBottom: 10 },
-  sectionTitle: { fontSize: 11, fontWeight: '800', color: colors.textSecondary, letterSpacing: 1, marginBottom: 10 },
+  sectionTitle: { fontSize: 11, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.8, marginBottom: 10 },
   actionsGrid: {
     flexDirection: 'row', gap: 8,
   },
   actionBtn: {
-    flex: 1, alignItems: 'center', gap: 8,
+    flex: 1, alignItems: 'center', gap: 10,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
     borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
-    paddingVertical: 16,
-    ...elevation.raised,
+    paddingVertical: 20,
   },
   actionLabel: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, textAlign: 'center' },
 
@@ -645,6 +888,7 @@ const s = StyleSheet.create({
   miniCatch: { marginBottom: 10 },
   miniCatchPhoto: {
     height: 60, borderRadius: radius.sm, overflow: 'hidden',
+    backgroundColor: 'rgba(19,32,53,0.8)',
     alignItems: 'center', justifyContent: 'center', marginBottom: 5, position: 'relative',
   },
   miniCatchBookmark: { position: 'absolute', top: 4, right: 4 },
@@ -663,13 +907,14 @@ const s = StyleSheet.create({
   tideAxisRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
   tideAxis: { fontSize: 8, color: colors.textTertiary, width: 22 },
   tideAxisLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  tideWaveContainer: { position: 'absolute', bottom: 16, left: 0, right: 0, height: 28, overflow: 'hidden' },
-  tideWaveFill: { flex: 1, borderRadius: 8 },
   tideBottomLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
   tideBottomLabel: { fontSize: 8, color: colors.textTertiary },
 
   // Spot card
-  spotPhotoArea: { height: 80, alignItems: 'center', justifyContent: 'center' },
+  spotPhotoArea: {
+    height: 80, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(26,42,64,0.8)',
+  },
   spotCardInfo: { padding: 10 },
   spotCardName: { fontSize: 14, fontWeight: '800', color: colors.textPrimary, marginBottom: 4 },
   spotCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3 },
@@ -724,5 +969,13 @@ const s = StyleSheet.create({
     backgroundColor: colors.primary, borderRadius: radius.full,
     alignItems: 'center', paddingVertical: 15, marginTop: 8,
   },
-  saveBtnText: { fontSize: 14, fontWeight: '800', color: '#0A0E1A', letterSpacing: 1 },
+  saveBtnText: { fontSize: 14, fontWeight: '800', color: '#0A0E1A', letterSpacing: 0.8 },
+  confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', padding: 32 },
+  confirmBox: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 28, width: '100%', maxWidth: 360, alignItems: 'center' },
+  confirmTitle: { fontSize: 22, fontWeight: '800', color: colors.textPrimary, marginBottom: 8 },
+  confirmSub: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  confirmEndBtn: { backgroundColor: '#E53E3E', borderRadius: radius.full, alignItems: 'center', paddingVertical: 14, width: '100%', marginBottom: 10 },
+  confirmEndText: { fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  confirmCancelBtn: { alignItems: 'center', paddingVertical: 10, width: '100%' },
+  confirmCancelText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
 });

@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { colors, radius, spacing, typography, fonts } from '../constants/theme';
 import { CastButton } from '../components/ui/CastButton';
 import { useSessionStore } from '../store/sessionStore';
@@ -42,7 +42,7 @@ export default function SessionSummaryScreen() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.centered}>
           <Text style={typography.body}>No session recap available.</Text>
-          <CastButton title="Back to Map" onPress={handleClose} style={{ marginTop: spacing.md }} />
+          <CastButton title="Back to Spots" onPress={handleClose} style={{ marginTop: spacing.md }} />
         </View>
       </SafeAreaView>
     );

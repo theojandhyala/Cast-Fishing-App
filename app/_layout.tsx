@@ -1,17 +1,24 @@
-import { useEffect, Component, ReactNode } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { useEffect, useState, Component, ReactNode } from 'react';
+import '../global.css';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { Stack } from 'expo-router';
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
-import { useFonts, Inter_400Regular, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { Syne_600SemiBold, Syne_700Bold } from '@expo-google-fonts/syne';
-import { JetBrainsMono_500Medium, JetBrainsMono_700Bold } from '@expo-google-fonts/jetbrains-mono';
+import { useFonts } from 'expo-font';
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useAuthStore } from '../store/authStore';
 import { useCatchStore } from '../store/catchStore';
 import { useUserStore } from '../store/userStore';
-import { useProStore } from '../store/proStore';
-import { colors } from '../constants/theme';
+import { colors, fonts } from '../constants/theme';
+
+const textDefaults = (Text as any).defaultProps ?? {};
+(Text as any).defaultProps = { ...textDefaults, style: [{ fontFamily: fonts.body }, textDefaults.style] };
+const inputDefaults = (TextInput as any).defaultProps ?? {};
+(TextInput as any).defaultProps = { ...inputDefaults, style: [{ fontFamily: fonts.body }, inputDefaults.style] };
 
 const CastTheme = {
   ...DarkTheme,
@@ -33,14 +40,14 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
   render() {
     if (this.state.error) {
       return (
-        <View style={{ flex: 1, backgroundColor: '#0A0E1A', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
           <Text style={{ color: '#00D4AA', fontSize: 18, fontWeight: '700', marginBottom: 12 }}>Something went wrong</Text>
           <Text style={{ color: '#8B95A7', fontSize: 13, textAlign: 'center', marginBottom: 24 }}>
             {(this.state.error as Error).message}
           </Text>
           <TouchableOpacity onPress={() => this.setState({ error: null })}
-            style={{ backgroundColor: '#00D4AA', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 }}>
-            <Text style={{ color: '#0A0E1A', fontWeight: '700' }}>Try Again</Text>
+            style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 }}>
+            <Text style={{ color: colors.background, fontWeight: '700' }}>Try Again</Text>
           </TouchableOpacity>
         </View>
       );
@@ -53,30 +60,53 @@ export default function RootLayout() {
   const { loadUser } = useAuthStore();
   const { loadCatches } = useCatchStore();
   const { load: loadUserPrefs } = useUserStore();
-  const { load: loadPro } = useProStore();
+  const [fontLoadTimedOut, setFontLoadTimedOut] = useState(false);
 
-  // Load fonts without blocking — app renders immediately with system fonts
-  // then upgrades to custom fonts once loaded. No blank-screen wait.
-  useFonts({
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const existing = document.getElementById('cast-global-styles');
+    if (existing) return;
+    const style = document.createElement('style');
+    style.id = 'cast-global-styles';
+    style.textContent = `@font-face{font-family:'material-community';src:url('/fonts/material-community.ttf') format('truetype');font-style:normal;font-weight:normal;font-display:block;}
+@font-face{font-family:'Inter_400Regular';src:url('/fonts/inter-400.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap;}
+@font-face{font-family:'Inter_600SemiBold';src:url('/fonts/inter-600.ttf') format('truetype');font-style:normal;font-weight:600;font-display:swap;}
+@font-face{font-family:'Inter_700Bold';src:url('/fonts/inter-700.ttf') format('truetype');font-style:normal;font-weight:700;font-display:swap;}
+[dir='auto'],input,textarea,button{font-family:'Inter_400Regular',sans-serif;font-style:normal;}`;
+    document.head.appendChild(style);
+  }, []);
+
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_600SemiBold,
     Inter_700Bold,
-    Syne_600SemiBold,
-    Syne_700Bold,
-    JetBrainsMono_500Medium,
-    JetBrainsMono_700Bold,
-    'material-community': require('@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf'),
+    ...MaterialCommunityIcons.font,
   });
 
   useEffect(() => {
+    if (fontsLoaded || fontError) return;
+    const timeout = setTimeout(() => setFontLoadTimedOut(true), 5000);
+    return () => clearTimeout(timeout);
+  }, [fontsLoaded, fontError]);
+
+  const fontsReady = fontsLoaded || Boolean(fontError) || fontLoadTimedOut;
+
+  useEffect(() => {
+    if (!fontsReady) return;
     async function init() {
       try {
-        await Promise.all([loadUser(), loadCatches(), loadUserPrefs(), loadPro()]);
+        await loadUser();
+        await Promise.all([loadCatches(), loadUserPrefs()]);
       } catch {}
       try { await SplashScreen.hideAsync(); } catch {}
     }
     init();
-  }, []);
+  }, [fontsReady]);
+
+  // Don't render until icon font is loaded — prevents rectangle flash
+  if (!fontsReady) {
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+  }
 
   return (
     <ThemeProvider value={CastTheme}>
@@ -87,6 +117,7 @@ export default function RootLayout() {
         screenOptions={{
           headerStyle: { backgroundColor: colors.background },
           headerTintColor: colors.textPrimary,
+          headerTitleStyle: { fontSize: 15, fontWeight: '600' },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: colors.background },
           animation: 'slide_from_right',
@@ -109,7 +140,7 @@ export default function RootLayout() {
         <Stack.Screen name="catch-detail" options={{ title: 'Catch Details' }} />
         <Stack.Screen name="species-detail" options={{ title: 'Species Info' }} />
         <Stack.Screen name="conditions" options={{ title: 'Tides & Conditions' }} />
-        <Stack.Screen name="pro" options={{ title: 'CAST Pro', presentation: 'modal' }} />
+        <Stack.Screen name="pro" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="fish-tips" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ title: 'My Profile' }} />
         <Stack.Screen name="friends" options={{ title: 'Friends' }} />

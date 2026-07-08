@@ -4,7 +4,7 @@ import {
   SafeAreaView, TextInput, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { useGearStore } from '../store/gearStore';
 import { GEAR_CATEGORIES } from '../data/gearCategories';
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3 },
   conditionLabel: { fontSize: 11, color: colors.textSecondary, marginLeft: 4 },
   gearValue: { fontSize: 13, fontWeight: '700', color: colors.primary },
-  gearNotes: { fontSize: 12, color: colors.textSecondary, fontStyle: 'italic', marginTop: 2 },
+  gearNotes: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   gearDate: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
   gearActions: { justifyContent: 'flex-start', gap: spacing.xs },
   actionBtn: { padding: 4 },

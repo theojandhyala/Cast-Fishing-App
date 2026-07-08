@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../ui/Icon';
 import { getTipOfDay } from '../../data/tipOfDay';
 import { colors, radius, spacing } from '../../constants/theme';
 

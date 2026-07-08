@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../components/ui/Icon';
 import { useRouter } from 'expo-router';
 import { BAITS, BAIT_CATEGORIES, BaitItem } from '../data/baitData';
 import { colors, spacing, radius } from '../constants/theme';
@@ -282,5 +282,5 @@ const styles = StyleSheet.create({
   calcInput: { backgroundColor: colors.surface2, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, fontSize: 18, fontWeight: '700', color: colors.primary, width: 80, textAlign: 'center', borderWidth: 1, borderColor: colors.border },
   calcUnit: { fontSize: 14, color: colors.textSecondary },
   calcResult: { fontSize: 22, fontWeight: '800', color: colors.primary },
-  calcNote: { fontSize: 12, color: colors.textSecondary, fontStyle: 'italic' },
+  calcNote: { fontSize: 12, color: colors.textSecondary },
 });

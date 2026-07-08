@@ -9,13 +9,13 @@ import {
   Platform,
   ScrollView,
   Alert,
-  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../../store/authStore';
 import { CastButton } from '../../components/ui/CastButton';
 import { colors, radius, spacing } from '../../constants/theme';
+import { CastLogo } from '../../components/ui/CastLogo';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -33,9 +33,9 @@ export default function LoginScreen() {
     const success = await login(email.trim(), password);
     setLoading(false);
     if (success) {
-      router.replace('/(tabs)');
+      router.replace(useAuthStore.getState().user?.hasCompletedOnboarding === false ? '/(auth)/onboarding' : '/(tabs)');
     } else {
-      Alert.alert('Error', 'Login failed. Please try again.');
+      Alert.alert('Couldn’t sign in', useAuthStore.getState().authError || 'Check your details and try again.');
     }
   };
 
@@ -52,12 +52,7 @@ export default function LoginScreen() {
         />
 
         <View style={styles.header}>
-          <Image
-            source={require('../../assets/logo-mark.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.appName}>CAST</Text>
+          <CastLogo size="lg" showWordmark />
           <Text style={styles.tagline}>Your Premium Fishing Companion</Text>
         </View>
 
@@ -68,6 +63,7 @@ export default function LoginScreen() {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email</Text>
             <TextInput
+              accessibilityLabel="Email address"
               style={styles.input}
               value={email}
               onChangeText={setEmail}
@@ -82,6 +78,7 @@ export default function LoginScreen() {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Password</Text>
             <TextInput
+              accessibilityLabel="Password"
               style={styles.input}
               value={password}
               onChangeText={setPassword}
@@ -92,10 +89,6 @@ export default function LoginScreen() {
             />
           </View>
 
-          <TouchableOpacity style={styles.forgot}>
-            <Text style={styles.forgotText}>Forgot password?</Text>
-          </TouchableOpacity>
-
           <CastButton
             title="Sign In"
             onPress={handleLogin}
@@ -105,26 +98,11 @@ export default function LoginScreen() {
             style={styles.loginBtn}
           />
 
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          <TouchableOpacity
-            style={styles.guestBtn}
-            onPress={() => {
-              login('demo@castapp.com', 'demo');
-              router.replace('/(tabs)');
-            }}
-          >
-            <Text style={styles.guestText}>Continue as Guest</Text>
-          </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+          <TouchableOpacity accessibilityRole="link" accessibilityLabel="Create a CAST account" onPress={() => router.push('/(auth)/register')}>
             <Text style={styles.footerLink}>Sign up free</Text>
           </TouchableOpacity>
         </View>

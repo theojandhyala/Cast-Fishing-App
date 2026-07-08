@@ -20,6 +20,7 @@ interface CastButtonProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   fullWidth?: boolean;
+  accessibilityLabel?: string;
 }
 
 export function CastButton({
@@ -32,6 +33,7 @@ export function CastButton({
   style,
   textStyle,
   fullWidth = false,
+  accessibilityLabel,
 }: CastButtonProps) {
   const sizeStyles = {
     sm: { paddingVertical: spacing.xs, paddingHorizontal: spacing.md, borderRadius: radius.sm },
@@ -50,6 +52,9 @@ export function CastButton({
   if (variant === 'primary') {
     return (
       <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? title}
+        accessibilityState={{ disabled: isDisabled, busy: loading }}
         onPress={onPress}
         disabled={isDisabled}
         style={[fullWidth && { width: '100%' }, !isDisabled && elevation.glow, style]}
@@ -85,6 +90,9 @@ export function CastButton({
 
   return (
     <TouchableOpacity
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? title}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
       onPress={onPress}
       disabled={isDisabled}
       style={[

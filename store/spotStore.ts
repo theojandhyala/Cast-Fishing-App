@@ -1,48 +1,28 @@
-import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ukSpots, FishingSpot } from '../data/ukSpots';
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 interface SpotState {
-  spots: FishingSpot[];
   savedSpotIds: string[];
-  saveSpot: (id: string) => void;
-  unsaveSpot: (id: string) => void;
-  isSaved: (id: string) => boolean;
-  getSavedSpots: () => FishingSpot[];
-  loadSaved: () => Promise<void>;
+  toggleSavedSpot: (id: string) => void;
+  isSpotSaved: (id: string) => boolean;
 }
 
-export const useSpotStore = create<SpotState>((set, get) => ({
-  spots: ukSpots,
-  savedSpotIds: [],
-
-  loadSaved: async () => {
-    try {
-      const stored = await AsyncStorage.getItem('cast_saved_spots');
-      if (stored) {
-        set({ savedSpotIds: JSON.parse(stored) });
-      }
-    } catch {
-      // use defaults
-    }
-  },
-
-  saveSpot: async (id) => {
-    const updated = [...get().savedSpotIds, id];
-    set({ savedSpotIds: updated });
-    await AsyncStorage.setItem('cast_saved_spots', JSON.stringify(updated));
-  },
-
-  unsaveSpot: async (id) => {
-    const updated = get().savedSpotIds.filter((s) => s !== id);
-    set({ savedSpotIds: updated });
-    await AsyncStorage.setItem('cast_saved_spots', JSON.stringify(updated));
-  },
-
-  isSaved: (id) => get().savedSpotIds.includes(id),
-
-  getSavedSpots: () => {
-    const { spots, savedSpotIds } = get();
-    return spots.filter((s) => savedSpotIds.includes(s.id));
-  },
-}));
+export const useSpotStore = create<SpotState>()(
+  persist(
+    (set, get) => ({
+      savedSpotIds: [],
+      toggleSavedSpot: (id) => set((state) => ({
+        savedSpotIds: state.savedSpotIds.includes(id)
+          ? state.savedSpotIds.filter((savedId) => savedId !== id)
+          : [...state.savedSpotIds, id],
+      })),
+      isSpotSaved: (id) => get().savedSpotIds.includes(id),
+    }),
+    {
+      name: 'cast_saved_spots_v1',
+      storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({ savedSpotIds: state.savedSpotIds }),
+    },
+  ),
+);

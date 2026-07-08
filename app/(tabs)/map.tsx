@@ -1,105 +1,142 @@
-import React, { useState, useMemo } from 'react';
+import React, { useDeferredValue, useEffect, useState, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, TextInput, FlatList, Image,
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  FlatList,
+  Alert,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { WORLD_SPOTS, WorldSpot } from '../../data/worldSpots';
-import { SpotCard } from '../../components/map/SpotCard';
-import { Modal } from 'react-native';
+import { FISHING_SPOTS, loadAllFishingSpots } from '../../data/fishingSpots';
+import { FishingSpotRecord } from '../../types/fishingSpot';
 import { colors, radius, spacing, elevation } from '../../constants/theme';
 
-import { getSpotImage } from '../../constants/spotImages';
-import { useLocation } from '../../hooks/useLocation';
-import { haversineKm, formatDistance } from '../../utils/distance';
+const TEAL_LINE = 'rgba(0,212,170,0.12)';
+const PANEL_RADIUS = radius.sm;
 import { useSessionStore } from '../../store/sessionStore';
+import { SpotPhoto } from '../../components/map/SpotPhoto';
+import { useSpotStore } from '../../store/spotStore';
 
-const DIFF_COLORS: Record<string, string> = {
-  beginner: '#10B981', intermediate: '#F59E0B', expert: '#EF4444',
+const DIFFICULTY_COLORS: Record<string, string> = {
+  beginner:     colors.success,
+  intermediate: colors.secondary,
+  expert:       colors.danger,
 };
-const TYPE_FILTERS = ['All', 'Lake', 'River', 'Sea', 'Reservoir', 'Ocean'];
+
+const TYPE_FILTERS = ['All', 'Fishery', 'Lake', 'River', 'Sea', 'Reservoir', 'Ocean'];
 const TAG_FILTERS = ['Carp', 'Predator', 'Beginner'];
-const SPOT_GRAD: Record<string, readonly [string, string]> = {
-  river: ['#1a3a2a', '#0d1f16'], lake: ['#1a2a3a', '#0d1620'],
-  sea: ['#132035', '#0a1525'], reservoir: ['#1a2535', '#0f1928'],
-  ocean: ['#0f1e30', '#0a1320'], estuary: ['#1a2a20', '#0f1a12'],
-};
-const TYPE_ICONS: Record<string, string> = {
-  river: 'waves', lake: 'water', sea: 'anchor',
-  reservoir: 'water-pump', ocean: 'sail-boat', estuary: 'water-outline',
-};
+const DISPLAY_MODES = ['List', 'Hotspots'] as const;
+type DisplayMode = typeof DISPLAY_MODES[number];
+interface Coordinate { latitude: number; longitude: number }
+
+function distanceKm(a: Coordinate, b: Coordinate) {
+  const toRadians = (degrees: number) => degrees * Math.PI / 180;
+  const dLat = toRadians(b.latitude - a.latitude);
+  const dLon = toRadians(b.longitude - a.longitude);
+  const lat1 = toRadians(a.latitude);
+  const lat2 = toRadians(b.latitude);
+  const value = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value));
+}
 
 export default function SpotsScreen() {
   const router = useRouter();
   const { activeSession } = useSessionStore();
-  const [search, setSearch] = useState('');
-  const [type, setType] = useState('All');
-  const [tag, setTag] = useState<string | null>(null);
-  const [selected, setSelected] = useState<WorldSpot | null>(null);
-  const [saved, setSaved] = useState<Set<string>>(new Set());
-  const [sortByDistance, setSortByDistance] = useState(false);
-  const { location: gpsLocation } = useLocation();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('List');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const [selectedType, setSelectedType] = useState('All');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const { savedSpotIds, toggleSavedSpot } = useSpotStore();
+  const savedSpots = useMemo(() => new Set(savedSpotIds), [savedSpotIds]);
+  const [nearCoordinate, setNearCoordinate] = useState<Coordinate | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [spots, setSpots] = useState<FishingSpotRecord[]>(() => [...FISHING_SPOTS]);
+  const [loadingSpots, setLoadingSpots] = useState(true);
+  const searchRows = useMemo(() => spots.map((spot) => ({
+    spot,
+    name: spot.name.toLocaleLowerCase(),
+    haystack: [spot.name, spot.country, spot.region, ...spot.species].join(' ').toLocaleLowerCase(),
+  })), [spots]);
+
+  useEffect(() => {
+    let active = true;
+    loadAllFishingSpots()
+      .then((loaded) => { if (active) setSpots([...loaded]); })
+      .finally(() => { if (active) setLoadingSpots(false); });
+    return () => { active = false; };
+  }, []);
 
   const filtered = useMemo(() => {
-    let result = WORLD_SPOTS.filter(s => {
-      const matchType = type === 'All' || s.type === type.toLowerCase();
-      const matchSearch = !search ||
-        s.name.toLowerCase().includes(search.toLowerCase()) ||
-        s.country.toLowerCase().includes(search.toLowerCase());
-      const matchTag = !tag ||
-        (tag === 'Beginner' && s.difficulty === 'beginner') ||
-        (tag === 'Carp' && s.species.some(sp => sp.toLowerCase().includes('carp'))) ||
-        (tag === 'Predator' && s.species.some(sp => ['pike','perch','zander','bass'].some(p => sp.toLowerCase().includes(p))));
+    const normalisedQuery = deferredSearchQuery.trim().toLocaleLowerCase();
+    return searchRows.filter(({ spot, haystack }) => {
+      const matchType = selectedType === 'All' || spot.type === selectedType.toLowerCase();
+      const matchSearch = !normalisedQuery || haystack.includes(normalisedQuery);
+      const matchTag = !selectedTag ||
+        (selectedTag === 'Beginner' && spot.difficulty === 'beginner') ||
+        (selectedTag === 'Carp' && spot.species.some((species) => species.toLowerCase().includes('carp'))) ||
+        (selectedTag === 'Predator' && spot.species.some((species) => ['pike', 'perch', 'zander', 'bass', 'predator'].some((predator) => species.toLowerCase().includes(predator))));
       return matchType && matchSearch && matchTag;
-    });
-    if (sortByDistance && gpsLocation) {
-      result = [...result].sort((a, b) =>
-        haversineKm(gpsLocation.latitude, gpsLocation.longitude, a.latitude, a.longitude) -
-        haversineKm(gpsLocation.latitude, gpsLocation.longitude, b.latitude, b.longitude)
-      );
+    }).sort((a, b) => {
+      if (nearCoordinate) return distanceKm(nearCoordinate, a.spot) - distanceKm(nearCoordinate, b.spot);
+      if (!normalisedQuery) return 0;
+      const aRank = a.name === normalisedQuery ? 0 : a.name.startsWith(normalisedQuery) ? 1 : 2;
+      const bRank = b.name === normalisedQuery ? 0 : b.name.startsWith(normalisedQuery) ? 1 : 2;
+      return aRank - bRank || a.name.localeCompare(b.name);
+    }).map(({ spot }) => spot);
+  }, [searchRows, selectedType, deferredSearchQuery, selectedTag, nearCoordinate]);
+
+  const featuredSpot = spots.find((spot) => spot.id === 'curated-babbacombe-beach') ?? spots[0];
+
+  const handleNearMe = async () => {
+    if (nearCoordinate) {
+      setNearCoordinate(null);
+      return;
     }
-    return result;
-  }, [type, search, tag, sortByDistance, gpsLocation]);
+    setLocating(true);
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Location needed', 'Allow location access to sort fishing spots by distance.');
+        return;
+      }
+      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setNearCoordinate({ latitude: current.coords.latitude, longitude: current.coords.longitude });
+    } catch {
+      Alert.alert('Location unavailable', 'CAST could not get your current position. Please try again.');
+    } finally {
+      setLocating(false);
+    }
+  };
 
-  const featured = WORLD_SPOTS.reduce((b, s) => s.rating > b.rating ? s : b, WORLD_SPOTS[0]);
-
-  const toggleSaved = (id: string) => setSaved(prev => {
-    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
-  });
-
-  const renderSpot = ({ item: spot }: { item: WorldSpot }) => {
-    const grad = (SPOT_GRAD[spot.type] || ['#1a2a3a', '#0f1924']) as [string, string];
-    const diffColor = DIFF_COLORS[spot.difficulty] || colors.primary;
-    const isSaved = saved.has(spot.id);
+  const renderSpot = ({ item: spot }: { item: FishingSpotRecord }) => {
+    const isSaved = savedSpots.has(spot.id);
+    const diffColor = DIFFICULTY_COLORS[spot.difficulty] || colors.primary;
+    const distance = nearCoordinate ? distanceKm(nearCoordinate, spot) : null;
     return (
       <TouchableOpacity
         style={s.spotCard}
         onPress={() => router.push({ pathname: '/spot-details', params: { id: spot.id } } as any)}
         activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={`${spot.name}, ${spot.type} in ${spot.country}`}
       >
-        {/* Difficulty stripe */}
-        <View style={[s.diffStripe, { backgroundColor: diffColor }]} />
-        <View style={s.spotThumb}>
-          <LinearGradient colors={grad} style={StyleSheet.absoluteFillObject} />
-          <Image
-            source={{ uri: getSpotImage(spot) }}
-            style={[StyleSheet.absoluteFillObject, { opacity: 0.8 }]}
-            resizeMode="cover"
-          />
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.45)']}
-            style={StyleSheet.absoluteFillObject}
-          />
-        </View>
+        <SpotPhoto spot={spot} style={s.spotPhoto} />
+
         <View style={s.spotBody}>
           <View style={s.spotTopRow}>
-            <Text style={s.spotName} numberOfLines={1}>{spot.name.split(',')[0]}</Text>
+            <Text style={s.spotName} numberOfLines={1}>{spot.name}</Text>
             <TouchableOpacity
-              onPress={() => toggleSaved(spot.id)}
+              onPress={(event) => { event.stopPropagation(); toggleSavedSpot(spot.id); }}
               style={s.bookmarkBtn}
+              accessibilityLabel={isSaved ? 'Remove from saved' : 'Save spot'}
               accessibilityRole="button"
             >
               <MaterialCommunityIcons
@@ -108,22 +145,32 @@ export default function SpotsScreen() {
               />
             </TouchableOpacity>
           </View>
+
           <Text style={s.spotMeta}>
-            {spot.type.charAt(0).toUpperCase() + spot.type.slice(1)} · {spot.country}
-            {sortByDistance && gpsLocation ? `  ·  ${formatDistance(haversineKm(gpsLocation.latitude, gpsLocation.longitude, spot.latitude, spot.longitude))}` : ''}
+            {spot.type.charAt(0).toUpperCase() + spot.type.slice(1)} · {spot.country}{distance != null ? ` · ${distance < 10 ? distance.toFixed(1) : Math.round(distance)} km` : ''}
           </Text>
-          <View style={s.spotBottom}>
+
+          <View style={s.spotBottomRow}>
             <View style={s.speciesRow}>
-              {spot.species.slice(0, 2).map(sp => (
+              {spot.species.slice(0, 2).map((sp) => (
                 <View key={sp} style={s.speciesChip}>
-                  <Text style={s.speciesText} numberOfLines={1}>{sp}</Text>
+                  <Text style={s.speciesText}>{sp}</Text>
                 </View>
               ))}
-              {spot.species.length > 2 && <Text style={s.moreText}>+{spot.species.length - 2}</Text>}
+              {spot.species.length > 2 && (
+                <Text style={s.moreText}>+{spot.species.length - 2}</Text>
+              )}
             </View>
-            <View style={s.ratingPill}>
-              <MaterialCommunityIcons name="star" size={10} color={colors.secondary} />
-              <Text style={s.ratingText}>{spot.rating}</Text>
+            <View style={s.spotRightBadges}>
+              {spot.rating > 0 ? <View style={s.ratingPill}>
+                <MaterialCommunityIcons name="star" size={10} color={colors.secondary} />
+                <Text style={s.ratingText}>{spot.rating}</Text>
+              </View> : null}
+              <View style={[s.diffBadge, { backgroundColor: diffColor + '22', borderColor: diffColor + '44' }]}>
+                <Text style={[s.diffText, { color: diffColor }]}>
+                  {spot.difficulty === 'beginner' ? 'B' : spot.difficulty === 'intermediate' ? 'I' : spot.difficulty === 'expert' ? 'E' : '?'}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -131,7 +178,7 @@ export default function SpotsScreen() {
     );
   };
 
-  const Header = () => (
+  const ListHeader = () => (
     <View>
       {activeSession && (
         <TouchableOpacity style={s.sessionBanner} onPress={() => router.push('/session' as any)} activeOpacity={0.85}>
@@ -141,121 +188,125 @@ export default function SpotsScreen() {
         </TouchableOpacity>
       )}
 
-      <View style={s.pageHeader}>
+      {/* Header */}
+      <View style={s.header}>
         <View>
-          <Text style={s.pageTitle}>Fishing Spots</Text>
-          <Text style={s.pageCount}>{filtered.length} locations</Text>
+          <Text style={s.brand}>SPOTS</Text>
+          <Text style={s.headerSub}>{loadingSpots ? 'LOADING CHART DATA…' : `${filtered.length} LOCATIONS`}</Text>
         </View>
-        <TouchableOpacity
-          style={[s.nearBtn, sortByDistance && s.nearBtnActive]}
-          onPress={() => setSortByDistance(v => !v)}
-          accessibilityRole="button"
-        >
-          <MaterialCommunityIcons name="crosshairs-gps" size={15} color={sortByDistance ? '#0A0E1A' : colors.primary} />
-          <Text style={[s.nearText, sortByDistance && s.nearTextActive]}>Near me</Text>
+        <TouchableOpacity style={[s.nearBtn, nearCoordinate && s.nearBtnActive]} onPress={handleNearMe} disabled={locating} accessibilityRole="button" accessibilityLabel={nearCoordinate ? 'Stop sorting by distance' : 'Sort spots near me'}>
+          <MaterialCommunityIcons name="crosshairs-gps" size={16} color={colors.primary} />
+          <Text style={s.nearText}>{locating ? 'Locating…' : nearCoordinate ? 'Nearest first' : 'Near me'}</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={s.searchWrap}>
-        <MaterialCommunityIcons name="magnify" size={18} color={colors.textSecondary} />
-        <TextInput
-          style={s.searchInput}
-          placeholder="Search spots..."
-          placeholderTextColor={colors.textTertiary}
-          value={search} onChangeText={setSearch}
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <MaterialCommunityIcons name="close" size={15} color={colors.textSecondary} />
-          </TouchableOpacity>
-        )}
+      <View style={s.displayTabs} accessibilityRole="tablist">
+        {DISPLAY_MODES.map((mode) => <TouchableOpacity key={mode} accessibilityRole="tab" accessibilityState={{ selected: displayMode === mode }} style={[s.displayTab, displayMode === mode && s.displayTabActive]} onPress={() => setDisplayMode(mode)}><Text style={[s.displayTabText, displayMode === mode && s.displayTabTextActive]}>{mode}</Text></TouchableOpacity>)}
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.pillsRow}>
-        {TYPE_FILTERS.map(t => (
-          <TouchableOpacity key={t} style={[s.pill, type === t && s.pillActive]} onPress={() => setType(t)}>
-            <Text style={[s.pillText, type === t && s.pillTextActive]}>{t}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.pillsRow, { paddingBottom: 14 }]}>
-        <TouchableOpacity
-          style={[s.tagPill, s.nearPill, sortByDistance && s.nearPillActive]}
-          onPress={() => setSortByDistance(v => !v)}
-        >
-          <MaterialCommunityIcons
-            name="map-marker-radius"
-            size={12}
-            color={sortByDistance ? colors.primary : colors.textSecondary}
+      {/* Search */}
+      <View style={s.searchRow}>
+        <View style={s.searchBar}>
+          <MaterialCommunityIcons name="magnify" size={18} color={colors.textSecondary} />
+          <TextInput
+            style={s.searchInput}
+            placeholder="Search by name or location..."
+            placeholderTextColor={colors.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
           />
-          <Text style={[s.tagText, sortByDistance && s.tagTextActive]}>Near Me</Text>
-        </TouchableOpacity>
-        {TAG_FILTERS.map(t => (
-          <TouchableOpacity key={t} style={[s.tagPill, tag === t && s.tagPillActive]} onPress={() => setTag(tag === t ? null : t)}>
-            <Text style={[s.tagText, tag === t && s.tagTextActive]}>{t}</Text>
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} accessibilityRole="button" accessibilityLabel="Clear search">
+              <MaterialCommunityIcons name="close" size={16} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Type pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.pillsRow}>
+        {TYPE_FILTERS.map((t) => (
+          <TouchableOpacity
+            key={t}
+            style={[s.pill, selectedType === t && s.pillActive]}
+            onPress={() => setSelectedType(t)}
+            accessibilityRole="button"
+          >
+            <Text style={[s.pillText, selectedType === t && s.pillTextActive]}>{t}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {!search && type === 'All' && !tag && (
+      {/* Tag pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[s.pillsRow, { paddingBottom: 12 }]}>
+        {TAG_FILTERS.map((t) => (
+          <TouchableOpacity
+            key={t}
+            style={[s.tagPill, selectedTag === t && s.tagPillActive]}
+            onPress={() => setSelectedTag(selectedTag === t ? null : t)}
+            accessibilityRole="button"
+          >
+            <Text style={[s.tagPillText, selectedTag === t && s.tagPillTextActive]}>{t}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Featured spot hero — only show when no filters active */}
+      {!searchQuery && selectedType === 'All' && !selectedTag && (
         <View style={s.featuredSection}>
-          <View style={s.sectionHead}>
-            <View style={s.sectionBar} />
+          <View style={s.sectionHeaderRow}>
+            <View style={s.sectionAccent} />
             <Text style={s.sectionTitle}>Top Rated</Text>
           </View>
           <TouchableOpacity
             style={s.featuredCard}
-            onPress={() => router.push({ pathname: '/spot-details', params: { id: featured.id } } as any)}
-            activeOpacity={0.88}
+            onPress={() => router.push({ pathname: '/spot-details', params: { id: featuredSpot.id } } as any)}
+            activeOpacity={0.85}
           >
+            <SpotPhoto spot={featuredSpot} variant="featured" />
             <LinearGradient
-              colors={[...(SPOT_GRAD[featured.type] || ['#1a2a3a', '#0f1924'])] as [string, string]}
-              style={StyleSheet.absoluteFillObject}
-            />
-            <Image
-              source={{ uri: getSpotImage(featured) }}
-              style={[StyleSheet.absoluteFillObject, { opacity: 0.55 }]}
-              resizeMode="cover"
-            />
-            <LinearGradient colors={['transparent', 'rgba(0,0,0,0.9)']} style={s.featuredOverlay}>
+              colors={['transparent', 'rgba(0,0,0,0.85)']}
+              style={s.featuredOverlay}
+            >
               <View style={s.featuredTopRow}>
-                <View style={s.topRatedBadge}>
-                  <MaterialCommunityIcons name="star" size={11} color={colors.secondary} />
-                  <Text style={s.topRatedText}>{featured.rating} · Top Rated</Text>
+                <View style={s.topRatedPill}>
+                  <MaterialCommunityIcons name="star" size={12} color={colors.secondary} />
+                  <Text style={s.topRatedText}>{featuredSpot.rating} · Top Rated</Text>
                 </View>
-                <TouchableOpacity style={s.featuredBookmark} onPress={() => toggleSaved(featured.id)}>
+                <TouchableOpacity
+                  onPress={(event) => { event.stopPropagation(); toggleSavedSpot(featuredSpot.id); }}
+                  style={s.featuredBookmark}
+                  accessibilityRole="button"
+                >
                   <MaterialCommunityIcons
-                    name={saved.has(featured.id) ? 'bookmark' : 'bookmark-outline'}
+                    name={savedSpots.has(featuredSpot.id) ? 'bookmark' : 'bookmark-outline'}
                     size={20} color="#fff"
                   />
                 </TouchableOpacity>
               </View>
-              <View>
-                <Text style={s.featuredName}>{featured.name.split(',')[0]}</Text>
-                <Text style={s.featuredMeta}>{featured.type.charAt(0).toUpperCase() + featured.type.slice(1)} · {featured.country}</Text>
+              <View style={s.featuredBottom}>
+                <Text style={s.featuredName}>{featuredSpot.name}</Text>
+                <Text style={s.featuredMeta}>
+                  {featuredSpot.type.charAt(0).toUpperCase() + featuredSpot.type.slice(1)} · {featuredSpot.country}
+                </Text>
                 <View style={s.featuredSpecies}>
-                  {featured.species.slice(0, 3).map(sp => (
-                    <View key={sp} style={s.featuredChip}>
-                      <Text style={s.featuredChipText}>{sp}</Text>
+                  {featuredSpot.species.slice(0, 3).map((sp) => (
+                    <View key={sp} style={s.featuredSpeciesChip}>
+                      <Text style={s.featuredSpeciesText}>{sp}</Text>
                     </View>
                   ))}
                 </View>
               </View>
             </LinearGradient>
-            <MaterialCommunityIcons
-              name={(TYPE_ICONS[featured.type] || 'water') as any}
-              size={80} color="rgba(255,255,255,0.05)"
-              style={{ position: 'absolute', right: -10, top: 20 }}
-            />
           </TouchableOpacity>
         </View>
       )}
 
-      <View style={s.sectionHead}>
-        <View style={s.sectionBar} />
-        <Text style={s.sectionTitle}>{search || type !== 'All' || tag ? 'Results' : 'All Spots'}</Text>
-        <Text style={s.countText}>{filtered.length}</Text>
+      {/* List header */}
+      <View style={s.sectionHeaderRow}>
+        <View style={s.sectionAccent} />
+        <Text style={s.sectionTitle}>{searchQuery || selectedType !== 'All' || selectedTag ? 'Results' : 'All Spots'}</Text>
+        <Text style={s.sectionCount}>{filtered.length}</Text>
       </View>
     </View>
   );
@@ -263,17 +314,28 @@ export default function SpotsScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <FlatList
-        data={filtered}
-        keyExtractor={item => item.id}
+        data={displayMode === 'Hotspots' ? filtered.filter((spot) => spot.rating >= 4) : filtered}
+        keyExtractor={(item) => item.id}
         renderItem={renderSpot}
-        ListHeaderComponent={Header}
+        ListHeaderComponent={ListHeader}
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={12}
+        maxToRenderPerBatch={12}
+        windowSize={9}
+        removeClippedSubviews
+        ListEmptyComponent={(
+          <View style={s.emptyState}>
+            <MaterialCommunityIcons name="map-search-outline" size={36} color={colors.textTertiary} />
+            <Text style={s.emptyTitle}>No matching spots</Text>
+            <Text style={s.emptyText}>Try a shorter place, country or species name.</Text>
+            <TouchableOpacity onPress={() => { setSearchQuery(''); setSelectedType('All'); setSelectedTag(null); }} style={s.clearFiltersButton} accessibilityRole="button">
+              <Text style={s.clearFiltersText}>Clear filters</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       />
-      <Modal visible={!!selected} transparent animationType="slide" onRequestClose={() => setSelected(null)}>
-        <TouchableOpacity style={s.backdrop} activeOpacity={1} onPress={() => setSelected(null)} />
-        {selected && <SpotCard spot={selected} onClose={() => setSelected(null)} />}
-      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -284,126 +346,158 @@ const s = StyleSheet.create({
   sessionBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     marginHorizontal: spacing.lg, marginTop: spacing.sm,
-    backgroundColor: 'rgba(0,212,170,0.08)', borderRadius: radius.md,
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.2)',
-    paddingHorizontal: 14, paddingVertical: 11,
+    backgroundColor: 'rgba(0,212,170,0.08)',
+    borderRadius: PANEL_RADIUS, paddingHorizontal: 14, paddingVertical: 12,
+    borderWidth: 1, borderColor: TEAL_LINE,
   },
-  sessionDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
+  sessionDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary },
   sessionText: { flex: 1, fontSize: 13, color: colors.primary, fontWeight: '600' },
 
-  pageHeader: {
+  header: {
     flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
   },
-  pageTitle: { fontSize: 26, fontWeight: '900', color: colors.textPrimary, letterSpacing: -0.5 },
-  pageCount: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  brand: { fontSize: 18, fontWeight: '800', color: colors.textPrimary, letterSpacing: 4 },
+  headerSub: { fontSize: 9, color: colors.textTertiary, marginTop: 4, letterSpacing: 2, fontWeight: '700' },
   nearBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: radius.full,
+    backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: PANEL_RADIUS,
     paddingHorizontal: 14, paddingVertical: 10,
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.25)', marginTop: 4,
+    borderWidth: 1, borderColor: TEAL_LINE,
+    marginTop: 4,
   },
-  nearBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  nearText: { fontSize: 13, color: colors.primary, fontWeight: '700' },
-  nearTextActive: { color: '#0A0E1A' },
+  nearBtnActive: { backgroundColor: 'rgba(0,212,170,0.18)', borderColor: colors.primary },
+  nearText: { fontSize: 11, color: colors.primary, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
 
-  searchWrap: {
+  searchRow: {
+    paddingHorizontal: spacing.lg, paddingBottom: spacing.sm,
+  },
+  searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    marginHorizontal: spacing.lg, marginBottom: spacing.sm,
-    backgroundColor: colors.surface, borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surface, borderRadius: PANEL_RADIUS,
+    borderWidth: 1, borderColor: TEAL_LINE,
     paddingHorizontal: spacing.md, paddingVertical: 12,
   },
   searchInput: { flex: 1, fontSize: 14, color: colors.textPrimary },
 
+  displayTabs: { flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: 3, backgroundColor: colors.surface, borderRadius: PANEL_RADIUS, borderWidth: 1, borderColor: TEAL_LINE },
+  displayTab: { flex: 1, minHeight: 34, alignItems: 'center', justifyContent: 'center', borderRadius: radius.xs },
+  displayTabActive: { backgroundColor: colors.primary },
+  displayTabText: { color: colors.textSecondary, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
+  displayTabTextActive: { color: colors.background },
+
   pillsRow: { paddingHorizontal: spacing.lg, gap: 8, paddingBottom: 8 },
   pill: {
-    paddingHorizontal: 16, paddingVertical: 9, borderRadius: radius.full,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 14, paddingVertical: 9, minHeight: 36,
+    borderRadius: PANEL_RADIUS, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: TEAL_LINE,
     alignItems: 'center', justifyContent: 'center',
   },
   pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  pillText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  pillText: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, letterSpacing: 1.5, textTransform: 'uppercase' },
   pillTextActive: { color: '#051410', fontWeight: '700' },
 
   tagPill: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: radius.full,
-    borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 14, paddingVertical: 7, minHeight: 32,
+    borderRadius: PANEL_RADIUS, backgroundColor: 'transparent',
+    borderWidth: 1, borderColor: TEAL_LINE,
+    alignItems: 'center', justifyContent: 'center',
   },
   tagPillActive: { borderColor: colors.secondary, backgroundColor: 'rgba(245,158,11,0.1)' },
-  nearPill: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  nearPillActive: { borderColor: colors.primary, backgroundColor: 'rgba(0,212,170,0.1)' },
-  tagText: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
-  tagTextActive: { color: colors.secondary },
+  tagPillText: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, letterSpacing: 1.5, textTransform: 'uppercase' },
+  tagPillTextActive: { color: colors.secondary },
 
-  featuredSection: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
-  featuredCard: {
-    height: 210, borderRadius: radius.lg, overflow: 'hidden',
-    borderWidth: 1, borderColor: 'rgba(0,212,170,0.15)',
-    ...elevation.card,
-  },
-  featuredOverlay: {
-    ...StyleSheet.absoluteFillObject, padding: 16,
-    justifyContent: 'space-between',
-  },
-  featuredTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  topRatedBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: 'rgba(245,158,11,0.2)', borderRadius: radius.full,
-    paddingHorizontal: 10, paddingVertical: 5,
-    borderWidth: 1, borderColor: 'rgba(245,158,11,0.35)',
-  },
-  topRatedText: { fontSize: 12, fontWeight: '700', color: colors.secondary },
-  featuredBookmark: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  featuredName: { fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: -0.5, marginBottom: 4 },
-  featuredMeta: { fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 10 },
-  featuredSpecies: { flexDirection: 'row', gap: 6 },
-  featuredChip: {
-    backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: radius.xs,
-    paddingHorizontal: 8, paddingVertical: 4,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-  },
-  featuredChipText: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
+  featuredSection: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
+  mapSection: { paddingHorizontal: spacing.md },
 
-  sectionHead: {
+  sectionHeaderRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: spacing.lg, marginBottom: 12, marginTop: 4,
   },
-  sectionBar: { width: 3, height: 16, borderRadius: 2, backgroundColor: colors.primary },
-  sectionTitle: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  countText: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
+  sectionAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: colors.primary },
+  sectionTitle: { flex: 1, fontSize: 11, fontWeight: '700', color: colors.textPrimary, letterSpacing: 2, textTransform: 'uppercase' },
+  sectionCount: { fontSize: 13, color: colors.textSecondary, fontWeight: '600', fontVariant: ['tabular-nums'] },
+
+  featuredCard: {
+    borderRadius: PANEL_RADIUS, overflow: 'hidden',
+    borderWidth: 1, borderColor: TEAL_LINE,
+    ...elevation.card,
+    height: 200,
+  },
+  mapCard: { height: 430 },
+  mapMarker: { position: 'absolute', width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(20,104,109,0.88)', borderWidth: 1, borderColor: colors.primary, zIndex: 4 },
+  mapMarkerText: { color: colors.textPrimary, fontSize: 11, fontWeight: '800' },
+  featuredGradient: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  featuredOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    padding: 16,
+    justifyContent: 'space-between',
+  },
+  featuredTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  topRatedPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(245,158,11,0.2)', borderRadius: radius.full,
+    paddingHorizontal: 10, paddingVertical: 5,
+    borderWidth: 1, borderColor: 'rgba(245,158,11,0.4)',
+  },
+  topRatedText: { fontSize: 12, fontWeight: '700', color: colors.secondary },
+  featuredBookmark: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  featuredBottom: {},
+  featuredName: { fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: -0.5, marginBottom: 3 },
+  featuredMeta: { fontSize: 13, color: 'rgba(255,255,255,0.6)', marginBottom: 8 },
+  featuredSpecies: { flexDirection: 'row', gap: 6 },
+  featuredSpeciesChip: {
+    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: radius.sm,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  featuredSpeciesText: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
 
   spotCard: {
     flexDirection: 'row',
     marginHorizontal: spacing.lg, marginBottom: 10,
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1, borderColor: colors.border,
+    borderRadius: PANEL_RADIUS,
+    borderWidth: 1, borderColor: TEAL_LINE,
     overflow: 'hidden',
     ...elevation.raised,
   },
-  diffStripe: { width: 3 },
-  spotThumb: { width: 78, alignItems: 'center', justifyContent: 'center', minHeight: 86 },
-  spotBody: { flex: 1, paddingHorizontal: 12, paddingVertical: 11 },
+  spotPhoto: {
+    width: 80, alignItems: 'center', justifyContent: 'center',
+    minHeight: 88,
+  },
+  spotBody: { flex: 1, paddingHorizontal: 12, paddingVertical: 12 },
   spotTopRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
   spotName: { flex: 1, fontSize: 14, fontWeight: '700', color: colors.textPrimary },
-  bookmarkBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', marginRight: -6 },
-  spotMeta: { fontSize: 11, color: colors.textSecondary, marginBottom: 8 },
-  spotBottom: { flexDirection: 'row', alignItems: 'center' },
-  speciesRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  bookmarkBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginRight: -8 },
+  spotMeta: { fontSize: 12, color: colors.textSecondary, marginBottom: 8 },
+  spotBottomRow: { flexDirection: 'row', alignItems: 'center' },
+  speciesRow: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
   speciesChip: {
     backgroundColor: colors.surface2, borderRadius: radius.xs,
     paddingHorizontal: 7, paddingVertical: 3,
     borderWidth: 1, borderColor: colors.border,
   },
   speciesText: { fontSize: 10, color: colors.textSecondary, fontWeight: '600' },
-  moreText: { fontSize: 10, color: colors.textTertiary },
+  moreText: { fontSize: 11, color: colors.textTertiary },
+  spotRightBadges: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   ratingPill: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: 'rgba(245,158,11,0.12)', borderRadius: radius.full,
+    backgroundColor: 'rgba(245,158,11,0.1)', borderRadius: radius.full,
     paddingHorizontal: 7, paddingVertical: 3,
   },
   ratingText: { fontSize: 11, fontWeight: '700', color: colors.secondary },
+  diffBadge: {
+    width: 22, height: 22, borderRadius: radius.full,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
+  diffText: { fontSize: 10, fontWeight: '800' },
+
+  emptyState: { alignItems: 'center', paddingHorizontal: 32, paddingVertical: 52 },
+  emptyTitle: { marginTop: 10, fontSize: 14, fontWeight: '800', color: colors.textPrimary, letterSpacing: 2, textTransform: 'uppercase' },
+  emptyText: { marginTop: 5, fontSize: 13, color: colors.textSecondary, textAlign: 'center' },
+  clearFiltersButton: { marginTop: 16, borderRadius: PANEL_RADIUS, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 11 },
+  clearFiltersText: { color: colors.background, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' },
 
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
 });
