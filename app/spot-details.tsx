@@ -180,7 +180,7 @@ export default function SpotDetailsScreen() {
             <View style={s.fishingScoreRow}>
               <MaterialCommunityIcons name="fish" size={16} color={colors.primary} />
               <Text style={s.fishingScoreLabel}>Fishing conditions: </Text>
-              <Text style={s.fishingScoreValue}>{weather.fishingScore}/10</Text>
+              <Text style={s.fishingScoreValue}>{weather.fishingScore}/100</Text>
             </View>
           )}
           {weatherError ? <Text style={s.sourceNote}>{weatherError}; coordinate-seeded offline estimates are shown.</Text> : <Text style={s.sourceNote}>Coordinate-specific forecast from Open-Meteo · cached for 30 minutes</Text>}
