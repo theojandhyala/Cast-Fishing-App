@@ -269,6 +269,12 @@ and make it better.
 15. **Native builds of this same app**: EAS profiles; run the §4 smoke flows on iOS
     simulator; App Store metadata that matches the honest in-app disclaimer (no
     "verified access" claims).
+16a. **Cloudflare guidance reference**: `.claude/reference/cloudflare-workers-agent-prompt.txt`
+    is Cloudflare's official agent prompt (from developers.cloudflare.com/agent-setup/prompt.md).
+    Follow it for any worker change — notably: observability stays enabled in wrangler.toml,
+    secrets never in code, and if live sessions ever move to WebSockets use the Durable
+    Objects **Hibernation API** (`ctx.acceptWebSocket` + `webSocketMessage()` handlers,
+    never `addEventListener`).
 16. **Harden the existing worker** (`worker/index.js`): rate limits per IP+user on
     auth & search; input size caps; `EXPLAIN QUERY PLAN` on hot D1 queries; CORS
     locked to castfishingapp.com + app origins; migration 0004+ always additive.

@@ -2,6 +2,12 @@ name = "cast-ai"
 main = "index.js"
 compatibility_date = "2026-06-22"
 
+# Per Cloudflare's agent-setup guidance: full observability (logs/traces
+# visible in the dashboard) for every request.
+[observability]
+enabled = true
+head_sampling_rate = 1
+
 [ai]
 binding = "AI"
 
