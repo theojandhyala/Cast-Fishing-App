@@ -51,7 +51,13 @@ export default function SpotsScreen() {
   const { activeSession } = useSessionStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [displayMode, setDisplayMode] = useState<DisplayMode>('List');
-  const deferredSearchQuery = useDeferredValue(searchQuery);
+  // Input stays instant; filtering over 220k rows runs at most every 150ms.
+  const [debouncedQueryRaw, setDebouncedQueryRaw] = useState('');
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedQueryRaw(searchQuery), 150);
+    return () => clearTimeout(id);
+  }, [searchQuery]);
+  const debouncedQuery = useDeferredValue(debouncedQueryRaw);
   const [selectedType, setSelectedType] = useState('All');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const { savedSpotIds, toggleSavedSpot } = useSpotStore();
@@ -75,23 +81,41 @@ export default function SpotsScreen() {
   }, []);
 
   const filtered = useMemo(() => {
-    const normalisedQuery = deferredSearchQuery.trim().toLocaleLowerCase();
-    return searchRows.filter(({ spot, haystack }) => {
-      const matchType = selectedType === 'All' || spot.type === selectedType.toLowerCase();
-      const matchSearch = !normalisedQuery || haystack.includes(normalisedQuery);
-      const matchTag = !selectedTag ||
-        (selectedTag === 'Beginner' && spot.difficulty === 'beginner') ||
-        (selectedTag === 'Carp' && spot.species.some((species) => species.toLowerCase().includes('carp'))) ||
-        (selectedTag === 'Predator' && spot.species.some((species) => ['pike', 'perch', 'zander', 'bass', 'predator'].some((predator) => species.toLowerCase().includes(predator))));
-      return matchType && matchSearch && matchTag;
-    }).sort((a, b) => {
-      if (nearCoordinate) return distanceKm(nearCoordinate, a.spot) - distanceKm(nearCoordinate, b.spot);
-      if (!normalisedQuery) return 0;
-      const aRank = a.name === normalisedQuery ? 0 : a.name.startsWith(normalisedQuery) ? 1 : 2;
-      const bRank = b.name === normalisedQuery ? 0 : b.name.startsWith(normalisedQuery) ? 1 : 2;
-      return aRank - bRank || a.name.localeCompare(b.name);
-    }).map(({ spot }) => spot);
-  }, [searchRows, selectedType, deferredSearchQuery, selectedTag, nearCoordinate]);
+    const normalisedQuery = debouncedQuery.trim().toLocaleLowerCase();
+    const typeFilter = selectedType === 'All' ? null : selectedType.toLowerCase();
+    const matches: typeof searchRows = [];
+    for (const row of searchRows) {
+      // cheapest / most selective checks first — this loop runs over 220k rows
+      if (normalisedQuery && !row.haystack.includes(normalisedQuery)) continue;
+      if (typeFilter && row.spot.type !== typeFilter) continue;
+      if (selectedTag) {
+        const { spot } = row;
+        const tagOk =
+          (selectedTag === 'Beginner' && spot.difficulty === 'beginner') ||
+          (selectedTag === 'Carp' && spot.species.some((species) => species.toLowerCase().includes('carp'))) ||
+          (selectedTag === 'Predator' && spot.species.some((species) => ['pike', 'perch', 'zander', 'bass', 'predator'].some((predator) => species.toLowerCase().includes(predator))));
+        if (!tagOk) continue;
+      }
+      matches.push(row);
+    }
+    if (nearCoordinate) {
+      // precompute each distance ONCE — a comparator recomputing Haversine
+      // runs it O(n log n) times and freezes the UI at this scale
+      const withDistance = matches.map((row) => ({ row, d: distanceKm(nearCoordinate, row.spot) }));
+      withDistance.sort((a, b) => a.d - b.d);
+      return withDistance.map(({ row }) => row.spot);
+    }
+    if (normalisedQuery) {
+      const rank = (row: (typeof searchRows)[number]) =>
+        row.name === normalisedQuery ? 0 : row.name.startsWith(normalisedQuery) ? 1 : 2;
+      const ranked = matches.map((row) => ({ row, r: rank(row) }));
+      ranked.sort((a, b) => a.r - b.r || a.row.name.localeCompare(b.row.name));
+      return ranked.map(({ row }) => row.spot);
+    }
+    // no query, no location: keep dataset order — sorting 220k rows for nothing
+    // costs millions of comparisons per render
+    return matches.map(({ spot }) => spot);
+  }, [searchRows, selectedType, debouncedQuery, selectedTag, nearCoordinate]);
 
   const featuredSpot = spots.find((spot) => spot.id === 'curated-babbacombe-beach') ?? spots[0];
 
