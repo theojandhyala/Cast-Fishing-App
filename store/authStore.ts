@@ -46,6 +46,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  deleteAccount: () => Promise<boolean>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   loadUser: () => Promise<void>;
   completeOnboarding: (name: string, favouriteSpecies: string[], extras?: { regionId?: string; fishingExperience?: User['fishingExperience']; hasLicence?: boolean; preferredFishing?: User['preferredFishing'] }) => Promise<void>;
@@ -141,6 +142,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     useCatchStore.getState().clearMemory();
     useFriendsStore.getState().reset();
     set({ user: null, isAuthenticated: false, authError: null });
+  },
+
+  // Permanently delete the account (Apple App Store guideline 5.1.1(v) requires
+  // in-app account deletion for any app that supports account creation).
+  // Deletes server-side first, then wipes every local trace of the user.
+  deleteAccount: async () => {
+    set({ authError: null });
+    try {
+      await castApi('/auth/me', { method: 'DELETE' });
+    } catch (error) {
+      const status = error instanceof CastApiError ? error.status : 0;
+      // 401/403 (token already invalid) or 404 (no such route / already gone)
+      // mean the server account is unreachable-by-auth or deleted — safe to wipe
+      // locally. Anything else (5xx, or a network failure = status 0) is a real
+      // failure: do NOT claim the account was deleted; let the user retry.
+      if (![401, 403, 404].includes(status)) {
+        set({ authError: errorMessage(error) });
+        return false;
+      }
+    }
+    await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, ...PERSONAL_DATA_KEYS]);
+    useCatchStore.getState().clearMemory();
+    useFriendsStore.getState().reset();
+    set({ user: null, isAuthenticated: false, authError: null });
+    return true;
   },
 
   updateUser: async (updates) => {

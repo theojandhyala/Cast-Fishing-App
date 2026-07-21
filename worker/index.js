@@ -274,6 +274,23 @@ async function handleApi(request, env, url, origin, payload) {
     return json({ ok: true }, 200, origin);
   }
 
+  // Permanently delete the signed-in user and everything belonging to them.
+  // Required by Apple App Store guideline 5.1.1(v). Removes the user row plus
+  // all rows that reference it (auth sessions, friend requests/edges, live
+  // sessions the user hosts or joins). Ordered so no orphan rows remain even
+  // if the D1 build has FK cascade disabled.
+  if (url.pathname === '/auth/me' && request.method === 'DELETE') {
+    await db.batch([
+      db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(user.id),
+      db.prepare('DELETE FROM friend_requests WHERE sender_id = ? OR receiver_id = ?').bind(user.id, user.id),
+      db.prepare('DELETE FROM friendships WHERE user_low = ? OR user_high = ?').bind(user.id, user.id),
+      db.prepare('DELETE FROM live_session_participants WHERE user_id = ?').bind(user.id),
+      db.prepare('DELETE FROM live_sessions WHERE host_id = ?').bind(user.id),
+      db.prepare('DELETE FROM users WHERE id = ?').bind(user.id),
+    ]);
+    return json({ ok: true }, 200, origin);
+  }
+
   if (url.pathname === '/profile' && request.method === 'PATCH') {
     const name = String(payload?.name || user.username).trim();
     const species = Array.isArray(payload?.favouriteSpecies) ? payload.favouriteSpecies.map(String).slice(0, 30) : JSON.parse(user.favourite_species || '[]');
