@@ -11,7 +11,7 @@ import { useWeather } from '../../hooks/useWeather';
 import { useLocation } from '../../hooks/useLocation';
 import { useSessionStore } from '../../store/sessionStore';
 import { useSolunar } from '../../hooks/useSolunar';
-import { colors, spacing, radius } from '../../constants/theme';
+import { colors, spacing, radius, elevation } from '../../constants/theme';
 import { FishSpeciesPhoto } from '../../components/fish/FishSpeciesPhoto';
 import { getTipOfDay } from '../../data/tipOfDay';
 
@@ -149,7 +149,10 @@ export default function HomeScreen() {
   const tip = useMemo(() => getTipOfDay(), []);
   const solunarWindows = solunar?.windows ?? [];
 
-  const dateStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+  const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const firstName = (user?.name || '').trim().split(' ')[0];
+  const hr = new Date().getHours();
+  const greeting = hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening';
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -157,83 +160,94 @@ export default function HomeScreen() {
 
         {/* ── HEADER ─────────────────────────────────────────────────────── */}
         <View style={s.header}>
-          <View>
-            <Text style={s.brandLabel}>CAST</Text>
-            <Text style={s.locationLabel}>
-              <Text style={s.locDot}>◈ </Text>
-              {location ? 'GPS LOCKED' : 'GOLD COAST, QLD'}
-            </Text>
+          <View style={{ flex: 1 }}>
+            <Text style={s.greeting}>{greeting}{firstName ? `, ${firstName}` : ''}</Text>
+            <View style={s.locRow}>
+              <MaterialCommunityIcons name="map-marker" size={13} color={colors.primary} />
+              <Text style={s.locationLabel}>{location ? 'Current location' : 'Gold Coast, QLD'}</Text>
+              <Text style={s.locDivider}>·</Text>
+              <Text style={s.locationLabel}>{dateStr}</Text>
+            </View>
           </View>
-          <View style={s.headerRight}>
-            <Text style={s.dateLabel}>{dateStr}</Text>
-            <TouchableOpacity
-              style={s.notifBtn}
-              onPress={() => router.push('/notifications' as any)}
-              activeOpacity={0.75}
-              accessibilityLabel="Notifications"
-            >
-              <MaterialCommunityIcons name="bell-outline" size={20} color={colors.textTertiary} />
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={s.notifBtn}
+            onPress={() => router.push('/notifications' as any)}
+            activeOpacity={0.75}
+            accessibilityLabel="Notifications"
+          >
+            <MaterialCommunityIcons name="bell-outline" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
         </View>
 
-        {/* ── INTEL PANEL ────────────────────────────────────────────────── */}
-        <View style={s.panel}>
-          <View style={s.panelHeader}>
-            <Text style={s.panelLabel}>FISHING INTEL</Text>
-            {nextWindowStr && (
-              <View style={s.primeBadge}>
-                <View style={[s.primeIndicator, { backgroundColor: sigColor }]} />
-                <Text style={[s.primeBadgeText, { color: sigColor }]}>PRIME {nextWindowStr}</Text>
+        {/* ── HERO — CONDITIONS ──────────────────────────────────────────── */}
+        <View style={s.heroWrap}>
+          <LinearGradient
+            colors={[withAlpha(sigColor, 0.22), withAlpha(sigColor, 0.05), 'rgba(13,26,45,0)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0.9, y: 1 }}
+            style={s.hero}
+          >
+            <View style={s.heroTopRow}>
+              <Text style={s.heroEyebrow}>Today's bite forecast</Text>
+              {nextWindowStr && (
+                <View style={[s.primeBadge, { borderColor: withAlpha(sigColor, 0.35), backgroundColor: withAlpha(sigColor, 0.1) }]}>
+                  <View style={[s.primeIndicator, { backgroundColor: sigColor }]} />
+                  <Text style={[s.primeBadgeText, { color: sigColor }]}>PRIME {nextWindowStr}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Score readout */}
+            <View style={s.scoreBlock}>
+              <View style={s.scoreLeft}>
+                <Text style={[s.scoreNum, { color: sigColor, textShadowColor: withAlpha(sigColor, 0.5) }]}>{score}</Text>
+                <Text style={s.scoreSlash}>/100</Text>
               </View>
-            )}
-          </View>
-          <View style={s.panelDivider} />
+              <View style={s.scoreRight}>
+                <Text style={[s.scoreCode, { color: sigColor }]}>{scoreCode(score)}</Text>
+                <Text style={s.scoreDesc}>
+                  {score >= 80 ? 'Excellent conditions' : score >= 60 ? 'Good conditions' : score >= 40 ? 'Fair conditions' : 'Tough conditions'}
+                </Text>
+              </View>
+            </View>
+            <View style={{ paddingHorizontal: 2, paddingBottom: 4 }}>
+              <ScoreBar score={score} color={sigColor} />
+            </View>
 
-          {/* Score readout */}
-          <View style={s.scoreBlock}>
-            <View style={s.scoreLeft}>
-              <Text style={[s.scoreNum, { color: sigColor }]}>{score}</Text>
-              <Text style={s.scoreSlash}>/100</Text>
+            {/* Sun row */}
+            <View style={s.sunRow}>
+              <View style={s.sunItem}>
+                <MaterialCommunityIcons name="weather-sunset-up" size={15} color={colors.accent} />
+                <View>
+                  <Text style={s.sunLabel}>SUNRISE</Text>
+                  <Text style={s.sunTime}>{sunTimes?.sunrise ?? '05:44A'}</Text>
+                </View>
+              </View>
+              <Svg width={92} height={24}>
+                <Path d="M 6 20 Q 46 2 86 20" stroke={colors.accent} strokeWidth={1.2} fill="none" strokeDasharray="3 3" opacity={0.5} />
+                <Circle cx={46} cy={5} r={3.5} fill={colors.accent} />
+              </Svg>
+              <View style={[s.sunItem, { justifyContent: 'flex-end' }]}>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={s.sunLabel}>SUNSET</Text>
+                  <Text style={s.sunTime}>{sunTimes?.sunset ?? '08:22P'}</Text>
+                </View>
+                <MaterialCommunityIcons name="weather-sunset-down" size={15} color={colors.accent} />
+              </View>
             </View>
-            <View style={s.scoreRight}>
-              <Text style={[s.scoreCode, { color: sigColor }]}>{scoreCode(score)}</Text>
-              <Text style={s.scoreDesc}>
-                {score >= 80 ? 'Excellent Conditions' : score >= 60 ? 'Good Conditions' : score >= 40 ? 'Fair Conditions' : 'Tough Conditions'}
-              </Text>
-            </View>
-          </View>
-          <ScoreBar score={score} color={sigColor} />
-
-          <View style={s.panelDivider} />
-
-          {/* Sun row */}
-          <View style={s.sunRow}>
-            <View style={s.sunItem}>
-              <Text style={s.sunLabel}>SUNRISE</Text>
-              <Text style={s.sunTime}>{sunTimes?.sunrise ?? '05:44A'}</Text>
-            </View>
-            <Svg width={100} height={24} style={{ marginTop: 2 }}>
-              <Path d="M 6 20 Q 50 4 94 20" stroke={colors.accent} strokeWidth={1} fill="none" strokeDasharray="3 2" opacity={0.5} />
-              <Circle cx={50} cy={6} r={3} fill={colors.accent} opacity={0.8} />
-            </Svg>
-            <View style={[s.sunItem, { alignItems: 'flex-end' }]}>
-              <Text style={s.sunLabel}>SUNSET</Text>
-              <Text style={s.sunTime}>{sunTimes?.sunset ?? '08:22P'}</Text>
-            </View>
-          </View>
+          </LinearGradient>
         </View>
 
         {/* ── INSTRUMENT CLUSTER ─────────────────────────────────────────── */}
         <View style={s.instrumentGrid}>
           {[
-            { label: 'WIND', value: weather ? `${weather.wind}` : '22', unit: 'KM/H', sub: windDir },
-            { label: 'TEMP', value: weather ? `${weather.temp}` : '15', unit: '°C', sub: 'AIR' },
-            { label: 'PRES', value: weather ? `${weather.pressure}` : '1007', unit: 'HPA', sub: 'STEADY' },
-            { label: 'MOON', value: moonAbbr(solunar?.moonPhaseName ?? 'Waxing Gibbous'), unit: '', sub: `${solunar?.moonIllumination ?? 68}%` },
-          ].map((item) => (
-            <View key={item.label} style={s.instrument}>
-              <Text style={s.instrumentLabel}>{item.label}</Text>
+            { icon: 'weather-windy', label: 'Wind', value: weather ? `${weather.wind}` : '22', unit: ' km/h', sub: windDir },
+            { icon: 'thermometer', label: 'Temp', value: weather ? `${weather.temp}` : '15', unit: '°', sub: 'Air' },
+            { icon: 'gauge', label: 'Pressure', value: weather ? `${weather.pressure}` : '1007', unit: '', sub: 'Steady' },
+            { icon: 'moon-waning-crescent', label: 'Moon', value: moonAbbr(solunar?.moonPhaseName ?? 'Waxing Gibbous'), unit: '', sub: `${solunar?.moonIllumination ?? 68}% lit` },
+          ].map((item, i) => (
+            <View key={item.label} style={[s.instrument, i < 3 && s.instrumentBorder]}>
+              <MaterialCommunityIcons name={item.icon as any} size={16} color={colors.primary} />
               <Text style={s.instrumentValue}>{item.value}<Text style={s.instrumentUnit}>{item.unit}</Text></Text>
               <Text style={s.instrumentSub}>{item.sub}</Text>
             </View>
@@ -245,11 +259,18 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={s.actionPrimary}
             onPress={() => router.push('/(tabs)/session' as any)}
-            activeOpacity={0.82}
+            activeOpacity={0.88}
             accessibilityLabel="Start Session"
           >
-            <MaterialCommunityIcons name="play-circle-outline" size={18} color={colors.bg} />
-            <Text style={s.actionPrimaryText}>START SESSION</Text>
+            <LinearGradient
+              colors={['#00E9BC', '#00B78F']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.actionPrimaryGrad}
+            >
+              <MaterialCommunityIcons name="play" size={20} color={colors.bg} />
+              <Text style={s.actionPrimaryText}>Start Session</Text>
+            </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity
             style={s.actionSecondary}
@@ -257,8 +278,8 @@ export default function HomeScreen() {
             activeOpacity={0.82}
             accessibilityLabel="Scan Fish"
           >
-            <MaterialCommunityIcons name="camera-outline" size={18} color={colors.primary} />
-            <Text style={s.actionSecondaryText}>SCAN FISH</Text>
+            <MaterialCommunityIcons name="camera-outline" size={19} color={colors.primary} />
+            <Text style={s.actionSecondaryText}>Scan Fish</Text>
           </TouchableOpacity>
         </View>
 
@@ -379,7 +400,18 @@ export default function HomeScreen() {
 
 // ─── Shared token ─────────────────────────────────────────────────────────────
 const TEAL_LINE = 'rgba(0,212,170,0.12)';
-const PANEL_RADIUS = radius.sm; // 8 — bezel feel
+const CARD_LINE = 'rgba(255,255,255,0.06)';
+const PANEL_RADIUS = 20; // soft, modern
+
+// Translate a hex colour to an rgba() string with the given alpha.
+function withAlpha(hex: string, alpha: number) {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
@@ -394,38 +426,36 @@ const s = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: 12,
   },
-  brandLabel: {
-    fontSize: 22,
-    fontWeight: '800',
+  greeting: {
+    fontSize: 24,
+    fontWeight: '700',
     color: colors.textPrimary,
-    letterSpacing: 4,
+    letterSpacing: -0.4,
   },
+  locRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 5 },
   locationLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.textTertiary,
-    letterSpacing: 1.5,
-    marginTop: 3,
+    fontSize: 12.5,
+    fontWeight: '500',
+    color: colors.textSecondary,
   },
-  locDot: { color: colors.primary },
-  headerRight: { alignItems: 'flex-end', gap: 4 },
-  dateLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.textTertiary,
-    letterSpacing: 1.5,
+  locDivider: { color: colors.textTertiary, fontSize: 12 },
+  notifBtn: {
+    width: 42, height: 42, borderRadius: 21,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: CARD_LINE,
   },
-  notifBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
 
   // Panels — the base unit
   panel: {
     marginHorizontal: spacing.lg,
-    marginBottom: 12,
+    marginBottom: 14,
     backgroundColor: colors.surface,
     borderRadius: PANEL_RADIUS,
     borderWidth: 1,
-    borderColor: TEAL_LINE,
+    borderColor: CARD_LINE,
     overflow: 'hidden',
+    ...elevation.card,
   },
   panelHeader: {
     flexDirection: 'row',
@@ -435,26 +465,27 @@ const s = StyleSheet.create({
     paddingVertical: 10,
   },
   panelLabel: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700',
-    color: colors.textTertiary,
-    letterSpacing: 2,
+    color: colors.textSecondary,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   panelMeta: {
-    fontSize: 9,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '500',
     color: colors.textTertiary,
-    letterSpacing: 1,
+    letterSpacing: 0.3,
   },
   panelDivider: {
     height: 1,
-    backgroundColor: TEAL_LINE,
+    backgroundColor: CARD_LINE,
   },
   viewAll: {
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     color: colors.primary,
-    letterSpacing: 1.5,
+    letterSpacing: 0.2,
   },
 
   // Prime badge in header
@@ -472,22 +503,52 @@ const s = StyleSheet.create({
   primeIndicator: { width: 5, height: 5, borderRadius: 3 },
   primeBadgeText: { fontSize: 9, fontWeight: '700', letterSpacing: 1.5 },
 
+  // Hero
+  heroWrap: {
+    marginHorizontal: spacing.lg,
+    marginBottom: 14,
+    borderRadius: PANEL_RADIUS,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: CARD_LINE,
+    overflow: 'hidden',
+    ...elevation.raised,
+  },
+  hero: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 14,
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  heroEyebrow: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    letterSpacing: 0.2,
+  },
+
   // Score block
   scoreBlock: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingTop: 14,
-    paddingBottom: 10,
+    paddingTop: 4,
+    paddingBottom: 12,
   },
   scoreLeft: { flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
   scoreNum: {
-    fontSize: 80,
-    fontWeight: '700',
-    lineHeight: 80,
-    letterSpacing: -2,
+    fontSize: 84,
+    fontWeight: '800',
+    lineHeight: 84,
+    letterSpacing: -3,
     fontVariant: ['tabular-nums'],
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 24,
   },
   scoreSlash: {
     fontSize: 14,
@@ -516,10 +577,12 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: CARD_LINE,
   },
-  sunItem: { gap: 2 },
+  sunItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sunLabel: { fontSize: 9, fontWeight: '700', color: colors.textTertiary, letterSpacing: 2 },
   sunTime: {
     fontSize: 15,
@@ -533,32 +596,31 @@ const s = StyleSheet.create({
   instrumentGrid: {
     flexDirection: 'row',
     marginHorizontal: spacing.lg,
-    marginBottom: 12,
+    marginBottom: 14,
     backgroundColor: colors.surface,
     borderRadius: PANEL_RADIUS,
     borderWidth: 1,
-    borderColor: TEAL_LINE,
+    borderColor: CARD_LINE,
     overflow: 'hidden',
+    ...elevation.card,
   },
   instrument: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 16,
     paddingHorizontal: 8,
     alignItems: 'center',
-    gap: 3,
-    borderRightWidth: 1,
-    borderRightColor: TEAL_LINE,
+    gap: 6,
   },
-  instrumentLabel: { fontSize: 8, fontWeight: '700', color: colors.textTertiary, letterSpacing: 2 },
+  instrumentBorder: { borderRightWidth: 1, borderRightColor: CARD_LINE },
   instrumentValue: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '700',
     color: colors.textPrimary,
     fontVariant: ['tabular-nums'],
     letterSpacing: -0.5,
   },
-  instrumentUnit: { fontSize: 10, color: colors.textTertiary, fontWeight: '500' },
-  instrumentSub: { fontSize: 9, fontWeight: '600', color: colors.textTertiary, letterSpacing: 1 },
+  instrumentUnit: { fontSize: 11, color: colors.textTertiary, fontWeight: '500' },
+  instrumentSub: { fontSize: 11, fontWeight: '500', color: colors.textSecondary },
 
   // Actions
   actionsRow: {
@@ -568,38 +630,45 @@ const s = StyleSheet.create({
     marginBottom: 12,
   },
   actionPrimary: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    borderRadius: PANEL_RADIUS,
-    paddingVertical: 13,
+    flex: 1.15,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  actionPrimaryGrad: {
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
+    gap: 8,
   },
   actionPrimaryText: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: colors.bg,
-    letterSpacing: 2,
+    letterSpacing: 0.2,
   },
   actionSecondary: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderRadius: PANEL_RADIUS,
-    paddingVertical: 13,
+    borderRadius: radius.lg,
+    paddingVertical: 16,
     borderWidth: 1,
-    borderColor: TEAL_LINE,
+    borderColor: colors.borderMid,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
+    gap: 8,
   },
   actionSecondaryText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
     color: colors.primary,
-    letterSpacing: 2,
+    letterSpacing: 0.2,
   },
 
   // Stats cluster

@@ -6,7 +6,7 @@ import { colors, spacing } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
 import { SessionInvitePrompt } from '../../components/social/SessionInvitePrompt';
 
-const TAB_BAR_HEIGHT = 58;
+const TAB_BAR_HEIGHT = 68;
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   return (
@@ -95,13 +95,13 @@ export default function TabsLayout() {
             borderTopWidth: 1,
             borderTopColor: 'rgba(255,255,255,0.05)',
             height: TAB_BAR_HEIGHT,
-            paddingBottom: 8,
-            paddingTop: 6,
+            paddingBottom: 12,
+            paddingTop: 8,
           },
           tabBarActiveTintColor: colors.primary,
           tabBarInactiveTintColor: colors.textTertiary,
           tabBarShowLabel: true,
-          tabBarLabelStyle: { fontSize: 10, fontWeight: '500', marginTop: 1 },
+          tabBarLabelStyle: { fontSize: 10.5, fontWeight: '600', marginTop: 3 },
         }}
       >
         <Tabs.Screen
