@@ -3,16 +3,28 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
 import { useRouter } from 'expo-router';
-import { colors, spacing, radius } from '../../constants/theme';
+import { colors, spacing, radius, elevation } from '../../constants/theme';
 import { useSessionStore } from '../../store/sessionStore';
 import { useCatchStore } from '../../store/catchStore';
 import { useFriendsStore } from '../../store/friendsStore';
 import { useWeather } from '../../hooks/useWeather';
 
 const TEAL_LINE = 'rgba(0,212,170,0.12)';
-const PANEL_RADIUS = radius.sm;
+const CARD_LINE = 'rgba(255,255,255,0.06)';
+const PANEL_RADIUS = 20;
+
+// Translate a hex colour to an rgba() string with the given alpha.
+function withAlpha(hex: string, alpha: number) {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 function formatElapsed(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -128,21 +140,29 @@ export default function SessionTab() {
     return (
       <SafeAreaView style={s.safe} edges={['top']}>
         <View style={s.header}>
-          <Text style={s.brand}>SESSION</Text>
+          <Text style={s.brand}>Session</Text>
           <View style={s.headerRight} />
         </View>
         <View style={s.noSession}>
           <View style={s.noSessionIconCircle}>
-            <MaterialCommunityIcons name="fish" size={32} color={colors.primary} />
+            <MaterialCommunityIcons name="fish" size={40} color={colors.primary} />
           </View>
-          <Text style={s.noSessionTitle}>NO ACTIVE SESSION</Text>
-          <Text style={s.noSessionSub}>Head to the water and start tracking your trip.</Text>
+          <Text style={s.noSessionTitle}>No active session</Text>
+          <Text style={s.noSessionSub}>Head to the water and start tracking your trip — your catches, casts and crew all live here.</Text>
           <TouchableOpacity
             style={s.startBtn}
             onPress={() => router.push('/(tabs)/map' as any)}
-            activeOpacity={0.75}
+            activeOpacity={0.85}
           >
-            <Text style={s.startBtnText}>START SESSION</Text>
+            <LinearGradient
+              colors={['#00E9BC', '#00B78F']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.startBtnGrad}
+            >
+              <MaterialCommunityIcons name="play" size={20} color={colors.bg} />
+              <Text style={s.startBtnText}>Start Session</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -152,7 +172,7 @@ export default function SessionTab() {
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <View style={s.header}>
-        <Text style={s.brand}>SESSION</Text>
+        <Text style={s.brand}>Session</Text>
         <View style={s.liveChip}>
           <View style={s.livePulse} />
           <Text style={s.liveLabel}>LIVE</Text>
@@ -161,19 +181,27 @@ export default function SessionTab() {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
-        {/* Timer panel */}
-        <View style={[s.panel, { marginHorizontal: spacing.lg, marginBottom: 10 }]}>
-          <Text style={s.eyebrow}>ELAPSED TIME</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        {/* Timer hero */}
+        <View style={s.heroWrap}>
+          <LinearGradient
+            colors={[withAlpha(colors.primary, 0.20), withAlpha(colors.primary, 0.04), 'rgba(13,26,45,0)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0.9, y: 1 }}
+            style={s.hero}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={s.eyebrow}>ELAPSED TIME</Text>
+              <TouchableOpacity
+                style={s.endBtn}
+                onPress={() => { endSession(); router.push('/session-summary' as any); }}
+                activeOpacity={0.85}
+              >
+                <MaterialCommunityIcons name="stop" size={14} color={colors.danger} />
+                <Text style={s.endBtnText}>End</Text>
+              </TouchableOpacity>
+            </View>
             <Text style={s.timerText}>{formatElapsed(elapsedMs)}</Text>
-            <TouchableOpacity
-              style={s.endBtn}
-              onPress={() => { endSession(); router.push('/session-summary' as any); }}
-              activeOpacity={0.75}
-            >
-              <Text style={s.endBtnText}>END</Text>
-            </TouchableOpacity>
-          </View>
+          </LinearGradient>
         </View>
 
         {/* Live crew panel */}
@@ -270,17 +298,25 @@ export default function SessionTab() {
           <TouchableOpacity
             style={s.castBtn}
             onPress={incrementCastCount}
-            activeOpacity={0.7}
+            activeOpacity={0.85}
           >
-            <MaterialCommunityIcons name="hook" size={18} color={colors.textSecondary} />
-            <Text style={s.castBtnText}>COUNT CAST</Text>
+            <MaterialCommunityIcons name="hook" size={18} color={colors.primary} />
+            <Text style={s.castBtnText}>Count cast</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={s.logBtn}
             onPress={() => router.push('/identifier' as any)}
-            activeOpacity={0.75}
+            activeOpacity={0.85}
           >
-            <Text style={s.logBtnText}>+ LOG CATCH</Text>
+            <LinearGradient
+              colors={['#00E9BC', '#00B78F']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.logBtnGrad}
+            >
+              <MaterialCommunityIcons name="plus" size={18} color={colors.bg} />
+              <Text style={s.logBtnText}>Log catch</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
@@ -315,7 +351,7 @@ export default function SessionTab() {
         <View style={s.modalBackdrop}>
           <View style={s.modalSheet}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <Text style={s.modalTitle}>INVITE TO SESSION</Text>
+              <Text style={s.modalTitle}>Invite to session</Text>
               <TouchableOpacity onPress={() => setInviteOpen(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <MaterialCommunityIcons name="close" size={22} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -379,7 +415,7 @@ const s = StyleSheet.create({
     backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg,
     borderWidth: 1, borderColor: TEAL_LINE, padding: spacing.lg, paddingBottom: spacing.xl,
   },
-  modalTitle: { fontSize: 13, fontWeight: '800', letterSpacing: 2, color: colors.textPrimary },
+  modalTitle: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3, color: colors.textPrimary },
   modalSub: { fontSize: 12, color: colors.textSecondary, marginTop: 6, lineHeight: 17 },
   friendRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10,
@@ -398,10 +434,10 @@ const s = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   brand: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '700',
     color: colors.textPrimary,
-    letterSpacing: 4,
+    letterSpacing: -0.4,
   },
   headerRight: { width: 60 },
 
@@ -435,16 +471,34 @@ const s = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: PANEL_RADIUS,
     borderWidth: 1,
-    borderColor: TEAL_LINE,
+    borderColor: CARD_LINE,
     padding: spacing.md,
     overflow: 'hidden',
+    ...elevation.card,
+  },
+
+  // Timer hero
+  heroWrap: {
+    marginHorizontal: spacing.lg,
+    marginBottom: 10,
+    borderRadius: PANEL_RADIUS,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: CARD_LINE,
+    overflow: 'hidden',
+    ...elevation.raised,
+  },
+  hero: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 18,
   },
 
   eyebrow: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 2,
-    color: colors.textTertiary,
+    letterSpacing: 0.8,
+    color: colors.textSecondary,
     textTransform: 'uppercase',
     marginBottom: 6,
   },
@@ -457,27 +511,30 @@ const s = StyleSheet.create({
 
   // Timer
   timerText: {
-    fontSize: 48,
+    fontSize: 56,
     fontWeight: '800',
     color: colors.textPrimary,
     fontVariant: ['tabular-nums'],
-    letterSpacing: 2,
-    lineHeight: 54,
+    letterSpacing: -1,
+    lineHeight: 62,
+    marginTop: 4,
   },
   endBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     borderWidth: 1,
-    borderColor: '#EF4444',
-    borderRadius: PANEL_RADIUS,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    alignSelf: 'flex-end',
-    marginBottom: 4,
+    borderColor: withAlpha(colors.danger, 0.4),
+    backgroundColor: withAlpha(colors.danger, 0.08),
+    borderRadius: radius.full,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
   },
   endBtnText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#EF4444',
-    letterSpacing: 2,
+    color: colors.danger,
+    letterSpacing: 0.2,
   },
 
   // Score
@@ -517,33 +574,43 @@ const s = StyleSheet.create({
   castBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     backgroundColor: colors.surface,
-    borderRadius: PANEL_RADIUS,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: TEAL_LINE,
-    height: 48,
-    paddingHorizontal: 16,
+    borderColor: colors.borderMid,
+    height: 52,
+    paddingHorizontal: 18,
   },
   castBtnText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    letterSpacing: 2,
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary,
+    letterSpacing: 0.2,
   },
   logBtn: {
     flex: 1,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  logBtnGrad: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: PANEL_RADIUS,
-    height: 48,
+    gap: 8,
+    height: 52,
   },
   logBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: colors.bg,
-    letterSpacing: 2,
+    letterSpacing: 0.2,
   },
 
   // No session empty state
@@ -555,21 +622,26 @@ const s = StyleSheet.create({
     gap: 12,
   },
   noSessionIconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: 'rgba(0,212,170,0.08)',
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    backgroundColor: withAlpha(colors.primary, 0.08),
     borderWidth: 1,
-    borderColor: TEAL_LINE,
+    borderColor: withAlpha(colors.primary, 0.2),
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 4,
   },
   noSessionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '700',
     color: colors.textPrimary,
-    letterSpacing: 3,
+    letterSpacing: -0.4,
   },
   noSessionSub: {
     fontSize: 14,
@@ -578,18 +650,28 @@ const s = StyleSheet.create({
     lineHeight: 20,
   },
   startBtn: {
-    marginTop: 8,
+    marginTop: 12,
     width: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: PANEL_RADIUS,
+    borderRadius: radius.lg,
+    overflow: 'hidden',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  startBtnGrad: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
   },
   startBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: colors.bg,
-    letterSpacing: 2,
+    letterSpacing: 0.2,
   },
 
   // Session catches

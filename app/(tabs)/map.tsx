@@ -19,7 +19,8 @@ import { FishingSpotRecord } from '../../types/fishingSpot';
 import { colors, radius, spacing, elevation } from '../../constants/theme';
 
 const TEAL_LINE = 'rgba(0,212,170,0.12)';
-const PANEL_RADIUS = radius.sm;
+const CARD_LINE = 'rgba(255,255,255,0.06)';
+const PANEL_RADIUS = 18;
 import { useSessionStore } from '../../store/sessionStore';
 import { SpotPhoto } from '../../components/map/SpotPhoto';
 import { useSpotStore } from '../../store/spotStore';
@@ -215,8 +216,8 @@ export default function SpotsScreen() {
       {/* Header */}
       <View style={s.header}>
         <View>
-          <Text style={s.brand}>SPOTS</Text>
-          <Text style={s.headerSub}>{loadingSpots ? 'LOADING CHART DATA…' : `${filtered.length} LOCATIONS`}</Text>
+          <Text style={s.brand}>Spots</Text>
+          <Text style={s.headerSub}>{loadingSpots ? 'Loading chart data…' : `${filtered.length.toLocaleString()} locations`}</Text>
         </View>
         <TouchableOpacity style={[s.nearBtn, nearCoordinate && s.nearBtnActive]} onPress={handleNearMe} disabled={locating} accessibilityRole="button" accessibilityLabel={nearCoordinate ? 'Stop sorting by distance' : 'Sort spots near me'}>
           <MaterialCommunityIcons name="crosshairs-gps" size={16} color={colors.primary} />
@@ -330,7 +331,7 @@ export default function SpotsScreen() {
       <View style={s.sectionHeaderRow}>
         <View style={s.sectionAccent} />
         <Text style={s.sectionTitle}>{searchQuery || selectedType !== 'All' || selectedTag ? 'Results' : 'All Spots'}</Text>
-        <Text style={s.sectionCount}>{filtered.length}</Text>
+        <Text style={s.sectionCount}>{filtered.length.toLocaleString()}</Text>
       </View>
     </View>
   );
@@ -371,8 +372,8 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     marginHorizontal: spacing.lg, marginTop: spacing.sm,
     backgroundColor: 'rgba(0,212,170,0.08)',
-    borderRadius: PANEL_RADIUS, paddingHorizontal: 14, paddingVertical: 12,
-    borderWidth: 1, borderColor: TEAL_LINE,
+    borderRadius: radius.full, paddingHorizontal: 16, paddingVertical: 12,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.22)',
   },
   sessionDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.primary },
   sessionText: { flex: 1, fontSize: 13, color: colors.primary, fontWeight: '600' },
@@ -381,55 +382,55 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between',
     paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.sm,
   },
-  brand: { fontSize: 18, fontWeight: '800', color: colors.textPrimary, letterSpacing: 4 },
-  headerSub: { fontSize: 9, color: colors.textTertiary, marginTop: 4, letterSpacing: 2, fontWeight: '700' },
+  brand: { fontSize: 26, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.5 },
+  headerSub: { fontSize: 13, color: colors.textSecondary, marginTop: 3, fontWeight: '500' },
   nearBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: PANEL_RADIUS,
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderWidth: 1, borderColor: TEAL_LINE,
+    backgroundColor: 'rgba(0,212,170,0.1)', borderRadius: radius.full,
+    paddingHorizontal: 15, paddingVertical: 10,
+    borderWidth: 1, borderColor: 'rgba(0,212,170,0.25)',
     marginTop: 4,
   },
   nearBtnActive: { backgroundColor: 'rgba(0,212,170,0.18)', borderColor: colors.primary },
-  nearText: { fontSize: 11, color: colors.primary, fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' },
+  nearText: { fontSize: 12.5, color: colors.primary, fontWeight: '600' },
 
   searchRow: {
     paddingHorizontal: spacing.lg, paddingBottom: spacing.sm,
   },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: colors.surface, borderRadius: PANEL_RADIUS,
-    borderWidth: 1, borderColor: TEAL_LINE,
-    paddingHorizontal: spacing.md, paddingVertical: 12,
+    backgroundColor: colors.surface, borderRadius: radius.full,
+    borderWidth: 1, borderColor: CARD_LINE,
+    paddingHorizontal: spacing.md, paddingVertical: 13,
   },
-  searchInput: { flex: 1, fontSize: 14, color: colors.textPrimary },
+  searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary },
 
-  displayTabs: { flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: 3, backgroundColor: colors.surface, borderRadius: PANEL_RADIUS, borderWidth: 1, borderColor: TEAL_LINE },
-  displayTab: { flex: 1, minHeight: 34, alignItems: 'center', justifyContent: 'center', borderRadius: radius.xs },
+  displayTabs: { flexDirection: 'row', marginHorizontal: spacing.lg, marginBottom: spacing.sm, padding: 4, backgroundColor: colors.surface, borderRadius: radius.full, borderWidth: 1, borderColor: CARD_LINE },
+  displayTab: { flex: 1, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full },
   displayTabActive: { backgroundColor: colors.primary },
-  displayTabText: { color: colors.textSecondary, fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' },
-  displayTabTextActive: { color: colors.background },
+  displayTabText: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  displayTabTextActive: { color: colors.background, fontWeight: '700' },
 
   pillsRow: { paddingHorizontal: spacing.lg, gap: 8, paddingBottom: 8 },
   pill: {
-    paddingHorizontal: 14, paddingVertical: 9, minHeight: 36,
-    borderRadius: PANEL_RADIUS, backgroundColor: colors.surface,
-    borderWidth: 1, borderColor: TEAL_LINE,
+    paddingHorizontal: 16, paddingVertical: 9, minHeight: 38,
+    borderRadius: radius.full, backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: CARD_LINE,
     alignItems: 'center', justifyContent: 'center',
   },
   pillActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  pillText: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, letterSpacing: 1.5, textTransform: 'uppercase' },
+  pillText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
   pillTextActive: { color: '#051410', fontWeight: '700' },
 
   tagPill: {
-    paddingHorizontal: 14, paddingVertical: 7, minHeight: 32,
-    borderRadius: PANEL_RADIUS, backgroundColor: 'transparent',
-    borderWidth: 1, borderColor: TEAL_LINE,
+    paddingHorizontal: 15, paddingVertical: 8, minHeight: 34,
+    borderRadius: radius.full, backgroundColor: 'transparent',
+    borderWidth: 1, borderColor: CARD_LINE,
     alignItems: 'center', justifyContent: 'center',
   },
-  tagPillActive: { borderColor: colors.secondary, backgroundColor: 'rgba(245,158,11,0.1)' },
-  tagPillText: { fontSize: 10, fontWeight: '700', color: colors.textSecondary, letterSpacing: 1.5, textTransform: 'uppercase' },
-  tagPillTextActive: { color: colors.secondary },
+  tagPillActive: { borderColor: colors.accent, backgroundColor: 'rgba(245,158,11,0.1)' },
+  tagPillText: { fontSize: 12.5, fontWeight: '600', color: colors.textSecondary },
+  tagPillTextActive: { color: colors.accent },
 
   featuredSection: { paddingHorizontal: spacing.lg, marginBottom: spacing.md },
   mapSection: { paddingHorizontal: spacing.md },
@@ -438,14 +439,14 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: spacing.lg, marginBottom: 12, marginTop: 4,
   },
-  sectionAccent: { width: 3, height: 14, borderRadius: 2, backgroundColor: colors.primary },
-  sectionTitle: { flex: 1, fontSize: 11, fontWeight: '700', color: colors.textPrimary, letterSpacing: 2, textTransform: 'uppercase' },
+  sectionAccent: { width: 3, height: 16, borderRadius: 2, backgroundColor: colors.primary },
+  sectionTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.3 },
   sectionCount: { fontSize: 13, color: colors.textSecondary, fontWeight: '600', fontVariant: ['tabular-nums'] },
 
   featuredCard: {
-    borderRadius: PANEL_RADIUS, overflow: 'hidden',
-    borderWidth: 1, borderColor: TEAL_LINE,
-    ...elevation.card,
+    borderRadius: radius.xl, overflow: 'hidden',
+    borderWidth: 1, borderColor: CARD_LINE,
+    ...elevation.raised,
     height: 200,
   },
   mapCard: { height: 430 },
@@ -478,12 +479,12 @@ const s = StyleSheet.create({
 
   spotCard: {
     flexDirection: 'row',
-    marginHorizontal: spacing.lg, marginBottom: 10,
+    marginHorizontal: spacing.lg, marginBottom: 12,
     backgroundColor: colors.surface,
     borderRadius: PANEL_RADIUS,
-    borderWidth: 1, borderColor: TEAL_LINE,
+    borderWidth: 1, borderColor: CARD_LINE,
     overflow: 'hidden',
-    ...elevation.raised,
+    ...elevation.card,
   },
   spotPhoto: {
     width: 80, alignItems: 'center', justifyContent: 'center',
@@ -518,10 +519,10 @@ const s = StyleSheet.create({
   diffText: { fontSize: 10, fontWeight: '800' },
 
   emptyState: { alignItems: 'center', paddingHorizontal: 32, paddingVertical: 52 },
-  emptyTitle: { marginTop: 10, fontSize: 14, fontWeight: '800', color: colors.textPrimary, letterSpacing: 2, textTransform: 'uppercase' },
-  emptyText: { marginTop: 5, fontSize: 13, color: colors.textSecondary, textAlign: 'center' },
-  clearFiltersButton: { marginTop: 16, borderRadius: PANEL_RADIUS, backgroundColor: colors.primary, paddingHorizontal: 18, paddingVertical: 11 },
-  clearFiltersText: { color: colors.background, fontSize: 11, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' },
+  emptyTitle: { marginTop: 12, fontSize: 18, fontWeight: '700', color: colors.textPrimary, letterSpacing: -0.3 },
+  emptyText: { marginTop: 6, fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20 },
+  clearFiltersButton: { marginTop: 18, borderRadius: radius.full, backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 12 },
+  clearFiltersText: { color: colors.background, fontSize: 14, fontWeight: '700' },
 
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
 });

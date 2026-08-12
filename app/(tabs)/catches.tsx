@@ -6,12 +6,24 @@ import {
 import { FishSpeciesPhoto } from '../../components/fish/FishSpeciesPhoto';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon as MaterialCommunityIcons } from '../../components/ui/Icon';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCatchStore } from '../../store/catchStore';
-import { colors, spacing, radius } from '../../constants/theme';
+import { colors, spacing, radius, elevation } from '../../constants/theme';
 
 const TEAL_LINE = 'rgba(0,212,170,0.12)';
-const PANEL_RADIUS = radius.sm;
+const CARD_LINE = 'rgba(255,255,255,0.06)';
+const PANEL_RADIUS = 20;
+
+// Translate a hex colour to an rgba() string with the given alpha.
+function withAlpha(hex: string, alpha: number) {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h.split('').map((c) => c + c).join('') : h;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 type TimeFilter = 'all' | 'week' | 'month';
 
@@ -93,8 +105,8 @@ export default function CatchesScreen() {
 
   const FILTER_LABELS: { key: TimeFilter; label: string }[] = [
     { key: 'all', label: 'All' },
-    { key: 'week', label: 'This Week' },
-    { key: 'month', label: 'This Month' },
+    { key: 'week', label: 'This week' },
+    { key: 'month', label: 'This month' },
   ];
 
   return (
@@ -102,7 +114,7 @@ export default function CatchesScreen() {
       {/* Header */}
       <View style={s.header}>
         <View style={s.headerLeft}>
-          <Text style={s.brand}>LOGBOOK</Text>
+          <Text style={s.brand}>Logbook</Text>
           <View style={s.countBadge}>
             <Text style={s.countBadgeText}>{catches.length}</Text>
           </View>
@@ -110,9 +122,9 @@ export default function CatchesScreen() {
         <TouchableOpacity
           style={s.addBtn}
           onPress={() => router.push('/identifier' as any)}
-          activeOpacity={0.75}
+          activeOpacity={0.85}
         >
-          <MaterialCommunityIcons name="plus" size={20} color={colors.bg} />
+          <MaterialCommunityIcons name="plus" size={22} color={colors.primary} />
         </TouchableOpacity>
       </View>
 
@@ -128,7 +140,7 @@ export default function CatchesScreen() {
             key={f.key}
             style={[s.filterPill, timeFilter === f.key && s.filterPillActive]}
             onPress={() => setTimeFilter(f.key)}
-            activeOpacity={0.75}
+            activeOpacity={0.85}
           >
             <Text style={[s.filterPillText, timeFilter === f.key && s.filterPillTextActive]}>
               {f.label}
@@ -140,11 +152,13 @@ export default function CatchesScreen() {
       {/* Stats Bar */}
       <View style={s.statsBar}>
         <View style={s.statItem}>
+          <MaterialCommunityIcons name="scale-balance" size={16} color={colors.primary} />
           <Text style={s.statValue}>{totalWeight.toFixed(1)} kg</Text>
-          <Text style={s.statLabel}>Weight Hauled</Text>
+          <Text style={s.statLabel}>Weight hauled</Text>
         </View>
         <View style={s.statDivider} />
         <View style={s.statItem}>
+          <MaterialCommunityIcons name="trophy-variant" size={16} color={colors.accent} />
           <Text style={s.statValue}>
             {biggestCatch?.weight ? `${biggestCatch.weight} kg` : '—'}
           </Text>
@@ -152,6 +166,7 @@ export default function CatchesScreen() {
         </View>
         <View style={s.statDivider} />
         <View style={s.statItem}>
+          <MaterialCommunityIcons name="fish" size={16} color={colors.secondary} />
           <Text style={s.statValue}>{speciesCount}</Text>
           <Text style={s.statLabel}>Species</Text>
         </View>
@@ -182,13 +197,21 @@ export default function CatchesScreen() {
             <MaterialCommunityIcons name="fish" size={32} color={colors.primary} />
           </View>
           <Text style={s.emptyTitle}>No catches yet</Text>
-          <Text style={s.emptySub}>Cast your line and log your first fish.</Text>
+          <Text style={s.emptySub}>Cast your line and log your first fish — every catch you record shows up here.</Text>
           <TouchableOpacity
             style={s.emptyBtn}
             onPress={() => router.push('/identifier' as any)}
-            activeOpacity={0.75}
+            activeOpacity={0.85}
           >
-            <Text style={s.emptyBtnText}>Log a Catch</Text>
+            <LinearGradient
+              colors={['#00E9BC', '#00B78F']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.emptyBtnGrad}
+            >
+              <MaterialCommunityIcons name="plus" size={19} color={colors.bg} />
+              <Text style={s.emptyBtnText}>Log a catch</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       ) : (
@@ -202,22 +225,15 @@ export default function CatchesScreen() {
             <Text style={s.dateHeader}>{section.title}</Text>
           )}
           renderSectionFooter={() => <View style={{ height: spacing.sm }} />}
-          renderItem={({ item, index, section }) => {
+          renderItem={({ item }) => {
             const accentColor = getSpeciesColor(item.species);
-            const isFirst = index === 0;
-            const isLast = index === section.data.length - 1;
             return (
               <TouchableOpacity
-                style={[
-                  s.catchRow,
-                  isFirst && s.catchRowFirst,
-                  isLast && s.catchRowLast,
-                  !isFirst && s.catchRowBorder,
-                ]}
+                style={s.catchRow}
                 onPress={() =>
                   router.push({ pathname: '/catch-detail', params: { id: item.id } } as any)
                 }
-                activeOpacity={0.75}
+                activeOpacity={0.85}
               >
                 {/* Thumbnail */}
                 <FishSpeciesPhoto
@@ -293,18 +309,18 @@ const s = StyleSheet.create({
     gap: 10,
   },
   brand: {
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '700',
     color: colors.textPrimary,
-    letterSpacing: 4,
+    letterSpacing: -0.4,
   },
   countBadge: {
-    backgroundColor: 'rgba(0,212,170,0.1)',
-    borderRadius: radius.xs,
-    paddingHorizontal: 8,
+    backgroundColor: withAlpha(colors.primary, 0.1),
+    borderRadius: radius.full,
+    paddingHorizontal: 9,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: TEAL_LINE,
+    borderColor: withAlpha(colors.primary, 0.2),
   },
   countBadgeText: {
     fontSize: 12,
@@ -313,12 +329,15 @@ const s = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: PANEL_RADIUS,
-    backgroundColor: colors.primary,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: CARD_LINE,
     alignItems: 'center',
     justifyContent: 'center',
+    ...elevation.card,
   },
 
   filterScroll: { flexGrow: 0 },
@@ -328,26 +347,27 @@ const s = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   filterPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: PANEL_RADIUS,
+    minHeight: 34,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+    borderRadius: radius.full,
     backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: TEAL_LINE,
+    borderColor: CARD_LINE,
   },
   filterPillActive: {
     backgroundColor: colors.primary,
     borderColor: colors.primary,
   },
   filterPillText: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.textSecondary,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
+    letterSpacing: 0.2,
   },
   filterPillTextActive: {
     color: colors.bg,
+    fontWeight: '700',
   },
 
   // Stats bar
@@ -359,31 +379,32 @@ const s = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: PANEL_RADIUS,
     borderWidth: 1,
-    borderColor: TEAL_LINE,
-    paddingVertical: 14,
+    borderColor: CARD_LINE,
+    paddingVertical: 18,
+    ...elevation.card,
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
   },
   statDivider: {
     width: 1,
-    height: 28,
-    backgroundColor: TEAL_LINE,
+    height: 40,
+    backgroundColor: CARD_LINE,
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: colors.textPrimary,
+    letterSpacing: -0.4,
     fontVariant: ['tabular-nums'],
   },
   statLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.textTertiary,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    letterSpacing: 0.1,
   },
 
   // Feed
@@ -394,10 +415,10 @@ const s = StyleSheet.create({
 
   // Date section header
   dateHeader: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700',
-    color: colors.textTertiary,
-    letterSpacing: 2,
+    color: colors.textSecondary,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
     paddingVertical: 8,
     paddingTop: 12,
@@ -407,35 +428,20 @@ const s = StyleSheet.create({
   catchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    marginBottom: 10,
     backgroundColor: colors.surface,
+    borderRadius: PANEL_RADIUS,
+    borderWidth: 1,
+    borderColor: CARD_LINE,
     gap: 12,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderLeftColor: TEAL_LINE,
-    borderRightColor: TEAL_LINE,
-  },
-  catchRowFirst: {
-    borderTopLeftRadius: PANEL_RADIUS,
-    borderTopRightRadius: PANEL_RADIUS,
-    borderTopWidth: 1,
-    borderTopColor: TEAL_LINE,
-  },
-  catchRowLast: {
-    borderBottomLeftRadius: PANEL_RADIUS,
-    borderBottomRightRadius: PANEL_RADIUS,
-    borderBottomWidth: 1,
-    borderBottomColor: TEAL_LINE,
-  },
-  catchRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: TEAL_LINE,
+    ...elevation.card,
   },
   catchThumb: {
-    width: 60,
-    height: 60,
-    borderRadius: PANEL_RADIUS,
+    width: 64,
+    height: 64,
+    borderRadius: 14,
   },
   catchInfo: {
     flex: 1,
@@ -467,11 +473,11 @@ const s = StyleSheet.create({
   },
   condChip: {
     backgroundColor: colors.surface2,
-    borderRadius: radius.xs,
-    paddingHorizontal: 8,
+    borderRadius: radius.full,
+    paddingHorizontal: 9,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: TEAL_LINE,
+    borderColor: CARD_LINE,
   },
   condChipText: {
     fontSize: 11,
@@ -495,10 +501,10 @@ const s = StyleSheet.create({
     marginBottom: spacing.md,
   },
   pbHeader: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700',
-    color: colors.textTertiary,
-    letterSpacing: 2,
+    color: colors.textSecondary,
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginBottom: 10,
   },
@@ -508,14 +514,15 @@ const s = StyleSheet.create({
   },
   pbCard: {
     backgroundColor: colors.surface,
-    borderRadius: PANEL_RADIUS,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: TEAL_LINE,
+    borderColor: CARD_LINE,
     paddingHorizontal: 14,
     paddingVertical: 12,
     minWidth: 90,
     alignItems: 'center',
     gap: 3,
+    ...elevation.card,
   },
   pbWeight: {
     fontSize: 20,
@@ -548,37 +555,48 @@ const s = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: 'rgba(0,212,170,0.08)',
+    backgroundColor: withAlpha(colors.primary, 0.08),
     borderWidth: 1,
-    borderColor: TEAL_LINE,
+    borderColor: withAlpha(colors.primary, 0.18),
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '700',
     color: colors.textPrimary,
-    letterSpacing: 3,
-    textTransform: 'uppercase',
+    letterSpacing: -0.4,
   },
   emptySub: {
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280,
   },
   emptyBtn: {
-    marginTop: 8,
-    paddingHorizontal: 24,
-    paddingVertical: 13,
-    borderRadius: PANEL_RADIUS,
-    backgroundColor: colors.primary,
+    marginTop: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  emptyBtnGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 26,
+    paddingVertical: 16,
   },
   emptyBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: colors.bg,
-    letterSpacing: 2,
-    textTransform: 'uppercase',
+    letterSpacing: 0.2,
   },
 });
