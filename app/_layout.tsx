@@ -126,24 +126,28 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        {/* These screens draw their own in-screen header (back button + title),
+            so the native header would be a duplicate stacked on top of it. */}
         <Stack.Screen
           name="identifier"
           options={{
-            title: 'Fish Identifier',
+            headerShown: false,
             presentation: 'modal',
-            headerStyle: { backgroundColor: colors.background },
           }}
         />
+        <Stack.Screen name="spot-details" options={{ headerShown: false }} />
+        <Stack.Screen name="leaderboard" options={{ headerShown: false, title: 'Leaderboard' }} />
+        <Stack.Screen name="licence-checker" options={{ headerShown: false, title: 'Licence Checker' }} />
         <Stack.Screen name="knots" options={{ title: 'Knot Library' }} />
         <Stack.Screen name="knot-detail" options={{ title: 'Knot Tutorial' }} />
         <Stack.Screen name="add-catch" options={{ title: 'Log a Catch' }} />
         <Stack.Screen name="catch-detail" options={{ title: 'Catch Details' }} />
         <Stack.Screen name="species-detail" options={{ title: 'Species Info' }} />
-        <Stack.Screen name="conditions" options={{ title: 'Tides & Conditions' }} />
+        <Stack.Screen name="conditions" options={{ headerShown: false, title: 'Tides & Conditions' }} />
         <Stack.Screen name="pro" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="fish-tips" options={{ headerShown: false }} />
-        <Stack.Screen name="profile" options={{ title: 'My Profile' }} />
-        <Stack.Screen name="friends" options={{ title: 'Friends' }} />
+        <Stack.Screen name="profile" options={{ headerShown: false, title: 'My Profile' }} />
+        <Stack.Screen name="friends" options={{ headerShown: false, title: 'Friends' }} />
         <Stack.Screen name="leaderboards" options={{ title: 'Leaderboards' }} />
         <Stack.Screen name="clubs" options={{ title: 'Fishing Clubs' }} />
         <Stack.Screen name="challenges" options={{ title: 'Challenges' }} />
@@ -156,14 +160,14 @@ export default function RootLayout() {
         <Stack.Screen name="my-stats" options={{ title: 'My Fishing Story' }} />
         <Stack.Screen name="catch-card-share" options={{ title: 'Share Catch' }} />
         <Stack.Screen name="search" options={{ title: 'Search', headerShown: false }} />
-        <Stack.Screen name="ai-advisor" options={{ title: 'AI Advisor' }} />
-        <Stack.Screen name="weather-detail" options={{ title: 'Weather & Conditions' }} />
-        <Stack.Screen name="trip-planner" options={{ title: 'Trip Planner' }} />
-        <Stack.Screen name="gear-tracker" options={{ title: 'Gear Tracker' }} />
-        <Stack.Screen name="records" options={{ title: 'Records' }} />
-        <Stack.Screen name="bait-guide" options={{ title: 'Bait Guide' }} />
-        <Stack.Screen name="fishing-calendar" options={{ title: 'Fishing Calendar' }} />
-        <Stack.Screen name="community" options={{ title: 'Community' }} />
+        <Stack.Screen name="ai-advisor" options={{ headerShown: false, title: 'AI Advisor' }} />
+        <Stack.Screen name="weather-detail" options={{ headerShown: false, title: 'Weather & Conditions' }} />
+        <Stack.Screen name="trip-planner" options={{ headerShown: false, title: 'Trip Planner' }} />
+        <Stack.Screen name="gear-tracker" options={{ headerShown: false, title: 'Gear Tracker' }} />
+        <Stack.Screen name="records" options={{ headerShown: false, title: 'Records' }} />
+        <Stack.Screen name="bait-guide" options={{ headerShown: false, title: 'Bait Guide' }} />
+        <Stack.Screen name="fishing-calendar" options={{ headerShown: false, title: 'Fishing Calendar' }} />
+        <Stack.Screen name="community" options={{ headerShown: false, title: 'Community' }} />
         <Stack.Screen name="marketplace" options={{ title: 'Tackle Marketplace' }} />
         <Stack.Screen name="fishing-guides" options={{ title: 'Fishing Guides' }} />
         <Stack.Screen name="casting-calculator" options={{ title: 'Casting Calculator' }} />
@@ -174,7 +178,7 @@ export default function RootLayout() {
         <Stack.Screen name="fish-radar" options={{ title: 'Fish Radar' }} />
         <Stack.Screen name="species-compare" options={{ title: 'Species Compare' }} />
         <Stack.Screen name="quests" options={{ title: 'Quest Log' }} />
-        <Stack.Screen name="fish-database" options={{ title: 'Fish Database' }} />
+        <Stack.Screen name="fish-database" options={{ headerShown: false, title: 'Fish Database' }} />
         <Stack.Screen name="session" options={{ headerShown: false }} />
         <Stack.Screen name="session-summary" options={{ headerShown: false, presentation: 'modal' }} />
       </Stack>
