@@ -95,9 +95,26 @@ export const typography = {
   monoBold: { fontSize: 15, fontWeight: '700' as const },
   displaySemi: { fontSize: 56, fontWeight: '700' as const, letterSpacing: -1.5 },
   h4: { fontSize: 16, fontWeight: '600' as const },
-  bodySmall: { fontSize: 13, fontWeight: '400' as const },
   label2: { fontSize: 11, fontWeight: '600' as const, letterSpacing: 0.5 },
 };
 
-// Backwards compat — some screens import `fonts` from theme
-export const fonts = typography;
+// Font FAMILY names — these are the families registered in app/_layout.tsx
+// (useFonts + the web @font-face block). They MUST be plain strings: React
+// Native Web calls `.indexOf('System')` on any fontFamily value, so passing a
+// style object here throws "i.indexOf is not a function" and takes the whole
+// screen down. `fonts` used to alias `typography` (style objects), which
+// crashed every screen that set `fontFamily: fonts.*`.
+export const fonts = {
+  body: 'Inter_400Regular',
+  bodyMed: 'Inter_600SemiBold',
+  bodySemi: 'Inter_600SemiBold',
+  bodyBold: 'Inter_700Bold',
+  // No dedicated mono face is bundled; Inter with tabular-nums (applied at the
+  // call sites via fontVariant) is the intended numeric treatment.
+  mono: 'Inter_600SemiBold',
+  monoBold: 'Inter_700Bold',
+  display: 'Inter_700Bold',
+  displaySemi: 'Inter_600SemiBold',
+  label: 'Inter_700Bold',
+  caption: 'Inter_400Regular',
+} as const;
