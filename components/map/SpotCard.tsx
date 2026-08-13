@@ -124,7 +124,7 @@ export function SpotCard({ spot, onClose, onNavigate }: SpotCardProps) {
                 style={styles.writeReviewBtn}
                 onPress={() => Alert.alert('Write a Review', 'Review submission coming soon! Stay tuned for this feature.', [{ text: 'OK' }])}
               >
-                <Text style={styles.writeReviewText}>WRITE A REVIEW</Text>
+                <Text style={styles.writeReviewText}>Write a review</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.latestReview}>
@@ -300,10 +300,10 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
   },
   writeReviewText: {
-    fontSize: 10,
+    fontSize: 13,
     fontFamily: fonts.bodySemi,
     color: colors.primary,
-    letterSpacing: 0.6,
+    letterSpacing: 0.2,
   },
   latestReview: {
     backgroundColor: 'rgba(255,255,255,0.03)',

@@ -140,9 +140,9 @@ export default function RootLayout() {
         <Stack.Screen name="licence-checker" options={{ headerShown: false, title: 'Licence Checker' }} />
         <Stack.Screen name="knots" options={{ title: 'Knot Library' }} />
         <Stack.Screen name="knot-detail" options={{ title: 'Knot Tutorial' }} />
-        <Stack.Screen name="add-catch" options={{ title: 'Log a Catch' }} />
-        <Stack.Screen name="catch-detail" options={{ title: 'Catch Details' }} />
-        <Stack.Screen name="species-detail" options={{ title: 'Species Info' }} />
+        <Stack.Screen name="add-catch" options={{ headerShown: false, title: 'Log a Catch' }} />
+        <Stack.Screen name="catch-detail" options={{ headerShown: false, title: 'Catch Details' }} />
+        <Stack.Screen name="species-detail" options={{ headerShown: false, title: 'Species Info' }} />
         <Stack.Screen name="conditions" options={{ headerShown: false, title: 'Tides & Conditions' }} />
         <Stack.Screen name="pro" options={{ headerShown: false, presentation: 'modal' }} />
         <Stack.Screen name="fish-tips" options={{ headerShown: false }} />
@@ -158,7 +158,7 @@ export default function RootLayout() {
         <Stack.Screen name="notifications" options={{ title: 'Notification Settings' }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
         <Stack.Screen name="my-stats" options={{ title: 'My Fishing Story' }} />
-        <Stack.Screen name="catch-card-share" options={{ title: 'Share Catch' }} />
+        <Stack.Screen name="catch-card-share" options={{ headerShown: false, title: 'Share Catch' }} />
         <Stack.Screen name="search" options={{ title: 'Search', headerShown: false }} />
         <Stack.Screen name="ai-advisor" options={{ headerShown: false, title: 'AI Advisor' }} />
         <Stack.Screen name="weather-detail" options={{ headerShown: false, title: 'Weather & Conditions' }} />

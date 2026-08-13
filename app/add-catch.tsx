@@ -383,7 +383,7 @@ export default function AddCatchScreen() {
         <TouchableOpacity style={s.saveBtn} onPress={handleSave} activeOpacity={0.85}>
           <LinearGradient colors={['#00D4AA', '#00B892']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.saveBtnGrad}>
             <MaterialCommunityIcons name="content-save-check" size={18} color="#0A0E1A" />
-            <Text style={s.saveBtnText}>SAVE CATCH</Text>
+            <Text style={s.saveBtnText}>Save Catch</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -540,7 +540,7 @@ const s = StyleSheet.create({
   },
   saveBtn: { borderRadius: radius.full, overflow: 'hidden', ...elevation.glow },
   saveBtnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 16 },
-  saveBtnText: { fontSize: 15, fontWeight: '800', color: '#0A0E1A', letterSpacing: 1.5, fontFamily: fonts.bodyBold },
+  saveBtnText: { fontSize: 16, fontWeight: '700', color: '#0A0E1A', letterSpacing: 0.2, fontFamily: fonts.bodyBold },
 
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)' },
   sheet: {

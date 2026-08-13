@@ -634,7 +634,7 @@ export default function SessionScreen() {
               </View>
             ))}
             <TouchableOpacity style={s.saveBtn} onPress={handleLogCatch} activeOpacity={0.85}>
-              <Text style={s.saveBtnText}>SAVE CATCH</Text>
+              <Text style={s.saveBtnText}>Save Catch</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -969,7 +969,7 @@ const s = StyleSheet.create({
     backgroundColor: colors.primary, borderRadius: radius.full,
     alignItems: 'center', paddingVertical: 15, marginTop: 8,
   },
-  saveBtnText: { fontSize: 14, fontWeight: '800', color: '#0A0E1A', letterSpacing: 0.8 },
+  saveBtnText: { fontSize: 15, fontWeight: '700', color: '#0A0E1A', letterSpacing: 0.2 },
   confirmOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', padding: 32 },
   confirmBox: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: 28, width: '100%', maxWidth: 360, alignItems: 'center' },
   confirmTitle: { fontSize: 22, fontWeight: '800', color: colors.textPrimary, marginBottom: 8 },

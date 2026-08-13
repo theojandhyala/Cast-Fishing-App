@@ -26,7 +26,7 @@ export function ProGate({ feature, description, icon, children }: ProGateProps) 
         <Text style={s.desc}>{description}</Text>
         <TouchableOpacity onPress={() => router.push('/pro' as any)} activeOpacity={0.85}>
           <LinearGradient colors={['#00D4AA', '#00A882']} style={s.btn}>
-            <Text style={s.btnText}>UPGRADE TO PRO</Text>
+            <Text style={s.btnText}>Upgrade to Pro</Text>
           </LinearGradient>
         </TouchableOpacity>
       </LinearGradient>
@@ -40,5 +40,5 @@ const s = StyleSheet.create({
   featureName: { fontSize: 20, fontWeight: '800', color: '#fff', textAlign: 'center' },
   desc: { fontSize: 14, color: 'rgba(255,255,255,0.6)', textAlign: 'center', lineHeight: 20 },
   btn: { borderRadius: 50, paddingHorizontal: 32, paddingVertical: 14, marginTop: 8 },
-  btnText: { fontSize: 13, fontWeight: '800', color: '#050A12', letterSpacing: 1.2 },
+  btnText: { fontSize: 15, fontWeight: '700', color: '#050A12', letterSpacing: 0.2 },
 });

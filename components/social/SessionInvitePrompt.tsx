@@ -50,10 +50,10 @@ export function SessionInvitePrompt() {
           <Text style={s.sub}>Join and this session goes live on your device too — same timer, in real time.</Text>
           <View style={s.row}>
             <TouchableOpacity style={s.declineBtn} onPress={() => declineInvite(invite.id)} activeOpacity={0.75}>
-              <Text style={s.declineText}>DECLINE</Text>
+              <Text style={s.declineText}>Decline</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.joinBtn} onPress={onJoin} activeOpacity={0.85}>
-              <Text style={s.joinText}>JOIN SESSION</Text>
+              <Text style={s.joinText}>Join Session</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -81,7 +81,7 @@ const s = StyleSheet.create({
     flex: 1, height: 48, borderRadius: radius.sm, borderWidth: 1, borderColor: TEAL_LINE,
     alignItems: 'center', justifyContent: 'center',
   },
-  declineText: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5, color: colors.textSecondary },
+  declineText: { fontSize: 14, fontWeight: '600', letterSpacing: 0.2, color: colors.textSecondary },
   joinBtn: { flex: 1.4, height: 48, borderRadius: radius.sm, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  joinText: { fontSize: 12, fontWeight: '800', letterSpacing: 1.5, color: colors.bg },
+  joinText: { fontSize: 14, fontWeight: '700', letterSpacing: 0.2, color: colors.bg },
 });
