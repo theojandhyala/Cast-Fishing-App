@@ -34,6 +34,8 @@ echo "==> Copying marketing + root assets (when present)"
 [ -f robots.txt ]          && cp robots.txt          dist/robots.txt           || true
 [ -f sitemap.xml ]         && cp sitemap.xml         dist/sitemap.xml          || true
 for f in google*.html; do [ -e "$f" ] && cp "$f" dist/ || true; done
+[ -f privacy.html ] && cp privacy.html dist/privacy.html || true
+[ -f terms.html ]   && cp terms.html   dist/terms.html   || true
 [ -d marketing ] && cp -r marketing dist/marketing || true
 
 echo "==> Writing dist/_redirects (SPA fallback)"

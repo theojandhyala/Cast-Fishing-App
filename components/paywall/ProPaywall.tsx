@@ -7,6 +7,7 @@ import { CastButton } from '../ui/CastButton';
 import { castApi } from '../../services/castApi';
 import { useAuthStore, User } from '../../store/authStore';
 import { colors, elevation, fonts, radius, spacing } from '../../constants/theme';
+import { canPurchaseOnThisPlatform, LEGAL_LINKS } from '../../constants/purchases';
 
 type BillingPlan = 'monthly' | 'annual';
 interface BillingStatus {
@@ -69,14 +70,17 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
         await refreshStatus();
         Alert.alert('CAST Pro is active', 'Your seven-day trial has started. Welcome aboard.');
       })
-      .catch((error) => Alert.alert('Confirming your subscription', error?.message || 'Stripe is still confirming the checkout. Pull to refresh shortly.'))
+      .catch((error) => Alert.alert('Confirming your subscription', error?.message || 'Your payment is still being confirmed. Pull to refresh shortly.'))
       .finally(() => setLoading(false));
   }, [checkout, loadUser, refreshStatus, sessionId]);
 
   const subscribe = async () => {
+    // Defence in depth: never open an external checkout where App Store rules
+    // require In-App Purchase, even if some other path calls this.
+    if (!canPurchaseOnThisPlatform()) return;
     if (!user) { Alert.alert('Sign in required', 'Create or sign in to your CAST account before starting Pro.'); return; }
     if (status && !status.stripeConfigured) {
-      Alert.alert('Stripe connection required', 'The secure checkout is built, but the Stripe account keys still need to be connected in Cloudflare before payments can open.');
+      Alert.alert('Checkout unavailable', 'Secure checkout is not connected yet. Please try again later.');
       return;
     }
     setLoading(true);
@@ -91,12 +95,13 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
   };
 
   const manageBilling = async () => {
+    if (!canPurchaseOnThisPlatform()) return;
     setLoading(true);
     try {
       const { portalUrl } = await castApi<{ portalUrl: string }>('/billing/portal', { method: 'POST' });
       await Linking.openURL(portalUrl);
     } catch (error: any) {
-      Alert.alert('Manage billing', error?.message || 'The Stripe billing portal could not open.');
+      Alert.alert('Manage billing', error?.message || 'The billing portal could not open.');
     } finally { setLoading(false); }
   };
 
@@ -126,7 +131,7 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
         <View className="mx-5 mt-5 rounded-card border border-cast-aqua bg-cast-aqua/10 p-5" style={styles.activeCard}>
           <View style={styles.activeTop}><View style={styles.liveDot} /><Text style={styles.activeTitle}>CAST Pro · {statusLabel(status?.status || user?.proStatus || 'active')}</Text></View>
           <Text style={styles.activeCopy}>{renewal ? `${status?.cancelAtPeriodEnd ? 'Access ends' : 'Next billing date'} ${renewal}.` : 'Your premium fishing tools are unlocked.'}</Text>
-          {status?.canManage ? <CastButton title="Manage with Stripe" onPress={manageBilling} loading={loading} variant="ghost" fullWidth /> : null}
+          {status?.canManage && canPurchaseOnThisPlatform() ? <CastButton title="Manage billing" onPress={manageBilling} loading={loading} variant="ghost" fullWidth /> : null}
         </View>
       ) : null}
 
@@ -152,7 +157,8 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
       </View>
 
       {!isPro ? <View className="mt-7 px-5" style={styles.section}>
-        <Text style={styles.sectionKicker}>CHOOSE YOUR PLAN</Text>
+        <Text style={styles.sectionKicker}>{canPurchaseOnThisPlatform() ? 'CHOOSE YOUR PLAN' : 'CAST PRO'}</Text>
+        {canPurchaseOnThisPlatform() ? (
         <View style={styles.plans}>
           <TouchableOpacity accessibilityRole="radio" accessibilityState={{ selected: billing === 'monthly' }} onPress={() => setBilling('monthly')} style={[styles.plan, billing === 'monthly' && styles.planSelected]}>
             <Text style={styles.planName}>Monthly</Text><Text style={styles.price}>£4.99</Text><Text style={styles.priceDetail}>per month</Text>
@@ -162,12 +168,26 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
             <Text style={styles.planName}>Annual</Text><Text style={styles.price}>£29.99</Text><Text style={styles.priceDetail}>£2.50 / month</Text>
           </TouchableOpacity>
         </View>
-        <View className="mt-3 rounded-card border border-white/10 bg-cast-900 p-3.5" style={styles.checkoutCard}>
-          <View style={styles.secureRow}><Icon name="shield-lock-outline" size={17} color={colors.primary} /><Text style={styles.secureText}>Secure checkout and billing by Stripe</Text></View>
-          <CastButton title={status?.stripeConfigured === false ? 'Stripe connection required' : 'Start 7-day free trial'} onPress={subscribe} loading={loading} disabled={status?.stripeConfigured === false} fullWidth size="lg" />
-          <Text style={styles.terms}>Then {billing === 'monthly' ? '£4.99 monthly' : '£29.99 annually'}. Cancel anytime in the Stripe customer portal. Prices include a seven-day trial for eligible new subscribers.</Text>
-          <TouchableOpacity accessibilityRole="button" onPress={refreshStatus} style={styles.restore}><Text style={styles.restoreText}>Restore or refresh membership</Text></TouchableOpacity>
-          {status?.stripeConfigured === false ? <Text style={styles.configNotice}>Checkout code is live, but no Stripe secret or webhook secret is connected to the Cloudflare Worker yet.</Text> : null}
+        ) : null}
+        {canPurchaseOnThisPlatform() ? (
+          <View className="mt-3 rounded-card border border-white/10 bg-cast-900 p-3.5" style={styles.checkoutCard}>
+            <View style={styles.secureRow}><Icon name="shield-lock-outline" size={17} color={colors.primary} /><Text style={styles.secureText}>Secure checkout and billing</Text></View>
+            <CastButton title={status?.stripeConfigured === false ? 'Checkout unavailable' : 'Start 7-day free trial'} onPress={subscribe} loading={loading} disabled={status?.stripeConfigured === false} fullWidth size="lg" />
+            <Text style={styles.terms}>{billing === 'monthly' ? 'CAST Pro Monthly — £4.99 per month' : 'CAST Pro Annual — £29.99 per year'}, auto-renewing until cancelled. A seven-day free trial is included for eligible new subscribers; cancel any time before it ends and you will not be charged.</Text>
+            <TouchableOpacity accessibilityRole="button" onPress={refreshStatus} style={styles.restore}><Text style={styles.restoreText}>Restore membership</Text></TouchableOpacity>
+          </View>
+        ) : (
+          <View className="mt-3 rounded-card border border-white/10 bg-cast-900 p-3.5" style={styles.checkoutCard}>
+            <View style={styles.secureRow}><Icon name="information-outline" size={17} color={colors.primary} /><Text style={styles.secureText}>CAST Pro is not yet available to buy in this app</Text></View>
+            <Text style={styles.terms}>Everything below is free to use right now. If you already have CAST Pro, sign in with the same account and your membership unlocks automatically.</Text>
+            <TouchableOpacity accessibilityRole="button" onPress={refreshStatus} style={styles.restore}><Text style={styles.restoreText}>Restore membership</Text></TouchableOpacity>
+          </View>
+        )}
+
+        <View style={styles.legalRow}>
+          <TouchableOpacity accessibilityRole="link" onPress={() => Linking.openURL(LEGAL_LINKS.terms)}><Text style={styles.legalLink}>Terms of Use</Text></TouchableOpacity>
+          <Text style={styles.legalDot}>·</Text>
+          <TouchableOpacity accessibilityRole="link" onPress={() => Linking.openURL(LEGAL_LINKS.privacy)}><Text style={styles.legalLink}>Privacy Policy</Text></TouchableOpacity>
         </View>
       </View> : null}
       <View style={{ height: spacing.xl }} />
@@ -219,6 +239,9 @@ const styles = StyleSheet.create({
   secureText: { color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 11 },
   terms: { color: colors.textTertiary, fontFamily: fonts.body, fontSize: 10, lineHeight: 15, textAlign: 'center', marginTop: spacing.sm },
   restore: { alignSelf: 'center', padding: spacing.md },
+  legalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: spacing.sm },
+  legalLink: { color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12, textDecorationLine: 'underline' },
+  legalDot: { color: colors.textTertiary, fontSize: 12 },
   restoreText: { color: colors.primary, fontFamily: fonts.bodySemi, fontSize: 12 },
   configNotice: { color: colors.warning, fontFamily: fonts.body, fontSize: 11, lineHeight: 17, textAlign: 'center', padding: spacing.sm, backgroundColor: 'rgba(245,158,11,0.08)', borderRadius: radius.sm },
   activeCard: { marginHorizontal: spacing.lg, marginTop: spacing.lg, padding: spacing.lg, backgroundColor: 'rgba(68,210,203,0.08)', borderWidth: 1, borderColor: colors.primary, borderRadius: radius.lg },
