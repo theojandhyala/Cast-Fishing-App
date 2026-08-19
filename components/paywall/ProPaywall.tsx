@@ -93,6 +93,16 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
       .finally(() => setLoading(false));
   }, [checkout, loadUser, refreshStatus, sessionId]);
 
+  /** The store's own intro/trial offer for the selected plan, if any. */
+  const introOffer = () => {
+    const pkg = storePackages.find((p) => p?.packageType === (billing === 'monthly' ? 'MONTHLY' : 'ANNUAL'));
+    const intro = pkg?.product?.introPrice;
+    if (!intro) return null;
+    const n = intro.periodNumberOfUnits;
+    const unit = String(intro.periodUnit || '').toLowerCase().replace(/s$/, '');
+    return n && unit ? `${n}-${unit} free trial` : 'free trial';
+  };
+
   /** Localised store price (Apple requires the real price, not a hardcoded one). */
   const priceFor = (period: 'MONTHLY' | 'ANNUAL', fallback: string) => {
     const pkg = storePackages.find((p) => p?.packageType === period);
@@ -235,8 +245,19 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
         {canPurchaseOnThisPlatform() ? (
           <View className="mt-3 rounded-card border border-white/10 bg-cast-900 p-3.5" style={styles.checkoutCard}>
             <View style={styles.secureRow}><Icon name="shield-lock-outline" size={17} color={colors.primary} /><Text style={styles.secureText}>Secure checkout and billing</Text></View>
-            <CastButton title={status?.stripeConfigured === false ? 'Checkout unavailable' : 'Start 7-day free trial'} onPress={subscribe} loading={loading} disabled={status?.stripeConfigured === false} fullWidth size="lg" />
-            <Text style={styles.terms}>{billing === 'monthly' ? `CAST Pro Monthly — ${priceFor('MONTHLY', '£4.99')} per month` : `CAST Pro Annual — ${priceFor('ANNUAL', '£29.99')} per year`}, auto-renewing until cancelled. A seven-day free trial is included for eligible new subscribers; cancel any time before it ends and you will not be charged.</Text>
+            <CastButton
+              title={
+                useStore
+                  ? (storePackages.length === 0 ? 'Loading plans…' : (introOffer() ? `Start ${introOffer()}` : 'Subscribe'))
+                  : (status?.stripeConfigured === false ? 'Checkout unavailable' : 'Start 7-day free trial')
+              }
+              onPress={subscribe}
+              loading={loading}
+              disabled={useStore ? storePackages.length === 0 : status?.stripeConfigured === false}
+              fullWidth
+              size="lg"
+            />
+            <Text style={styles.terms}>{billing === 'monthly' ? `CAST Pro Monthly — ${priceFor('MONTHLY', '£4.99')} per month` : `CAST Pro Annual — ${priceFor('ANNUAL', '£29.99')} per year`}, auto-renewing until cancelled.{useStore ? (introOffer() ? ` Includes a ${introOffer()} for eligible new subscribers; cancel any time before it ends and you will not be charged. Payment is charged to your Apple ID and renews unless auto-renew is turned off at least 24 hours before the period ends. Manage or cancel in your Apple ID settings.` : ' Payment is charged to your Apple ID and renews unless auto-renew is turned off at least 24 hours before the period ends. Manage or cancel in your Apple ID settings.') : ' A seven-day free trial is included for eligible new subscribers; cancel any time before it ends and you will not be charged.'}</Text>
             <TouchableOpacity accessibilityRole="button" onPress={restore} style={styles.restore}><Text style={styles.restoreText}>Restore membership</Text></TouchableOpacity>
           </View>
         ) : (

@@ -17,7 +17,7 @@ import { CONFIG } from './config';
 // Purchasing turns on for iOS as soon as a RevenueCat key is configured.
 // With no key the app degrades to the compliant no-purchase screen rather
 // than ever offering an external checkout.
-export const IOS_IAP_READY = Boolean(CONFIG.REVENUECAT_API_KEY);
+export const IOS_IAP_READY = Boolean(CONFIG.REVENUECAT_API_KEY);  // Apple key
 
 /** Whether this platform may present an in-app purchase flow at all. */
 export const canPurchaseOnThisPlatform = () => Platform.OS !== 'ios' || IOS_IAP_READY;

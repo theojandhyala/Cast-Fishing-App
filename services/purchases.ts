@@ -15,21 +15,27 @@ export const PRO_ENTITLEMENT = 'pro';
 
 let configured = false;
 
-/** True when an API key is present, i.e. purchases can actually work. */
+/** The RevenueCat key for the platform we are running on. */
+function apiKeyForPlatform(): string {
+  if (Platform.OS === 'android') return CONFIG.REVENUECAT_API_KEY_ANDROID || '';
+  if (Platform.OS === 'ios') return CONFIG.REVENUECAT_API_KEY || '';
+  return '';
+}
+
+/** True when THIS platform has a key, i.e. store purchases can actually work. */
 export function purchasesConfigurable(): boolean {
-  return Boolean(CONFIG.REVENUECAT_API_KEY);
+  return Boolean(apiKeyForPlatform());
 }
 
 /** Configure the SDK once. Safe to call repeatedly. */
 export async function initPurchases(appUserId?: string): Promise<boolean> {
   if (configured) return true;
-  if (!purchasesConfigurable()) return false;
+  const apiKey = apiKeyForPlatform();
+  if (!apiKey) return false;
   try {
-    if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.WARN);
-    await Purchases.configure({
-      apiKey: CONFIG.REVENUECAT_API_KEY,
-      appUserID: appUserId ?? null,
-    });
+    if (__DEV__) void Purchases.setLogLevel(LOG_LEVEL.WARN);
+    // configure() is synchronous (returns void), not a promise.
+    Purchases.configure({ apiKey, appUserID: appUserId ?? null });
     configured = true;
     return true;
   } catch {
