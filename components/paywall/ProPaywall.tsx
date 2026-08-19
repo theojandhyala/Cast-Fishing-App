@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
 import { Icon } from '../ui/Icon';
@@ -8,6 +8,7 @@ import { castApi } from '../../services/castApi';
 import { useAuthStore, User } from '../../store/authStore';
 import { colors, elevation, fonts, radius, spacing } from '../../constants/theme';
 import { canPurchaseOnThisPlatform, LEGAL_LINKS } from '../../constants/purchases';
+import * as IAP from '../../services/purchases';
 
 type BillingPlan = 'monthly' | 'annual';
 interface BillingStatus {
@@ -49,6 +50,11 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const handledSession = useRef(false);
+  // Native builds sell CAST Pro through the store (App Store guideline 3.1.2);
+  // the web build keeps the existing Stripe checkout.
+  const useStore = Platform.OS !== 'web' && IAP.purchasesConfigurable();
+  const [storePackages, setStorePackages] = useState<any[]>([]);
+  const [storePro, setStorePro] = useState(false);
 
   const refreshStatus = useCallback(async () => {
     if (!user) return;
@@ -59,6 +65,19 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
   }, [user]);
 
   useEffect(() => { void refreshStatus(); }, [refreshStatus]);
+
+  useEffect(() => {
+    if (!useStore) return;
+    let alive = true;
+    (async () => {
+      if (user?.id) await IAP.identifyPurchaser(user.id);
+      const [pkgs, active] = await Promise.all([IAP.getProPackages(), IAP.isProActiveOnDevice()]);
+      if (!alive) return;
+      setStorePackages(pkgs);
+      setStorePro(active);
+    })();
+    return () => { alive = false; };
+  }, [useStore, user?.id]);
 
   useEffect(() => {
     if (checkout !== 'success' || !sessionId || handledSession.current) return;
@@ -74,7 +93,51 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
       .finally(() => setLoading(false));
   }, [checkout, loadUser, refreshStatus, sessionId]);
 
+  /** Localised store price (Apple requires the real price, not a hardcoded one). */
+  const priceFor = (period: 'MONTHLY' | 'ANNUAL', fallback: string) => {
+    const pkg = storePackages.find((p) => p?.packageType === period);
+    return pkg?.product?.priceString || fallback;
+  };
+
+  /** Pick the store package matching the selected billing period. */
+  const selectedPackage = () => {
+    if (!storePackages.length) return null;
+    const want = billing === 'monthly' ? 'MONTHLY' : 'ANNUAL';
+    return storePackages.find((p) => p?.packageType === want) ?? storePackages[0];
+  };
+
+  const restore = async () => {
+    if (!useStore) { await refreshStatus(); return; }
+    setLoading(true);
+    try {
+      const res = await IAP.restoreProPurchases();
+      setStorePro(res.ok);
+      await refreshStatus();
+      Alert.alert(res.ok ? 'Membership restored' : 'Nothing to restore',
+        res.ok ? 'CAST Pro is active on this device.' : res.error || 'No previous purchase was found for this Apple ID.');
+    } finally { setLoading(false); }
+  };
+
   const subscribe = async () => {
+    // In-app purchase path (iOS/Android). Required by App Store guideline 3.1.2.
+    if (useStore) {
+      if (!user) { Alert.alert('Sign in required', 'Create or sign in to your CAST account before starting Pro.'); return; }
+      const pkg = selectedPackage();
+      if (!pkg) { Alert.alert('Plans unavailable', 'Subscription options could not be loaded. Please try again shortly.'); return; }
+      setLoading(true);
+      try {
+        const res = await IAP.purchaseProPackage(pkg);
+        if (res.cancelled) return;
+        if (res.ok) {
+          setStorePro(true);
+          await Promise.all([loadUser(), refreshStatus()]);
+          Alert.alert('CAST Pro is active', 'Welcome aboard. Your premium tools are unlocked.');
+        } else {
+          Alert.alert('Purchase not completed', res.error || 'The purchase could not be completed.');
+        }
+      } finally { setLoading(false); }
+      return;
+    }
     // Defence in depth: never open an external checkout where App Store rules
     // require In-App Purchase, even if some other path calls this.
     if (!canPurchaseOnThisPlatform()) return;
@@ -105,7 +168,7 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
     } finally { setLoading(false); }
   };
 
-  const isPro = Boolean(status?.isPro || user?.isPro);
+  const isPro = Boolean(status?.isPro || user?.isPro || storePro);
   const renewal = status?.currentPeriodEnd
     ? new Date(status.currentPeriodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
     : null;
@@ -161,11 +224,11 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
         {canPurchaseOnThisPlatform() ? (
         <View style={styles.plans}>
           <TouchableOpacity accessibilityRole="radio" accessibilityState={{ selected: billing === 'monthly' }} onPress={() => setBilling('monthly')} style={[styles.plan, billing === 'monthly' && styles.planSelected]}>
-            <Text style={styles.planName}>Monthly</Text><Text style={styles.price}>£4.99</Text><Text style={styles.priceDetail}>per month</Text>
+            <Text style={styles.planName}>Monthly</Text><Text style={styles.price}>{priceFor('MONTHLY', '£4.99')}</Text><Text style={styles.priceDetail}>per month</Text>
           </TouchableOpacity>
           <TouchableOpacity accessibilityRole="radio" accessibilityState={{ selected: billing === 'annual' }} onPress={() => setBilling('annual')} style={[styles.plan, billing === 'annual' && styles.planSelected]}>
             <View style={styles.bestValue}><Text style={styles.bestValueText}>BEST VALUE · SAVE 50%</Text></View>
-            <Text style={styles.planName}>Annual</Text><Text style={styles.price}>£29.99</Text><Text style={styles.priceDetail}>£2.50 / month</Text>
+            <Text style={styles.planName}>Annual</Text><Text style={styles.price}>{priceFor('ANNUAL', '£29.99')}</Text><Text style={styles.priceDetail}>billed yearly</Text>
           </TouchableOpacity>
         </View>
         ) : null}
@@ -173,14 +236,14 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
           <View className="mt-3 rounded-card border border-white/10 bg-cast-900 p-3.5" style={styles.checkoutCard}>
             <View style={styles.secureRow}><Icon name="shield-lock-outline" size={17} color={colors.primary} /><Text style={styles.secureText}>Secure checkout and billing</Text></View>
             <CastButton title={status?.stripeConfigured === false ? 'Checkout unavailable' : 'Start 7-day free trial'} onPress={subscribe} loading={loading} disabled={status?.stripeConfigured === false} fullWidth size="lg" />
-            <Text style={styles.terms}>{billing === 'monthly' ? 'CAST Pro Monthly — £4.99 per month' : 'CAST Pro Annual — £29.99 per year'}, auto-renewing until cancelled. A seven-day free trial is included for eligible new subscribers; cancel any time before it ends and you will not be charged.</Text>
-            <TouchableOpacity accessibilityRole="button" onPress={refreshStatus} style={styles.restore}><Text style={styles.restoreText}>Restore membership</Text></TouchableOpacity>
+            <Text style={styles.terms}>{billing === 'monthly' ? `CAST Pro Monthly — ${priceFor('MONTHLY', '£4.99')} per month` : `CAST Pro Annual — ${priceFor('ANNUAL', '£29.99')} per year`}, auto-renewing until cancelled. A seven-day free trial is included for eligible new subscribers; cancel any time before it ends and you will not be charged.</Text>
+            <TouchableOpacity accessibilityRole="button" onPress={restore} style={styles.restore}><Text style={styles.restoreText}>Restore membership</Text></TouchableOpacity>
           </View>
         ) : (
           <View className="mt-3 rounded-card border border-white/10 bg-cast-900 p-3.5" style={styles.checkoutCard}>
             <View style={styles.secureRow}><Icon name="information-outline" size={17} color={colors.primary} /><Text style={styles.secureText}>CAST Pro is not yet available to buy in this app</Text></View>
             <Text style={styles.terms}>Everything below is free to use right now. If you already have CAST Pro, sign in with the same account and your membership unlocks automatically.</Text>
-            <TouchableOpacity accessibilityRole="button" onPress={refreshStatus} style={styles.restore}><Text style={styles.restoreText}>Restore membership</Text></TouchableOpacity>
+            <TouchableOpacity accessibilityRole="button" onPress={restore} style={styles.restore}><Text style={styles.restoreText}>Restore membership</Text></TouchableOpacity>
           </View>
         )}
 

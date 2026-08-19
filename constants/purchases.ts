@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { CONFIG } from './config';
 
 /**
  * Apple App Store Review Guideline 3.1.2 requires that digital subscriptions
@@ -13,7 +14,10 @@ import { Platform } from 'react-native';
  * To turn purchasing back on for iOS: implement the IAP provider, then flip
  * this flag to true in the same release. Nothing else needs to change.
  */
-export const IOS_IAP_READY = false;
+// Purchasing turns on for iOS as soon as a RevenueCat key is configured.
+// With no key the app degrades to the compliant no-purchase screen rather
+// than ever offering an external checkout.
+export const IOS_IAP_READY = Boolean(CONFIG.REVENUECAT_API_KEY);
 
 /** Whether this platform may present an in-app purchase flow at all. */
 export const canPurchaseOnThisPlatform = () => Platform.OS !== 'ios' || IOS_IAP_READY;
