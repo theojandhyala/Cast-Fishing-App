@@ -38,7 +38,10 @@ export default function WelcomeScreen() {
     void Social.appleAvailable().then(setShowApple);
   }, []);
 
-  const enter = () => router.replace('/(tabs)');
+  const enter = () => {
+    const u = useAuthStore.getState().user;
+    router.replace(u?.hasCompletedOnboarding === false ? '/(auth)/onboarding' : '/(tabs)');
+  };
 
   const social = async (provider: 'apple' | 'google') => {
     setBusy(provider);
@@ -61,7 +64,7 @@ export default function WelcomeScreen() {
       const ok = isNew
         ? await register((name.trim() || 'Angler'), email.trim(), password)
         : await login(email.trim(), password);
-      if (ok) enter();
+      if (ok) { if (isNew) router.replace('/(auth)/onboarding'); else enter(); }
       else Alert.alert(isNew ? 'Could not create account' : 'Could not sign in',
         useAuthStore.getState().authError || 'Please check your details.');
     } finally { setBusy(null); }

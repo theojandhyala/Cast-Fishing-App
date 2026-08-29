@@ -63,7 +63,7 @@ export default function OnboardingScreen() {
   /** Let anyone jump straight into the app; profile can be filled in later. */
   const skipSetup = async () => {
     try { await useAuthStore.getState().updateUser({ hasCompletedOnboarding: true }); } catch {}
-    router.replace('/(tabs)');
+    router.replace('/pro?welcome=1');
   };
   const entrance = useRef(new Animated.Value(1)).current;
   const authUser = useAuthStore((state) => state.user);
@@ -127,7 +127,7 @@ export default function OnboardingScreen() {
       return;
     }
     saveProfile({ username: cleanUsername, photoUri, regionId, targetSpecies });
-    router.replace('/(tabs)');
+    router.replace('/pro?welcome=1');
   };
 
   const next = () => {

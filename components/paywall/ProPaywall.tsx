@@ -42,7 +42,7 @@ const statusLabel = (status: string) => ({
   active: 'Active', trialing: 'Free trial', past_due: 'Payment issue', canceled: 'Cancelled', free: 'Free plan',
 }[status] || status.replaceAll('_', ' '));
 
-export function ProPaywall({ onClose }: { onClose?: () => void }) {
+export function ProPaywall({ onClose, welcome = false }: { onClose?: () => void; welcome?: boolean }) {
   const { checkout, session_id: sessionId } = useLocalSearchParams<{ checkout?: string; session_id?: string }>();
   const user = useAuthStore((state) => state.user);
   const loadUser = useAuthStore((state) => state.loadUser);
@@ -131,7 +131,6 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
   const subscribe = async () => {
     // In-app purchase path (iOS/Android). Required by App Store guideline 3.1.2.
     if (useStore) {
-      if (!user) { Alert.alert('Sign in required', 'Create or sign in to your CAST account before starting Pro.'); return; }
       const pkg = selectedPackage();
       if (!pkg) { Alert.alert('Plans unavailable', 'Subscription options could not be loaded. Please try again shortly.'); return; }
       setLoading(true);
@@ -151,7 +150,7 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
     // Defence in depth: never open an external checkout where App Store rules
     // require In-App Purchase, even if some other path calls this.
     if (!canPurchaseOnThisPlatform()) return;
-    if (!user) { Alert.alert('Sign in required', 'Create or sign in to your CAST account before starting Pro.'); return; }
+    if (!user) { Alert.alert('Almost there', 'Create a free CAST account so your Pro access follows you between devices.'); return; }
     if (status && !status.stripeConfigured) {
       Alert.alert('Checkout unavailable', 'Secure checkout is not connected yet. Please try again later.');
       return;
@@ -234,6 +233,7 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
         {canPurchaseOnThisPlatform() ? (
         <View style={styles.plans}>
           <TouchableOpacity accessibilityRole="radio" accessibilityState={{ selected: billing === 'monthly' }} onPress={() => setBilling('monthly')} style={[styles.plan, billing === 'monthly' && styles.planSelected]}>
+            <View style={styles.trialBadge}><Text style={styles.trialBadgeText}>7-DAY FREE TRIAL</Text></View>
             <Text style={styles.planName}>Monthly</Text><Text style={styles.price}>{priceFor('MONTHLY', '£4.99')}</Text><Text style={styles.priceDetail}>per month</Text>
           </TouchableOpacity>
           <TouchableOpacity accessibilityRole="radio" accessibilityState={{ selected: billing === 'annual' }} onPress={() => setBilling('annual')} style={[styles.plan, billing === 'annual' && styles.planSelected]}>
@@ -263,10 +263,16 @@ export function ProPaywall({ onClose }: { onClose?: () => void }) {
         ) : (
           <View className="mt-3 rounded-card border border-white/10 bg-cast-900 p-3.5" style={styles.checkoutCard}>
             <View style={styles.secureRow}><Icon name="information-outline" size={17} color={colors.primary} /><Text style={styles.secureText}>CAST Pro is not yet available to buy in this app</Text></View>
-            <Text style={styles.terms}>Everything below is free to use right now. If you already have CAST Pro, sign in with the same account and your membership unlocks automatically.</Text>
+            <Text style={styles.terms}>Everything below is free to use right now. If you already have CAST Pro, sign in with the same account and it unlocks automatically.</Text>
             <TouchableOpacity accessibilityRole="button" onPress={restore} style={styles.restore}><Text style={styles.restoreText}>Restore membership</Text></TouchableOpacity>
           </View>
         )}
+
+        {welcome ? (
+          <TouchableOpacity accessibilityRole="button" onPress={onClose} style={styles.laterBtn} activeOpacity={0.7}>
+            <Text style={styles.laterText}>Maybe later</Text>
+          </TouchableOpacity>
+        ) : null}
 
         <View style={styles.legalRow}>
           <TouchableOpacity accessibilityRole="link" onPress={() => Linking.openURL(LEGAL_LINKS.terms)}><Text style={styles.legalLink}>Terms of Use</Text></TouchableOpacity>
@@ -323,6 +329,14 @@ const styles = StyleSheet.create({
   secureText: { color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 11 },
   terms: { color: colors.textTertiary, fontFamily: fonts.body, fontSize: 10, lineHeight: 15, textAlign: 'center', marginTop: spacing.sm },
   restore: { alignSelf: 'center', padding: spacing.md },
+  trialBadge: {
+    alignSelf: 'flex-start', backgroundColor: 'rgba(0,212,170,0.14)',
+    borderColor: 'rgba(0,212,170,0.35)', borderWidth: 1,
+    borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 6,
+  },
+  trialBadgeText: { color: colors.primary, fontSize: 9, fontWeight: '800', letterSpacing: 0.6 },
+  laterBtn: { alignSelf: 'center', paddingVertical: 14, paddingHorizontal: 24, minHeight: 44, justifyContent: 'center', marginTop: spacing.sm },
+  laterText: { color: colors.textSecondary, fontSize: 15, fontWeight: '600', textDecorationLine: 'underline' },
   legalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: spacing.sm },
   legalLink: { color: colors.textSecondary, fontFamily: fonts.bodySemi, fontSize: 12, textDecorationLine: 'underline' },
   legalDot: { color: colors.textTertiary, fontSize: 12 },

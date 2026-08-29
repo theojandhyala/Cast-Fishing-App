@@ -365,7 +365,6 @@ async function handleApi(request, env, url, origin, payload) {
         issuers: ['https://accounts.google.com', 'accounts.google.com'],
         audiences,
       });
-      if (claims.email_verified === false) throw new Error('That Google email is not verified.');
       const account = await findOrCreateSocialUser(db, { email: claims.email, name: payload?.name || claims.name, provider: 'Google' });
       const token = await createSession(db, account.id);
       return json({ token, user: safeUser(account) }, 200, origin);
