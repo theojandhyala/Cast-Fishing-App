@@ -41,11 +41,15 @@ interface UserResponse { user: User }
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
+  /** Browsing without an account. Everything local still works. */
+  isGuest: boolean;
   isLoading: boolean;
   authError: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  continueAsGuest: () => Promise<void>;
+  signInWithProvider: (provider: 'apple' | 'google', idToken: string, name?: string) => Promise<boolean>;
   deleteAccount: () => Promise<boolean>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   loadUser: () => Promise<void>;
@@ -58,13 +62,26 @@ const PERSONAL_DATA_KEYS = [
   'cast-profile-v1', 'cast_active_session', 'cast_trips',
 ];
 
+const GUEST_KEY = 'cast_guest_mode';
+
 const errorMessage = (error: unknown) => error instanceof CastApiError
   ? error.message
   : 'CAST could not connect. Check your internet connection and try again.';
 
+
+/** A local-only profile so the app works with no account at all. */
+function makeGuestUser(): User {
+  return {
+    id: 'guest', name: 'Angler', email: '', isPro: false,
+    xp: 0, level: 1, streak: 0, favouriteSpecies: [],
+    joinedAt: new Date().toISOString(), hasCompletedOnboarding: true,
+  };
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   isAuthenticated: false,
+  isGuest: false,
   isLoading: true,
   authError: null,
 
@@ -72,8 +89,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
       if (!token) {
+        // No account, but the user may have chosen to browse as a guest.
+        const guest = await AsyncStorage.getItem(GUEST_KEY);
+        if (guest) {
+          const cached = await AsyncStorage.getItem('cast_user');
+          set({ user: cached ? JSON.parse(cached) : makeGuestUser(), isAuthenticated: false, isGuest: true, isLoading: false });
+          return;
+        }
         await AsyncStorage.removeItem('cast_user');
-        set({ user: null, isAuthenticated: false, isLoading: false });
+        set({ user: null, isAuthenticated: false, isGuest: false, isLoading: false });
         return;
       }
       const { user } = await castApi<UserResponse>('/auth/me');
@@ -110,7 +134,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       useCatchStore.getState().clearMemory();
       useFriendsStore.getState().reset();
       await useCatchStore.getState().loadCatches();
-      set({ user: response.user, isAuthenticated: true });
+      await AsyncStorage.removeItem(GUEST_KEY);
+      set({ user: response.user, isAuthenticated: true, isGuest: false });
       return true;
     } catch (error) {
       set({ authError: errorMessage(error) });
@@ -128,7 +153,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await AsyncStorage.multiSet([[AUTH_TOKEN_KEY, response.token], ['cast_user', JSON.stringify(response.user)]]);
       useCatchStore.getState().clearMemory();
       useFriendsStore.getState().reset();
-      set({ user: response.user, isAuthenticated: true });
+      await AsyncStorage.removeItem(GUEST_KEY);
+      set({ user: response.user, isAuthenticated: true, isGuest: false });
       return true;
     } catch (error) {
       set({ authError: errorMessage(error) });
@@ -138,10 +164,37 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   logout: async () => {
     try { await castApi('/auth/logout', { method: 'POST' }); } catch {}
-    await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, 'cast_user']);
+    await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, 'cast_user', GUEST_KEY]);
     useCatchStore.getState().clearMemory();
     useFriendsStore.getState().reset();
-    set({ user: null, isAuthenticated: false, authError: null });
+    set({ user: null, isAuthenticated: false, isGuest: false, authError: null });
+  },
+
+  /** Enter the app with no account. Catches and sessions stay on the device. */
+  continueAsGuest: async () => {
+    const guest = makeGuestUser();
+    await AsyncStorage.multiSet([[GUEST_KEY, '1'], ['cast_user', JSON.stringify(guest)]]);
+    set({ user: guest, isAuthenticated: false, isGuest: true, isLoading: false, authError: null });
+  },
+
+  /** One-tap sign-in with Apple or Google. The worker verifies the token. */
+  signInWithProvider: async (provider, idToken, name) => {
+    set({ authError: null });
+    try {
+      const response = await castApi<AuthResponse>(`/auth/${provider}`, {
+        method: 'POST', body: JSON.stringify({ idToken, name }),
+      }, false);
+      await AsyncStorage.multiSet([[AUTH_TOKEN_KEY, response.token], ['cast_user', JSON.stringify(response.user)]]);
+      await AsyncStorage.removeItem(GUEST_KEY);
+      useCatchStore.getState().clearMemory();
+      useFriendsStore.getState().reset();
+      await useCatchStore.getState().loadCatches();
+      set({ user: response.user, isAuthenticated: true, isGuest: false });
+      return true;
+    } catch (error) {
+      set({ authError: errorMessage(error) });
+      return false;
+    }
   },
 
   // Permanently delete the account (Apple App Store guideline 5.1.1(v) requires
@@ -162,10 +215,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return false;
       }
     }
-    await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, ...PERSONAL_DATA_KEYS]);
+    await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, GUEST_KEY, ...PERSONAL_DATA_KEYS]);
     useCatchStore.getState().clearMemory();
     useFriendsStore.getState().reset();
-    set({ user: null, isAuthenticated: false, authError: null });
+    set({ user: null, isAuthenticated: false, isGuest: false, authError: null });
     return true;
   },
 

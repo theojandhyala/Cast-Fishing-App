@@ -222,6 +222,84 @@ async function handleStripeWebhook(request, env, origin) {
   return json({ received: true }, 200, origin);
 }
 
+
+// ─── Social sign-in ──────────────────────────────────────────────────────────
+// Verify a provider identity token, then find-or-create the CAST account.
+
+function b64urlToBytes(input) {
+  const pad = input.replace(/-/g, '+').replace(/_/g, '/');
+  const bin = atob(pad + '='.repeat((4 - (pad.length % 4)) % 4));
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+}
+
+function decodeJwt(token) {
+  const [h, p, sig] = String(token).split('.');
+  if (!h || !p || !sig) throw new Error('Malformed token');
+  return {
+    header: JSON.parse(new TextDecoder().decode(b64urlToBytes(h))),
+    payload: JSON.parse(new TextDecoder().decode(b64urlToBytes(p))),
+    signed: new TextEncoder().encode(`${h}.${p}`),
+    signature: b64urlToBytes(sig),
+  };
+}
+
+/** Verify an RS256 JWT against a JWKS endpoint and validate its claims. */
+async function verifyIdentityToken(token, { jwksUrl, issuers, audiences }) {
+  const { header, payload, signed, signature } = decodeJwt(token);
+  if (header.alg !== 'RS256') throw new Error('Unexpected token algorithm');
+
+  const jwks = await fetch(jwksUrl, { cf: { cacheTtl: 3600 } }).then((r) => r.json());
+  const jwk = (jwks.keys || []).find((k) => k.kid === header.kid);
+  if (!jwk) throw new Error('Signing key not found');
+
+  const key = await crypto.subtle.importKey(
+    'jwk', { kty: jwk.kty, n: jwk.n, e: jwk.e, alg: 'RS256', ext: true },
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify'],
+  );
+  const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, signature, signed);
+  if (!valid) throw new Error('Token signature is invalid');
+
+  if (!issuers.includes(payload.iss)) throw new Error('Unexpected token issuer');
+  if (audiences.length && !audiences.includes(payload.aud)) throw new Error('Token was issued for another app');
+  if (typeof payload.exp === 'number' && payload.exp * 1000 < Date.now()) throw new Error('Token has expired');
+  return payload;
+}
+
+/** Find the account for a verified provider email, or create one. */
+async function findOrCreateSocialUser(db, { email, name, provider }) {
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  if (!cleanEmail) throw new Error('This sign-in did not share an email address.');
+
+  const existing = await db.prepare('SELECT * FROM users WHERE email = ?').bind(cleanEmail).first();
+  if (existing) return existing;
+
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  // Social accounts have no password; store an unusable random hash so the
+  // password login path can never match.
+  const salt = randomToken(18);
+  const hash = await passwordHash(randomToken(32), salt);
+
+  let username = String(name || cleanEmail.split('@')[0] || 'Angler').trim().slice(0, 24);
+  if (username.length < 2) username = 'Angler';
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidate = attempt === 0 ? username : `${username.slice(0, 20)}${Math.floor(Math.random() * 9999)}`;
+    try {
+      await db.prepare(`INSERT INTO users
+        (id,email,username,password_hash,password_salt,created_at,updated_at)
+        VALUES (?,?,?,?,?,?,?)`).bind(id, cleanEmail, candidate, hash, salt, now, now).run();
+      return await db.prepare('SELECT * FROM users WHERE id = ?').bind(id).first();
+    } catch (error) {
+      const message = String(error?.message || '');
+      if (message.includes('users.email')) {
+        return await db.prepare('SELECT * FROM users WHERE email = ?').bind(cleanEmail).first();
+      }
+      if (!message.includes('users.username')) throw error;
+    }
+  }
+  throw new Error(`Could not create an account from ${provider} sign-in.`);
+}
+
 async function handleApi(request, env, url, origin, payload) {
   if (!env.DB) return json({ error: 'Account service is temporarily unavailable.' }, 503, origin);
   const db = env.DB;
@@ -232,7 +310,7 @@ async function handleApi(request, env, url, origin, payload) {
     const password = String(payload?.password || '');
     if (!EMAIL_PATTERN.test(email)) return json({ error: 'Enter a valid email address.' }, 400, origin);
     if (username.length < 2 || username.length > 24) return json({ error: 'Username must be 2–24 characters.' }, 400, origin);
-    if (password.length < 8) return json({ error: 'Password must be at least 8 characters.' }, 400, origin);
+    if (password.length < 6) return json({ error: 'Password must be at least 6 characters.' }, 400, origin);
     const id = crypto.randomUUID();
     const salt = randomToken(18);
     const hash = await passwordHash(password, salt);
@@ -261,6 +339,39 @@ async function handleApi(request, env, url, origin, payload) {
     }
     const token = await createSession(db, user.id);
     return json({ token, user: safeUser(user) }, 200, origin);
+  }
+
+  if (url.pathname === '/auth/apple' && request.method === 'POST') {
+    try {
+      const audiences = String(env.APPLE_BUNDLE_ID || 'com.cast.fishingapp').split(',').map((v) => v.trim()).filter(Boolean);
+      const claims = await verifyIdentityToken(String(payload?.idToken || ''), {
+        jwksUrl: 'https://appleid.apple.com/auth/keys',
+        issuers: ['https://appleid.apple.com'],
+        audiences,
+      });
+      const account = await findOrCreateSocialUser(db, { email: claims.email, name: payload?.name, provider: 'Apple' });
+      const token = await createSession(db, account.id);
+      return json({ token, user: safeUser(account) }, 200, origin);
+    } catch (error) {
+      return json({ error: String(error?.message || 'Sign in with Apple failed.') }, 401, origin);
+    }
+  }
+
+  if (url.pathname === '/auth/google' && request.method === 'POST') {
+    try {
+      const audiences = String(env.GOOGLE_CLIENT_IDS || '').split(',').map((v) => v.trim()).filter(Boolean);
+      const claims = await verifyIdentityToken(String(payload?.idToken || ''), {
+        jwksUrl: 'https://www.googleapis.com/oauth2/v3/certs',
+        issuers: ['https://accounts.google.com', 'accounts.google.com'],
+        audiences,
+      });
+      if (claims.email_verified === false) throw new Error('That Google email is not verified.');
+      const account = await findOrCreateSocialUser(db, { email: claims.email, name: payload?.name || claims.name, provider: 'Google' });
+      const token = await createSession(db, account.id);
+      return json({ token, user: safeUser(account) }, 200, origin);
+    } catch (error) {
+      return json({ error: String(error?.message || 'Sign in with Google failed.') }, 401, origin);
+    }
   }
 
   const user = await authenticatedUser(request, db);

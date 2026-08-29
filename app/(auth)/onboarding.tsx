@@ -59,6 +59,12 @@ const SPECIES = [
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+
+  /** Let anyone jump straight into the app; profile can be filled in later. */
+  const skipSetup = async () => {
+    try { await useAuthStore.getState().updateUser({ hasCompletedOnboarding: true }); } catch {}
+    router.replace('/(tabs)');
+  };
   const entrance = useRef(new Animated.Value(1)).current;
   const authUser = useAuthStore((state) => state.user);
   const completeAuthOnboarding = useAuthStore((state) => state.completeOnboarding);
@@ -144,7 +150,18 @@ export default function OnboardingScreen() {
           <View style={styles.brandMark}><Icon name="fish" size={18} color={colors.background} /></View>
           <Text style={styles.brandText}>CAST</Text>
         </View>
-        <Text style={styles.stepLabel}>{step + 1} / {TOTAL_STEPS}</Text>
+        <View style={styles.headerRight}>
+          <Text style={styles.stepLabel}>{step + 1} / {TOTAL_STEPS}</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Skip setup"
+            onPress={skipSetup}
+            style={styles.skipBtn}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.progressTrack}>
@@ -278,6 +295,9 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  skipBtn: { paddingVertical: 8, paddingHorizontal: 10, minHeight: 44, justifyContent: 'center' },
+  skipText: { color: colors.textSecondary, fontSize: 14, fontWeight: '600' },
   header: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   brandMark: { width: 30, height: 30, borderRadius: 9, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
