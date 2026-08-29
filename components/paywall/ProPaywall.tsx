@@ -55,6 +55,10 @@ export function ProPaywall({ onClose, welcome = false }: { onClose?: () => void;
   const useStore = Platform.OS !== 'web' && IAP.purchasesConfigurable();
   const [storePackages, setStorePackages] = useState<any[]>([]);
   const [storePro, setStorePro] = useState(false);
+  // 'loading' until the store answers; 'unavailable' if it cannot be reached
+  // (no network, sandbox hiccup, or a build without the native module). The
+  // rest of CAST keeps working either way — we never block the app on this.
+  const [storeState, setStoreState] = useState<'loading' | 'ready' | 'unavailable'>('loading');
 
   const refreshStatus = useCallback(async () => {
     if (!user) return;
@@ -66,18 +70,21 @@ export function ProPaywall({ onClose, welcome = false }: { onClose?: () => void;
 
   useEffect(() => { void refreshStatus(); }, [refreshStatus]);
 
-  useEffect(() => {
+  const loadStore = useCallback(async () => {
     if (!useStore) return;
-    let alive = true;
-    (async () => {
+    setStoreState('loading');
+    try {
       if (user?.id) await IAP.identifyPurchaser(user.id);
       const [pkgs, active] = await Promise.all([IAP.getProPackages(), IAP.isProActiveOnDevice()]);
-      if (!alive) return;
       setStorePackages(pkgs);
       setStorePro(active);
-    })();
-    return () => { alive = false; };
+      setStoreState(pkgs.length > 0 ? 'ready' : 'unavailable');
+    } catch {
+      setStoreState('unavailable');
+    }
   }, [useStore, user?.id]);
+
+  useEffect(() => { void loadStore(); }, [loadStore]);
 
   useEffect(() => {
     if (checkout !== 'success' || !sessionId || handledSession.current) return;
@@ -244,16 +251,25 @@ export function ProPaywall({ onClose, welcome = false }: { onClose?: () => void;
         ) : null}
         {canPurchaseOnThisPlatform() ? (
           <View className="mt-3 rounded-card border border-white/10 bg-cast-900 p-3.5" style={styles.checkoutCard}>
-            <View style={styles.secureRow}><Icon name="shield-lock-outline" size={17} color={colors.primary} /><Text style={styles.secureText}>Secure checkout and billing</Text></View>
+            <View style={styles.secureRow}>
+              <Icon name={useStore && storeState === 'unavailable' ? 'wifi-off' : 'shield-lock-outline'} size={17} color={colors.primary} />
+              <Text style={styles.secureText}>
+                {useStore && storeState === 'unavailable'
+                  ? 'Plans are unavailable right now — everything else in CAST still works.'
+                  : 'Secure checkout and billing'}
+              </Text>
+            </View>
             <CastButton
               title={
                 useStore
-                  ? (storePackages.length === 0 ? 'Loading plans…' : (introOffer() ? `Start ${introOffer()}` : 'Subscribe'))
+                  ? (storeState === 'loading' ? 'Loading plans…'
+                    : storeState === 'unavailable' ? 'Try again'
+                    : (introOffer() ? `Start ${introOffer()}` : 'Subscribe'))
                   : (status?.stripeConfigured === false ? 'Checkout unavailable' : 'Start 7-day free trial')
               }
-              onPress={subscribe}
+              onPress={useStore && storeState === 'unavailable' ? loadStore : subscribe}
               loading={loading}
-              disabled={useStore ? storePackages.length === 0 : status?.stripeConfigured === false}
+              disabled={useStore ? storeState === 'loading' : status?.stripeConfigured === false}
               fullWidth
               size="lg"
             />
